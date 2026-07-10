@@ -30,6 +30,9 @@ app.get('/', (req, res) => {
   res.redirect('/admin/login.html');
 });
 
+// Ignore favicon to prevent 404 logs
+app.get('/favicon.ico', (req, res) => res.status(204).end());
+
 // ── 404 Handler ──────────────────────────────────────────────
 app.use((req, res) => {
   if (req.path.startsWith('/api/')) {
