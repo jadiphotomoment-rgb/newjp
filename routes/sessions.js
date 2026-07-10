@@ -260,6 +260,43 @@ router.patch('/:uuid/reopen', auth, async (req, res) => {
   }
 });
 
+// ── PATCH /api/sessions/:uuid — update session details (admin) ─────
+router.patch('/:uuid', auth, async (req, res) => {
+  const { clientName, folderUrl, photoLimit } = req.body;
+
+  if (!clientName || !folderUrl || !photoLimit) {
+    return res.status(400).json({ error: 'clientName, folderUrl, dan photoLimit wajib diisi' });
+  }
+
+  const limit = parseInt(photoLimit, 10);
+  if (isNaN(limit) || limit < 1 || limit > 500) {
+    return res.status(400).json({ error: 'photoLimit harus antara 1 dan 500' });
+  }
+
+  const folderId = extractFolderId(folderUrl.trim());
+  if (!folderId) {
+    return res.status(400).json({ error: 'URL Google Drive tidak valid. Pastikan berupa link folder Drive.' });
+  }
+
+  try {
+    const sessionRes = await db.query(
+      'SELECT id FROM sessions WHERE uuid = $1 AND admin_id = $2',
+      [req.params.uuid, req.admin.adminId]
+    );
+    const session = sessionRes.rows[0];
+    if (!session) return res.status(404).json({ error: 'Sesi tidak ditemukan' });
+
+    await db.query(
+      'UPDATE sessions SET client_name = $1, folder_url = $2, folder_id = $3, photo_limit = $4 WHERE id = $5',
+      [clientName.trim(), folderUrl.trim(), folderId, limit, session.id]
+    );
+    res.json({ message: 'Sesi berhasil diperbarui' });
+  } catch (err) {
+    console.error('[sessions] PATCH update error:', err);
+    res.status(500).json({ error: 'Database error' });
+  }
+});
+
 // ── DELETE /api/sessions/:uuid ────────────────────────────────
 router.delete('/:uuid', auth, async (req, res) => {
   let client;

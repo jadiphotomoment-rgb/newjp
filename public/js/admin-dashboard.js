@@ -163,9 +163,13 @@ window.copyText = copyText;
 function actionButtons(s) {
   const btns = [];
   btns.push(`<button class="btn btn-outline btn-sm" onclick="showShareLink('${s.uuid}', '${s.short_slug || ''}')" title="Link galeri" aria-label="Bagikan link">🔗 Link</button>`);
+  
   if (s.status === 'completed') {
     btns.push(`<button class="btn btn-outline btn-sm" onclick="viewSelections('${s.uuid}')" title="Lihat pilihan foto" aria-label="Lihat seleksi">👁 Seleksi & Status</button>`);
   }
+  
+  btns.push(`<button class="btn btn-outline btn-sm" onclick="openEditSessionModal('${s.uuid}')" title="Edit Data Sesi" aria-label="Edit Sesi">✏️ Edit</button>`);
+
   if (s.status !== 'active') {
     btns.push(`<button class="btn btn-outline btn-sm" onclick="reopenSession('${s.uuid}')" title="Buka kembali" aria-label="Buka kembali sesi">♻️</button>`);
   }
@@ -482,6 +486,73 @@ document.getElementById('form-new-session').addEventListener('submit', async (e)
   } finally {
     btnCreate.disabled = false;
     btnText.textContent = 'Buat Sesi';
+    spinner.classList.add('hidden');
+  }
+});
+
+// ── Edit session ──────────────────────────────────────────────────
+function openEditSessionModal(uuid) {
+  const session = sessions.find(s => s.uuid === uuid);
+  if (!session) return;
+
+  document.getElementById('edit-session-uuid').value = session.uuid;
+  document.getElementById('edit-client-name').value = session.client_name || '';
+  document.getElementById('edit-folder-url').value = session.folder_url || '';
+  document.getElementById('edit-photo-limit').value = session.photo_limit || 10;
+  
+  document.getElementById('modal-edit-alert').classList.add('hidden');
+  openModal('modal-edit-session');
+}
+window.openEditSessionModal = openEditSessionModal;
+
+document.getElementById('form-edit-session').addEventListener('submit', async (e) => {
+  e.preventDefault();
+
+  const alertEl   = document.getElementById('modal-edit-alert');
+  const btnUpdate = document.getElementById('btn-update-session');
+  const btnText   = document.getElementById('btn-update-session-text');
+  const spinner   = document.getElementById('btn-update-session-spinner');
+
+  const uuid       = document.getElementById('edit-session-uuid').value;
+  const clientName = document.getElementById('edit-client-name').value.trim();
+  const folderUrl  = document.getElementById('edit-folder-url').value.trim();
+  const photoLimit = document.getElementById('edit-photo-limit').value;
+
+  alertEl.classList.add('hidden');
+
+  if (!clientName || !folderUrl || !photoLimit) {
+    alertEl.textContent = 'Semua field wajib diisi';
+    alertEl.classList.remove('hidden');
+    return;
+  }
+
+  btnUpdate.disabled = true;
+  btnText.textContent = 'Menyimpan...';
+  spinner.classList.remove('hidden');
+
+  try {
+    const res  = await apiFetch(`/api/sessions/${uuid}`, {
+      method: 'PATCH',
+      body:   JSON.stringify({ clientName, folderUrl, photoLimit }),
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      alertEl.textContent = data.error || 'Gagal memperbarui sesi';
+      alertEl.classList.remove('hidden');
+      return;
+    }
+
+    closeModal('modal-edit-session');
+    loadSessions();
+    showToast('Sesi berhasil diperbarui!', 'success');
+
+  } catch (err) {
+    alertEl.textContent = 'Server error: ' + err.message;
+    alertEl.classList.remove('hidden');
+  } finally {
+    btnUpdate.disabled = false;
+    btnText.textContent = 'Simpan Perubahan';
     spinner.classList.add('hidden');
   }
 });

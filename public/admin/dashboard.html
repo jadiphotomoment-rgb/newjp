@@ -156,6 +156,39 @@
     </div>
   </div>
 
+  <!-- ── Modal: Edit Session ─────────────────────────── -->
+  <div class="modal-backdrop" id="modal-edit-session" role="dialog" aria-modal="true" aria-labelledby="modal-edit-title">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 id="modal-edit-title">Edit Sesi</h3>
+        <button class="btn btn-icon btn-outline modal-close" aria-label="Tutup modal">✕</button>
+      </div>
+      <div id="modal-edit-alert" class="alert alert-error hidden" role="alert"></div>
+      <form class="modal-body" id="form-edit-session" novalidate>
+        <input type="hidden" id="edit-session-uuid">
+        <div class="form-group">
+          <label for="edit-client-name">Nama Klien / Folder</label>
+          <input type="text" id="edit-client-name" required maxlength="120">
+        </div>
+        <div class="form-group">
+          <label for="edit-folder-url">Link Google Drive Folder</label>
+          <input type="url" id="edit-folder-url" required>
+        </div>
+        <div class="form-group">
+          <label for="edit-photo-limit">Batas Maksimal Foto</label>
+          <input type="number" id="edit-photo-limit" min="1" max="500" required>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline modal-close">Batal</button>
+          <button type="submit" id="btn-update-session" class="btn btn-primary">
+            <span id="btn-update-session-text">Simpan Perubahan</span>
+            <div id="btn-update-session-spinner" class="spinner hidden" aria-hidden="true"></div>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- ── Modal: Session Created (Share Link) ───────────────── -->
   <div class="modal-backdrop" id="modal-created" role="dialog" aria-modal="true" aria-labelledby="modal-created-title">
     <div class="modal">
@@ -270,6 +303,6 @@
 
   <div id="toast-container" role="status" aria-live="polite"></div>
 
-  <script src="/js/admin-dashboard.js?v=4" defer></script>
+  <script src="/js/admin-dashboard.js?v=5" defer></script>
 </body>
 </html>
