@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard — Sortir Foto Admin</title>
+  <meta name="description" content="Dashboard admin untuk mengelola sesi sortir foto klien">
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css?v=3">
+  <script src="/js/theme.js?v=3"></script>
+</head>
+<body>
+  <div class="bg-mesh" aria-hidden="true"></div>
+
+  <div class="admin-layout">
+
+    <!-- ── Top Navigation ──────────────────────────────────── -->
+    <nav class="admin-nav" role="navigation" aria-label="Navigasi admin">
+      <div class="admin-nav-inner">
+        <div class="nav-brand">
+          <div class="nav-brand-icon" aria-hidden="true">📷</div>
+          <span>Sortir Foto</span>
+        </div>
+        <div class="nav-actions">
+          <div class="user-chip">
+            <div class="user-dot"></div>
+            <span id="nav-username">Admin</span>
+          </div>
+          <button class="btn btn-outline btn-sm" id="btn-change-pass" aria-label="Ganti password">
+            🔐 Password
+          </button>
+          <button class="btn btn-outline btn-sm" id="btn-cek-db" aria-label="Cek Database Neon">
+            ⚡ Cek DB Neon
+          </button>
+          <button class="btn btn-outline btn-sm" onclick="toggleTheme()" aria-label="Ganti tema">
+            <span class="theme-icon">☀️</span>
+          </button>
+          <button class="btn btn-outline btn-sm" id="btn-logout" aria-label="Logout">
+            ↩ Keluar
+          </button>
+        </div>
+      </div>
+    </nav>
+
+    <!-- ── Main Content ────────────────────────────────────── -->
+    <main class="admin-main" role="main">
+
+      <!-- Page header -->
+      <div class="page-header">
+        <h1>Dashboard</h1>
+        <p>Kelola sesi sortir foto klien Anda</p>
+      </div>
+
+      <!-- Stats cards -->
+      <div class="stats-grid" aria-label="Statistik sesi">
+        <div class="stat-card">
+          <div class="stat-label">Total Sesi</div>
+          <div class="stat-value" id="stat-total">—</div>
+          <div class="stat-sub">Semua sesi</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Aktif</div>
+          <div class="stat-value" id="stat-active">—</div>
+          <div class="stat-sub">Menunggu klien</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Selesai</div>
+          <div class="stat-value" id="stat-completed">—</div>
+          <div class="stat-sub">Foto terpilih</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Total Foto</div>
+          <div class="stat-value" id="stat-photos">—</div>
+          <div class="stat-sub">Dipilih klien</div>
+        </div>
+      </div>
+
+      <!-- Session list header -->
+      <div class="section-header">
+        <h2>Sesi Sortir</h2>
+        <button id="btn-new-session" class="btn btn-primary" aria-haspopup="dialog">
+          ＋ Sesi Baru
+        </button>
+      </div>
+
+      <!-- Loading state -->
+      <div id="sessions-loading" class="loading-overlay" style="min-height:200px;" aria-live="polite">
+        <div class="spinner" aria-label="Memuat..."></div>
+        <p>Memuat sesi...</p>
+      </div>
+
+      <!-- Empty state -->
+      <div id="sessions-empty" class="empty-state hidden" aria-live="polite">
+        <span class="empty-icon" aria-hidden="true">📭</span>
+        <h3>Belum ada sesi</h3>
+        <p>Klik "Sesi Baru" untuk membuat sesi sortir foto pertama Anda.</p>
+        <button id="btn-new-session-empty" class="btn btn-primary">＋ Buat Sesi Pertama</button>
+      </div>
+
+      <!-- Desktop: Table -->
+      <div class="table-wrap hidden" id="sessions-table-wrap" aria-label="Tabel sesi sortir">
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">Klien / Folder</th>
+              <th scope="col">Limit</th>
+              <th scope="col">Terpilih</th>
+              <th scope="col">Status</th>
+              <th scope="col">Tanggal</th>
+              <th scope="col">Aksi</th>
+            </tr>
+          </thead>
+          <tbody id="sessions-tbody"></tbody>
+        </table>
+      </div>
+
+      <!-- Mobile: Cards -->
+      <div class="session-cards hidden" id="sessions-cards" aria-label="Daftar sesi sortir"></div>
+
+    </main>
+  </div>
+
+  <!-- ── Modal: Create New Session ─────────────────────────── -->
+  <div class="modal-backdrop" id="modal-new-session" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 id="modal-title">Buat Sesi Baru</h3>
+        <button class="btn btn-icon btn-outline modal-close" aria-label="Tutup modal">✕</button>
+      </div>
+      <div id="modal-alert" class="alert alert-error hidden" role="alert"></div>
+      <form class="modal-body" id="form-new-session" novalidate>
+        <div class="form-group">
+          <label for="client-name">Nama Klien / Folder</label>
+          <input type="text" id="client-name" placeholder="Contoh: Prewedding Budi & Ani" required maxlength="120">
+        </div>
+        <div class="form-group">
+          <label for="folder-url">Link Google Drive Folder</label>
+          <input type="url" id="folder-url" placeholder="https://drive.google.com/drive/folders/..." required>
+          <small style="color:var(--text-3);font-size:0.75rem;">Pastikan folder diset "Siapa saja dengan link dapat melihat"</small>
+        </div>
+        <div class="form-group">
+          <label for="photo-limit">Batas Maksimal Foto</label>
+          <input type="number" id="photo-limit" value="10" min="1" max="500" required>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline modal-close">Batal</button>
+          <button type="submit" id="btn-create" class="btn btn-primary">
+            <span id="btn-create-text">Buat Sesi</span>
+            <div id="btn-create-spinner" class="spinner hidden" aria-hidden="true"></div>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ── Modal: Session Created (Share Link) ───────────────── -->
+  <div class="modal-backdrop" id="modal-created" role="dialog" aria-modal="true" aria-labelledby="modal-created-title">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 id="modal-created-title">✅ Sesi Berhasil Dibuat!</h3>
+        <button class="btn btn-icon btn-outline" id="modal-created-close" aria-label="Tutup">✕</button>
+      </div>
+      <div class="modal-body">
+        <p style="color:var(--text-2);">Bagikan link berikut ke klien agar mereka dapat memilih foto:</p>
+        <div class="link-box">
+          <input type="text" id="gallery-link-input" readonly aria-label="Link galeri klien">
+          <button id="btn-copy-link" class="btn btn-primary btn-sm" aria-label="Salin link">Salin</button>
+        </div>
+        <div style="display:flex; gap:12px; flex-wrap:wrap;">
+          <a id="btn-open-gallery" href="#" target="_blank" rel="noopener" class="btn btn-outline" style="flex:1;">
+            🔗 Buka Galeri
+          </a>
+          <button id="btn-created-done" class="btn btn-primary" style="flex:1;">Selesai</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Modal: View Selections ────────────────────────────── -->
+  <div class="modal-backdrop" id="modal-selections" role="dialog" aria-modal="true" aria-labelledby="modal-sel-title">
+    <div class="modal" style="max-width:560px;">
+      <div class="modal-header">
+        <h3 id="modal-sel-title">Foto Terpilih</h3>
+        <button class="btn btn-icon btn-outline" id="modal-sel-close" aria-label="Tutup">✕</button>
+      </div>
+      <div id="modal-sel-content" class="modal-body">
+        <div class="loading-overlay" style="min-height:120px;">
+          <div class="spinner"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Modal: Change Password ────────────────────────────── -->
+  <div class="modal-backdrop" id="modal-change-pass" role="dialog" aria-modal="true" aria-labelledby="modal-pass-title">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 id="modal-pass-title">🔐 Ganti Password</h3>
+        <button class="btn btn-icon btn-outline" id="modal-pass-close" aria-label="Tutup">✕</button>
+      </div>
+      <div id="modal-pass-alert" class="alert hidden" role="alert"></div>
+      <form class="modal-body" id="form-change-pass" novalidate>
+        <div class="form-group">
+          <label for="pass-current">Password Saat Ini</label>
+          <input type="password" id="pass-current" required autocomplete="current-password">
+        </div>
+        <div class="form-group">
+          <label for="pass-new">Password Baru</label>
+          <input type="password" id="pass-new" required minlength="6" autocomplete="new-password" placeholder="Minimal 6 karakter">
+        </div>
+        <div class="form-group">
+          <label for="pass-confirm">Konfirmasi Password Baru</label>
+          <input type="password" id="pass-confirm" required autocomplete="new-password">
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" id="modal-pass-close2">Batal</button>
+          <button type="submit" id="btn-save-pass" class="btn btn-primary">
+            <span>Simpan Password</span>
+            <div id="btn-pass-spinner" class="spinner hidden" aria-hidden="true"></div>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ── Modal: Confirm Delete ─────────────────────────────── -->
+  <div class="modal-backdrop" id="modal-confirm-delete" role="dialog" aria-modal="true" aria-labelledby="modal-del-title">
+    <div class="modal" style="max-width:400px;">
+      <div class="modal-header">
+        <h3 id="modal-del-title" style="color:var(--red);">⚠️ Hapus Sesi?</h3>
+        <button class="btn btn-icon btn-outline" id="modal-del-close" aria-label="Tutup">✕</button>
+      </div>
+      <div class="modal-body">
+        <p id="modal-del-desc" style="color:var(--text-1);">
+          Tindakan ini akan menghapus sesi dan semua data seleksi foto secara permanen.
+        </p>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" id="modal-del-cancel">Batal</button>
+          <button type="button" id="btn-confirm-delete" class="btn btn-danger">
+            <span>Hapus Permanen</span>
+            <div id="btn-del-spinner" class="spinner hidden" aria-hidden="true"></div>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast-container" role="status" aria-live="polite"></div>
+
+  <script src="/js/admin-dashboard.js?v=3" defer></script>
+</body>
+</html>

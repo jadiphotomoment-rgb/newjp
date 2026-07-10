@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Pilih Foto — Sortir Foto</title>
+  <meta name="description" content="Portal pemilihan foto untuk klien studio fotografer">
+  <meta name="referrer" content="no-referrer">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css?v=3">
+  <script src="/js/theme.js?v=3"></script>
+</head>
+<body>
+
+  <div class="bg-mesh" aria-hidden="true"></div>
+
+  <!-- ── STATE: Loading ──────────────────────────────────────── -->
+  <div id="state-loading" class="state-screen">
+    <div style="display:flex; flex-direction:column; align-items:center; gap:16px;">
+      <div class="spinner" style="width:36px; height:36px; border-width:3px;"></div>
+      <p id="loading-msg" style="color:var(--text-2); font-size:0.9rem;">Memuat...</p>
+    </div>
+  </div>
+
+  <!-- ── STATE: Error ─────────────────────────────────────────── -->
+  <div id="state-error" class="state-screen hidden">
+    <div class="state-icon">⚠️</div>
+    <h1 class="state-title">Terjadi Masalah</h1>
+    <p id="error-msg" class="state-desc"></p>
+    <ul id="error-hints" class="state-hints hidden"></ul>
+    <button onclick="location.reload()" class="btn btn-outline" style="margin-top:8px;">🔄 Coba Lagi</button>
+  </div>
+
+  <!-- ── STATE: Expired / Completed ──────────────────────────── -->
+  <div id="state-expired" class="state-screen hidden">
+    <div class="state-icon">🔒</div>
+    <h1 id="expired-title" class="state-title">Sesi Tidak Aktif</h1>
+    <p id="expired-msg" class="state-desc">Sesi pemilihan foto ini sudah tidak aktif. Hubungi fotografer untuk informasi lebih lanjut.</p>
+  </div>
+
+  <!-- ── STATE: Success ───────────────────────────────────────── -->
+  <div id="state-success" class="state-screen hidden">
+    <div class="state-icon" style="animation:popIn 0.5s ease;">🎉</div>
+    <h1 class="state-title">Terima Kasih!</h1>
+    <p id="success-msg" class="state-desc">Pilihan foto Anda telah berhasil dikirim ke fotografer.</p>
+    <div class="success-file-list">
+      <h4>📋 Foto yang kamu pilih:</h4>
+      <ol id="success-ol"></ol>
+    </div>
+  </div>
+
+  <!-- ── GALLERY PAGE ─────────────────────────────────────────── -->
+  <div id="gallery-page" style="display:none;">
+
+    <!-- Sticky Header -->
+    <header class="gallery-header" role="banner">
+      <div class="gallery-header-inner">
+        <div class="gallery-brand">
+          <div class="gallery-brand-icon" aria-hidden="true">📷</div>
+          <div>
+            <div class="gallery-title" id="hdr-client-name">Galeri Foto</div>
+            <div class="gallery-subtitle">Pilih foto terbaik Anda</div>
+          </div>
+        </div>
+        <div class="quota-bar" aria-label="Kuota pemilihan foto">
+          <div class="quota-count">
+            <span id="hdr-selected">0</span>
+            <span id="hdr-limit-text"> dari <span id="hdr-limit">10</span> foto</span>
+          </div>
+          <div class="quota-track" role="progressbar" aria-label="Progress pemilihan">
+            <div id="quota-fill" class="quota-fill" style="width:0%"></div>
+          </div>
+        </div>
+        <button onclick="toggleTheme()" class="btn btn-outline btn-sm" aria-label="Ganti tema">
+          <span class="theme-icon">☀️</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Gallery Grid -->
+    <main class="gallery-main" id="gallery-grid-wrapper" role="main">
+      <div class="photo-grid" id="gallery-grid" aria-label="Galeri foto"></div>
+      <div id="load-more-sentinel" aria-hidden="true"></div>
+    </main>
+
+    <!-- Sticky Footer -->
+    <footer class="gallery-footer" role="contentinfo">
+      <div class="gallery-footer-inner">
+        <div>
+          <div class="footer-info">
+            Terpilih: <strong id="ftr-selected">0</strong> foto
+            <span id="ftr-limit-info" style="color:var(--text-3); font-size:0.8rem;"></span>
+          </div>
+          <div class="footer-hint">Klik foto untuk memilih · Klik ikon ⛶ untuk perbesar</div>
+        </div>
+        <button id="btn-submit" class="btn btn-primary" disabled>
+          <span id="btn-submit-text">Kirim Pilihan</span>
+          <div id="btn-submit-spinner" class="spinner hidden" aria-hidden="true"></div>
+        </button>
+      </div>
+    </footer>
+  </div>
+
+  <!-- ── Lightbox ─────────────────────────────────────────────── -->
+  <div id="lightbox" class="lightbox" role="dialog" aria-modal="true" aria-label="Preview foto">
+    <div class="lightbox-spinner" aria-hidden="true"></div>
+    <img id="lightbox-img" class="lightbox-img" src="" alt="Preview foto" tabindex="0">
+    <div class="lightbox-footer">
+      <span id="lightbox-name" class="lightbox-name"></span>
+      <button id="lightbox-close" class="lightbox-close" aria-label="Tutup preview">✕</button>
+    </div>
+  </div>
+
+  <!-- ── Modal: Confirm Submit ───────────────────────────────── -->
+  <div class="modal-backdrop" id="modal-confirm-submit" role="dialog" aria-modal="true" aria-labelledby="modal-submit-title">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 id="modal-submit-title">📤 Konfirmasi Pengiriman</h3>
+        <button class="btn btn-icon btn-outline" id="modal-submit-close" aria-label="Tutup">✕</button>
+      </div>
+      <div class="modal-body">
+        <p id="confirm-desc" style="color:var(--text-1); font-size:0.9rem;"></p>
+        <div class="confirm-list">
+          <ol id="confirm-ol"></ol>
+        </div>
+        <div class="modal-footer">
+          <button id="btn-cancel-submit" class="btn btn-outline">Batal</button>
+          <button id="btn-confirm-submit" class="btn btn-primary">
+            <span id="btn-confirm-text">✅ Ya, Kirim!</span>
+            <div id="btn-confirm-spinner" class="spinner hidden" aria-hidden="true"></div>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast-container" role="status" aria-live="polite"></div>
+
+  <script src="/js/gallery.js?v=3"></script>
+</body>
+</html>

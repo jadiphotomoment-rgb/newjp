@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Login — Sortir Foto</title>
+  <meta name="description" content="Login admin untuk mengelola sesi sortir foto klien">
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css?v=3">
+  <script src="/js/theme.js?v=3"></script>
+</head>
+<body>
+
+  <div class="bg-mesh" aria-hidden="true"></div>
+
+  <!-- Theme toggle button -->
+  <button
+    class="btn btn-outline btn-sm"
+    onclick="toggleTheme()"
+    aria-label="Ganti tema"
+    style="position:fixed; top:16px; right:16px; z-index:999;"
+  >
+    <span class="theme-icon">☀️</span>
+  </button>
+
+  <main class="login-page" role="main">
+    <div class="login-card">
+      <div class="login-logo">
+        <div class="logo-icon" aria-hidden="true">📷</div>
+        <h1>Sortir Foto</h1>
+        <p>Panel Admin · Studio Fotografer</p>
+      </div>
+
+      <form class="login-form" id="login-form" novalidate>
+        <div id="login-alert" class="alert alert-error hidden" role="alert" aria-live="polite"></div>
+
+        <div class="form-group">
+          <label for="username">Username</label>
+          <input
+            type="text"
+            id="username"
+            name="username"
+            placeholder="Masukkan username admin"
+            autocomplete="username"
+            required
+            autofocus
+          >
+        </div>
+
+        <div class="form-group">
+          <label for="password">Password</label>
+          <div class="input-wrapper">
+            <input
+              type="password"
+              id="password"
+              name="password"
+              placeholder="Masukkan password"
+              autocomplete="current-password"
+              required
+            >
+            <button type="button" id="toggle-password" class="btn-toggle-pass" aria-label="Tampilkan password">👁</button>
+          </div>
+        </div>
+
+        <button type="submit" id="btn-login" class="btn btn-primary" style="width:100%; margin-top:4px;">
+          <span id="btn-login-text">Masuk</span>
+          <div id="btn-login-spinner" class="spinner hidden" aria-hidden="true"></div>
+        </button>
+      </form>
+
+      <p style="text-align:center; font-size:0.78rem; color:var(--text-3); margin-top:24px;">
+        Default: <code style="background:rgba(124,109,250,0.10); padding:2px 6px; border-radius:4px; color:var(--purple-2);">admin</code> /
+        <code style="background:rgba(124,109,250,0.10); padding:2px 6px; border-radius:4px; color:var(--purple-2);">admin123</code>
+      </p>
+    </div>
+  </main>
+
+  <div id="toast-container" role="status" aria-live="polite"></div>
+
+  <script src="/js/admin-login.js?v=3" defer></script>
+</body>
+</html>
