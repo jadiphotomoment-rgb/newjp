@@ -148,16 +148,23 @@ function escHtml(str) {
 let sessions = [];
 
 // ── Gallery URL helper ────────────────────────────────────────────
-function galleryUrl(uuid) {
+function galleryUrl(uuid, shortSlug) {
+  if (shortSlug) return `${location.origin}/s/${shortSlug}`;
   return `${location.origin}/gallery.html?session=${uuid}`;
 }
+
+// ── Copy Text Helper ──────────────────────────────────────────────
+function copyText(text) {
+  navigator.clipboard.writeText(text).then(() => showToast('Link berhasil disalin!', 'success'));
+}
+window.copyText = copyText;
 
 // ── Action buttons ────────────────────────────────────────────────
 function actionButtons(s) {
   const btns = [];
-  btns.push(`<button class="btn btn-outline btn-sm" onclick="showShareLink('${s.uuid}')" title="Link galeri" aria-label="Bagikan link">🔗 Link</button>`);
+  btns.push(`<button class="btn btn-outline btn-sm" onclick="showShareLink('${s.uuid}', '${s.short_slug || ''}')" title="Link galeri" aria-label="Bagikan link">🔗 Link</button>`);
   if (s.status === 'completed') {
-    btns.push(`<button class="btn btn-outline btn-sm" onclick="viewSelections('${s.uuid}')" title="Lihat pilihan foto" aria-label="Lihat seleksi">👁 Seleksi</button>`);
+    btns.push(`<button class="btn btn-outline btn-sm" onclick="viewSelections('${s.uuid}')" title="Lihat pilihan foto" aria-label="Lihat seleksi">👁 Seleksi & Status</button>`);
   }
   if (s.status !== 'active') {
     btns.push(`<button class="btn btn-outline btn-sm" onclick="reopenSession('${s.uuid}')" title="Buka kembali" aria-label="Buka kembali sesi">♻️</button>`);
@@ -176,6 +183,7 @@ function renderTable(data) {
     <tr data-uuid="${s.uuid}">
       <td class="td-name">
         ${escHtml(s.client_name)}
+        ${s.short_slug ? `<br><span class="short-link-chip" onclick="copyText('${location.origin}/s/${s.short_slug}')" title="Salin Short Link">🔗 /s/${s.short_slug}</span>` : ''}
         <span>${escHtml(s.folder_id)}</span>
       </td>
       <td>${s.photo_limit} foto</td>
@@ -194,7 +202,10 @@ function renderCards(data) {
     <div class="session-card" data-uuid="${s.uuid}">
       <div class="session-card-header">
         <div>
-          <div class="session-card-name">${escHtml(s.client_name)}</div>
+          <div class="session-card-name">
+            ${escHtml(s.client_name)}
+            ${s.short_slug ? `<br><span class="short-link-chip" style="margin-top:4px;" onclick="copyText('${location.origin}/s/${s.short_slug}')" title="Salin Short Link">🔗 /s/${s.short_slug}</span>` : ''}
+          </div>
           <div class="session-card-meta">${formatDate(s.created_at)}</div>
         </div>
         ${statusBadge(s.status)}
@@ -245,8 +256,8 @@ async function loadSessions() {
 }
 
 // ── Show share link modal ─────────────────────────────────────────
-function showShareLink(uuid) {
-  const url = galleryUrl(uuid);
+function showShareLink(uuid, shortSlug) {
+  const url = galleryUrl(uuid, shortSlug);
   document.getElementById('gallery-link-input').value = url;
   document.getElementById('btn-open-gallery').href = url;
   openModal('modal-created');
@@ -267,10 +278,15 @@ async function viewSelections(uuid) {
 
     if (!items.length) {
       content.innerHTML = `<p style="color:var(--text-2); text-align:center; padding:32px;">Belum ada seleksi tersimpan.</p>`;
+      document.getElementById('modal-sel-status-panel').style.display = 'none';
       return;
     }
 
-    const listHtml = items.map((f, i) => `<li>${escHtml(f.file_name)}</li>`).join('');
+    const listHtml = items.map((f, i) => {
+      const noteHtml = f.note ? `<br><em style="font-size:0.85em;color:var(--text-2);">Catatan: ${escHtml(f.note)}</em>` : '';
+      return `<li style="margin-bottom:8px;">${escHtml(f.file_name)}${noteHtml}</li>`;
+    }).join('');
+    
     content.innerHTML = `
       <div style="margin-bottom:16px;">
         <p style="color:var(--text-2); font-size:0.875rem;">
@@ -285,11 +301,57 @@ async function viewSelections(uuid) {
         </button>
       </div>
     `;
+
+    // ── Update Status UI ──
+    const statusPanel = document.getElementById('modal-sel-status-panel');
+    if (session.status === 'completed') {
+      statusPanel.style.display = 'block';
+      document.getElementById('update-edit-status').value = session.edit_status || 'received';
+      document.getElementById('update-edit-note').value = session.edit_note || '';
+      
+      const btnUpdate = document.getElementById('btn-update-status');
+      btnUpdate.onclick = () => updateEditStatus(uuid);
+    } else {
+      statusPanel.style.display = 'none';
+    }
+
   } catch (err) {
     content.innerHTML = `<p style="color:var(--red); padding:16px;">Gagal memuat seleksi: ${err.message}</p>`;
+    document.getElementById('modal-sel-status-panel').style.display = 'none';
   }
 }
 window.viewSelections = viewSelections;
+
+// ── Update Edit Status ────────────────────────────────────────────
+async function updateEditStatus(uuid) {
+  const btn = document.getElementById('btn-update-status');
+  const txt = document.getElementById('btn-update-status-text');
+  const spinner = document.getElementById('btn-update-status-spinner');
+  const editStatus = document.getElementById('update-edit-status').value;
+  const editNote = document.getElementById('update-edit-note').value.trim();
+
+  btn.disabled = true;
+  txt.textContent = 'Menyimpan...';
+  spinner.classList.remove('hidden');
+
+  try {
+    const res = await apiFetch(`/api/sessions/${uuid}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({ editStatus, editNote }),
+    });
+    if (!res.ok) throw new Error((await res.json()).error);
+    
+    showToast('Status pesanan berhasil diperbarui', 'success');
+    closeModal('modal-selections');
+    loadSessions();
+  } catch (err) {
+    showToast('Gagal update status: ' + err.message, 'error');
+  } finally {
+    btn.disabled = false;
+    txt.textContent = 'Simpan Status';
+    spinner.classList.add('hidden');
+  }
+}
 
 function copySelections(names) {
   const text = names.map((n, i) => `${i + 1}. ${n}`).join('\n');

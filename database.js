@@ -11,20 +11,19 @@ if (!process.env.DATABASE_URL) {
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: {
-    rejectUnauthorized: false // Agar bisa konek ke Neon tanpa masalah SSL
+    rejectUnauthorized: false
   }
 });
 
-// Helper functions to keep similarity with better-sqlite3 structure
-// Tapi harus dijalankan secara asynchronous
 const db = {
   pool,
   query: (text, params) => pool.query(text, params),
   getClient: () => pool.connect(),
-  
+
   // Inisialisasi tabel saat startup
   init: async () => {
     try {
+      // ── Create tables ────────────────────────────────────────────
       await pool.query(`
         -- Admin accounts
         CREATE TABLE IF NOT EXISTS admins (
@@ -39,11 +38,14 @@ const db = {
         CREATE TABLE IF NOT EXISTS sessions (
           id           SERIAL PRIMARY KEY,
           uuid         VARCHAR(255) UNIQUE NOT NULL,
+          short_slug   VARCHAR(255) UNIQUE,
           client_name  VARCHAR(255) NOT NULL,
           folder_url   TEXT NOT NULL,
           folder_id    VARCHAR(255) NOT NULL,
           photo_limit  INTEGER NOT NULL DEFAULT 10,
           status       VARCHAR(50) NOT NULL DEFAULT 'active',
+          edit_status  VARCHAR(30) NOT NULL DEFAULT 'received',
+          edit_note    TEXT,
           admin_id     INTEGER NOT NULL,
           created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
           completed_at TIMESTAMP,
@@ -56,17 +58,42 @@ const db = {
           session_id  INTEGER NOT NULL,
           file_id     VARCHAR(255) NOT NULL,
           file_name   TEXT NOT NULL,
+          note        TEXT,
           selected_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
           FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
         );
 
         -- Indexes
-        CREATE INDEX IF NOT EXISTS idx_sessions_uuid ON sessions(uuid);
+        CREATE INDEX IF NOT EXISTS idx_sessions_uuid  ON sessions(uuid);
+        CREATE INDEX IF NOT EXISTS idx_sessions_slug  ON sessions(short_slug);
         CREATE INDEX IF NOT EXISTS idx_sessions_admin ON sessions(admin_id);
         CREATE INDEX IF NOT EXISTS idx_selections_sess ON selections(session_id);
       `);
 
-      // Seed default admin
+      // ── Run ALTER TABLE migrations for existing databases ─────────
+      // Add new columns if they don't exist yet (idempotent)
+      await pool.query(`
+        DO $$
+        BEGIN
+          IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='sessions' AND column_name='short_slug') THEN
+            ALTER TABLE sessions ADD COLUMN short_slug VARCHAR(255) UNIQUE;
+          END IF;
+          IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='sessions' AND column_name='edit_status') THEN
+            ALTER TABLE sessions ADD COLUMN edit_status VARCHAR(30) NOT NULL DEFAULT 'received';
+          END IF;
+          IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='sessions' AND column_name='edit_note') THEN
+            ALTER TABLE sessions ADD COLUMN edit_note TEXT;
+          END IF;
+          IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='selections' AND column_name='note') THEN
+            ALTER TABLE selections ADD COLUMN note TEXT;
+          END IF;
+        END
+        $$;
+
+        CREATE INDEX IF NOT EXISTS idx_sessions_slug ON sessions(short_slug);
+      `);
+
+      // ── Seed default admin ────────────────────────────────────────
       const { rows } = await pool.query('SELECT COUNT(*) AS cnt FROM admins');
       if (parseInt(rows[0].cnt, 10) === 0) {
         const hash = bcrypt.hashSync('admin123', 10);

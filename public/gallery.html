@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/css/style.css?v=3">
+  <link rel="stylesheet" href="/css/style.css?v=4">
   <script src="/js/theme.js?v=3"></script>
 </head>
 <body>
@@ -40,7 +40,7 @@
     <p id="expired-msg" class="state-desc">Sesi pemilihan foto ini sudah tidak aktif. Hubungi fotografer untuk informasi lebih lanjut.</p>
   </div>
 
-  <!-- ── STATE: Success ───────────────────────────────────────── -->
+  <!-- ── STATE: Success ─────────────────────────────────── -->
   <div id="state-success" class="state-screen hidden">
     <div class="state-icon" style="animation:popIn 0.5s ease;">🎉</div>
     <h1 class="state-title">Terima Kasih!</h1>
@@ -49,7 +49,11 @@
       <h4>📋 Foto yang kamu pilih:</h4>
       <ol id="success-ol"></ol>
     </div>
+    <p style="margin-top:12px; font-size:0.85rem; opacity:0.6;">Halaman akan beralih ke pelacak status dalam 3 detik...</p>
   </div>
+
+  <!-- ── STATE: Order Progress Tracker ────────────────── -->
+  <div id="state-tracker" class="state-screen" style="display:none;"></div>
 
   <!-- ── GALLERY PAGE ─────────────────────────────────────────── -->
   <div id="gallery-page" style="display:none;">
@@ -79,9 +83,19 @@
       </div>
     </header>
 
+    <!-- Gallery Filter Bar -->
+    <div id="gallery-filter-bar" class="gallery-filter-bar" role="toolbar" aria-label="Filter foto">
+      <button id="btn-filter-all" class="filter-btn active" aria-pressed="true">🖼️ Semua Foto</button>
+      <button id="btn-filter-fav" class="filter-btn" aria-pressed="false">❤️ Favorit Saya (<span id="fav-count">0</span>)</button>
+    </div>
+
     <!-- Gallery Grid -->
     <main class="gallery-main" id="gallery-grid-wrapper" role="main">
       <div class="photo-grid" id="gallery-grid" aria-label="Galeri foto"></div>
+      <div id="fav-empty-msg" class="fav-empty-msg" style="display:none;">
+        <p>📌 Belum ada foto yang difavoritkan.</p>
+        <p style="font-size:0.85rem; opacity:0.6">Klik ikon ❤️ di foto untuk menambahkannya ke sini.</p>
+      </div>
       <div id="load-more-sentinel" aria-hidden="true"></div>
     </main>
 
@@ -93,7 +107,7 @@
             Terpilih: <strong id="ftr-selected">0</strong> foto
             <span id="ftr-limit-info" style="color:var(--text-3); font-size:0.8rem;"></span>
           </div>
-          <div class="footer-hint">Klik foto untuk memilih · Klik ikon ⛶ untuk perbesar</div>
+          <div class="footer-hint">Klik foto untuk pilih · ❤️ untuk favorit · ⛶ untuk perbesar</div>
         </div>
         <button id="btn-submit" class="btn btn-primary" disabled>
           <span id="btn-submit-text">Kirim Pilihan</span>
@@ -138,6 +152,6 @@
 
   <div id="toast-container" role="status" aria-live="polite"></div>
 
-  <script src="/js/gallery.js?v=3"></script>
+  <script src="/js/gallery.js?v=4"></script>
 </body>
 </html>

@@ -94,8 +94,8 @@ router.post('/', async (req, res) => {
     
     for (const f of selectedFiles) {
       await client.query(
-        'INSERT INTO selections (session_id, file_id, file_name) VALUES ($1, $2, $3)',
-        [session.id, f.id, f.name]
+        'INSERT INTO selections (session_id, file_id, file_name, note) VALUES ($1, $2, $3, $4)',
+        [session.id, f.id, f.name, f.note || null]
       );
     }
 
@@ -116,7 +116,11 @@ router.post('/', async (req, res) => {
 
   // ── Build WhatsApp message ────────────────────────────────
   const fileList = selectedFiles
-    .map((f, i) => `${i + 1}. ${f.name}`)
+    .map((f, i) => {
+      let line = `${i + 1}. ${f.name}`;
+      if (f.note && f.note.trim()) line += `\n   _Catatan: ${f.note.trim()}_`;
+      return line;
+    })
     .join('\n');
 
   const message = [

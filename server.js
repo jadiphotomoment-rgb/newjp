@@ -33,6 +33,22 @@ app.get('/', (req, res) => {
 // Ignore favicon to prevent 404 logs
 app.get('/favicon.ico', (req, res) => res.status(204).end());
 
+// ── Short Link redirect: /s/:slug → gallery.html?session=UUID ─
+app.get('/s/:slug', async (req, res) => {
+  try {
+    const db = require('./database');
+    const { rows } = await db.query(
+      'SELECT uuid FROM sessions WHERE short_slug = $1',
+      [req.params.slug]
+    );
+    if (!rows[0]) return res.status(404).send('<h1>Link tidak ditemukan</h1>');
+    res.redirect(`/gallery.html?session=${rows[0].uuid}`);
+  } catch (err) {
+    console.error('[shortlink] error:', err);
+    res.status(500).send('<h1>Server Error</h1>');
+  }
+});
+
 // ── 404 Handler ──────────────────────────────────────────────
 app.use((req, res) => {
   if (req.path.startsWith('/api/')) {
