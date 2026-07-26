@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Booking Sesi Foto — Jadiphoto.Moment</title>
+  <meta name="description" content="Booking sesi foto untuk Graduation, Wedding, Event, dan Corporation bersama Jadiphoto.Moment. Isi form online dan konfirmasi jadwal Anda.">
+
+  <!-- Open Graph / Link Preview Tags -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Jadiphoto.Moment">
+  <meta property="og:title" content="Booking Sesi Foto — Jadiphoto.Moment">
+  <meta property="og:description" content="Booking sesi foto untuk Graduation, Wedding, Event, dan Corporation bersama Jadiphoto.Moment. Isi form online dan konfirmasi jadwal Anda.">
+  <meta property="og:image" content="/og-preview.png">
+
+  <!-- Twitter Card Tags -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Booking Sesi Foto — Jadiphoto.Moment">
+  <meta name="twitter:description" content="Booking sesi foto untuk Graduation, Wedding, Event, dan Corporation bersama Jadiphoto.Moment. Isi form online dan konfirmasi jadwal Anda.">
+  <meta name="twitter:image" content="/og-preview.png">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css?v=3">
+  <script src="/js/theme.js?v=3"></script>
+  <style>
+    /* ── Booking Page ── */
+    .booking-hero {
+      text-align: center;
+      padding: var(--sp-10) var(--sp-6) var(--sp-8);
+      max-width: 700px; margin: 0 auto;
+    }
+    .booking-hero .hero-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 6px 16px; border-radius: var(--r-full);
+      background: rgba(124,109,250,0.12); border: 1px solid rgba(124,109,250,0.25);
+      font-size: 0.78rem; font-weight: 600; color: var(--purple-2);
+      margin-bottom: var(--sp-5);
+    }
+    .booking-hero h1 {
+      font-family: 'Outfit', sans-serif; font-size: clamp(1.8rem, 5vw, 2.8rem);
+      font-weight: 900; line-height: 1.15;
+      background: var(--grad); -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent; background-clip: text;
+      margin-bottom: var(--sp-4);
+    }
+    .booking-hero p { color: var(--text-2); font-size: 1rem; line-height: 1.7; }
+
+    /* Category grid */
+    .category-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: var(--sp-4);
+      max-width: 960px; margin: 0 auto var(--sp-8);
+      padding: 0 var(--sp-5);
+    }
+    .category-card {
+      background: var(--bg-card);
+      border: 2px solid var(--border);
+      border-radius: var(--r-xl);
+      padding: var(--sp-6);
+      cursor: pointer;
+      transition: all 0.25s cubic-bezier(0.34,1.56,0.64,1);
+      position: relative; overflow: hidden;
+    }
+    .category-card::before {
+      content: '';
+      position: absolute; inset: 0;
+      background: var(--cat-color, var(--purple));
+      opacity: 0; transition: opacity 0.25s;
+    }
+    .category-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-lg); }
+    .category-card:hover::before { opacity: 0.06; }
+    .category-card.active {
+      border-color: var(--cat-color, var(--purple));
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--cat-color, var(--purple)) 25%, transparent);
+      transform: translateY(-4px);
+    }
+    .category-card.active::before { opacity: 0.10; }
+    .category-card > * { position: relative; z-index: 1; }
+
+    .cat-icon {
+      width: 52px; height: 52px; border-radius: 14px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.6rem;
+      background: color-mix(in srgb, var(--cat-color, var(--purple)) 15%, transparent);
+      margin-bottom: var(--sp-4);
+    }
+    .cat-name { font-weight: 800; font-family: 'Outfit', sans-serif; font-size: 1.1rem; margin-bottom: var(--sp-2); }
+    .cat-desc { font-size: 0.8rem; color: var(--text-2); line-height: 1.5; }
+    .cat-dp-badge {
+      display: inline-flex; margin-top: var(--sp-3);
+      padding: 3px 10px; border-radius: var(--r-full);
+      font-size: 0.72rem; font-weight: 700;
+      background: color-mix(in srgb, var(--cat-color, var(--purple)) 15%, transparent);
+      color: var(--cat-color, var(--purple));
+      border: 1px solid color-mix(in srgb, var(--cat-color, var(--purple)) 30%, transparent);
+    }
+
+    /* Dynamic form */
+    .booking-form-wrap {
+      max-width: 680px; margin: 0 auto;
+      padding: 0 var(--sp-5) var(--sp-10);
+    }
+    .booking-form-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--r-xl);
+      padding: var(--sp-8);
+      box-shadow: var(--shadow-glow), var(--shadow);
+      animation: fadeUp 0.35s ease;
+    }
+    .booking-form-card .form-title {
+      font-family: 'Outfit', sans-serif; font-weight: 800; font-size: 1.2rem;
+      margin-bottom: var(--sp-6); display: flex; align-items: center; gap: var(--sp-3);
+    }
+    .form-section { margin-bottom: var(--sp-6); }
+    .form-section-title {
+      font-size: 0.72rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.08em; color: var(--text-3);
+      margin-bottom: var(--sp-4); padding-bottom: var(--sp-2);
+      border-bottom: 1px solid var(--border);
+    }
+    .form-row {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: var(--sp-4);
+    }
+    @media (max-width: 520px) { .form-row { grid-template-columns: 1fr; } }
+
+    /* DP info box */
+    .dp-info-box {
+      background: rgba(34,211,116,0.08);
+      border: 1px solid rgba(34,211,116,0.25);
+      border-radius: var(--r-lg);
+      padding: var(--sp-5);
+      margin-bottom: var(--sp-6);
+    }
+    .dp-info-box .dp-label { font-size: 0.8rem; color: var(--text-2); margin-bottom: var(--sp-1); }
+    .dp-info-box .dp-amount {
+      font-family: 'Outfit', sans-serif; font-size: 1.8rem;
+      font-weight: 800; color: var(--green);
+    }
+    .dp-info-box .dp-note { font-size: 0.75rem; color: var(--text-3); margin-top: 4px; }
+
+    /* Steps */
+    .steps {
+      display: flex; gap: 0; margin-bottom: var(--sp-8);
+      max-width: 500px; margin-left: auto; margin-right: auto;
+    }
+    .step {
+      flex: 1; text-align: center; position: relative;
+    }
+    .step::after {
+      content: ''; position: absolute;
+      top: 16px; left: 50%; width: 100%; height: 2px;
+      background: var(--border);
+    }
+    .step:last-child::after { display: none; }
+    .step-dot {
+      width: 32px; height: 32px; border-radius: 50%;
+      background: var(--bg-2); border: 2px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto var(--sp-2); font-size: 0.8rem; font-weight: 700;
+      position: relative; z-index: 1;
+      transition: all 0.3s ease;
+    }
+    .step.active .step-dot { background: var(--purple); border-color: var(--purple); color: #fff; }
+    .step.done .step-dot { background: var(--green); border-color: var(--green); color: #fff; }
+    .step-label { font-size: 0.7rem; color: var(--text-3); }
+    .step.active .step-label { color: var(--purple-2); font-weight: 600; }
+  </style>
+</head>
+<body>
+  <div class="bg-mesh" aria-hidden="true"></div>
+
+  <!-- Nav -->
+  <nav class="admin-nav" role="navigation">
+    <div class="admin-nav-inner">
+      <div class="nav-brand">
+        <div class="nav-brand-icon" aria-hidden="true">📷</div>
+        <span>Jadiphoto.Moment</span>
+      </div>
+      <div class="nav-actions">
+        <button class="btn btn-outline btn-sm" onclick="toggleTheme()"><span class="theme-icon">☀️</span></button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Hero -->
+  <section class="booking-hero" aria-labelledby="booking-title">
+    <div class="hero-badge">📅 Online Booking</div>
+    <h1 id="booking-title">Booking Sesi Foto Anda</h1>
+    <p>Pilih kategori layanan, isi form, dan kami akan segera konfirmasi jadwal Anda setelah pembayaran DP diverifikasi.</p>
+  </section>
+
+  <!-- Steps indicator -->
+  <div class="steps" aria-label="Langkah booking">
+    <div class="step active" id="step-1">
+      <div class="step-dot">1</div>
+      <div class="step-label">Pilih Kategori</div>
+    </div>
+    <div class="step" id="step-2">
+      <div class="step-dot">2</div>
+      <div class="step-label">Isi Form</div>
+    </div>
+    <div class="step" id="step-3">
+      <div class="step-dot">3</div>
+      <div class="step-label">Upload DP</div>
+    </div>
+  </div>
+
+  <!-- Category selection -->
+  <div id="category-section" aria-label="Pilih kategori layanan">
+    <div class="category-grid" id="category-grid">
+      <div class="loading-overlay" style="grid-column: 1/-1; min-height: 180px;">
+        <div class="spinner"></div>
+        <p>Memuat kategori...</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Booking form (hidden until category selected) -->
+  <div class="booking-form-wrap hidden" id="form-section">
+    <div class="booking-form-card">
+      <div class="form-title" id="form-title">
+        <span id="form-cat-icon"></span>
+        <span id="form-cat-name">Form Booking</span>
+      </div>
+
+      <div id="form-alert" class="alert alert-error hidden" role="alert"></div>
+
+      <form id="booking-form" novalidate>
+        <!-- Data Klien -->
+        <div class="form-section">
+          <div class="form-section-title">Data Klien</div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="client-name">Nama Lengkap *</label>
+              <input type="text" id="client-name" placeholder="Nama Anda" required maxlength="150">
+            </div>
+            <div class="form-group">
+              <label for="client-phone">No. WhatsApp *</label>
+              <input type="tel" id="client-phone" placeholder="08xxxxxxxxxx" required>
+            </div>
+          </div>
+        </div>
+
+        <!-- Jadwal -->
+        <div class="form-section">
+          <div class="form-section-title">Jadwal Acara</div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="event-date">Tanggal Acara *</label>
+              <input type="date" id="event-date" required>
+            </div>
+            <div class="form-group">
+              <label for="event-time">Jam Acara</label>
+              <div id="time-slot-container">
+                <input type="time" id="event-time">
+              </div>
+              <small id="time-slot-hint" style="color:var(--text-3); font-size:0.7rem; display:none;">Pilih tanggal untuk melihat jam tersedia.</small>
+            </div>
+          </div>
+          <div class="form-group" style="margin-top: var(--sp-4);">
+            <label for="event-location">Lokasi Acara</label>
+            <input type="text" id="event-location" placeholder="Nama gedung / kota">
+          </div>
+        </div>
+
+        <!-- Dynamic fields -->
+        <div class="form-section">
+          <div class="form-section-title" id="dynamic-section-title">Detail Tambahan</div>
+          <div id="dynamic-fields"></div>
+        </div>
+
+        <!-- DP Info -->
+        <div class="dp-info-box" id="dp-info-box" style="display:none;">
+          <div class="dp-label">Estimasi Down Payment (DP)</div>
+          <div class="dp-amount" id="dp-amount-display">—</div>
+          <div class="dp-note" id="dp-note"></div>
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="width: 100%; padding: 14px;" id="btn-submit">
+          <span id="btn-submit-text">Lanjut ke Upload Bukti DP →</span>
+          <div id="btn-submit-spinner" class="spinner hidden" aria-hidden="true"></div>
+        </button>
+        <p style="text-align:center; font-size:0.78rem; color:var(--text-3); margin-top:var(--sp-3);">
+          Dengan submit, Anda menyetujui untuk melakukan pembayaran DP setelah form diterima.
+        </p>
+      </form>
+    </div>
+  </div>
+
+  <div id="toast-container" role="status" aria-live="polite"></div>
+
+  <script>
+    /* ── State ── */
+    let categories = [];
+    let selectedCat = null;
+
+    const CATEGORY_ICONS = {
+      graduation: '🎓',
+      wedding: '💍',
+      event: '🎉',
+      corporation: '🏢'
+    };
+    const CATEGORY_DESCS = {
+      graduation: 'Wisuda S1, S2, S3, SMA, SMK, dan jenjang lainnya',
+      wedding: 'Akad nikah, resepsi, prewedding, dan honeymoon',
+      event: 'Ulang tahun, gathering, seminar, konser, dan acara khusus',
+      corporation: 'Foto produk, headshot karyawan, dan event perusahaan'
+    };
+
+    /* ── Toast ── */
+    function toast(msg, type = 'info') {
+      const el = document.createElement('div');
+      el.className = `toast toast-${type}`;
+      el.textContent = msg;
+      document.getElementById('toast-container').appendChild(el);
+      requestAnimationFrame(() => { requestAnimationFrame(() => el.classList.add('show')); });
+      setTimeout(() => {
+        el.classList.remove('show');
+        setTimeout(() => el.remove(), 300);
+      }, 4000);
+    }
+
+    /* ── Load categories ── */
+    async function loadCategories() {
+      try {
+        const res = await fetch('/api/bookings/categories');
+        if (!res.ok) throw new Error('Gagal memuat kategori');
+        categories = await res.json();
+        renderCategories();
+      } catch (e) {
+        document.getElementById('category-grid').innerHTML =
+          '<div class="empty-state"><span class="empty-icon">⚠️</span><h3>Gagal memuat kategori</h3><p>Silakan refresh halaman</p></div>';
+      }
+    }
+
+    /* ── Render category cards ── */
+    function renderCategories() {
+      const grid = document.getElementById('category-grid');
+      if (!categories.length) {
+        grid.innerHTML = '<div class="empty-state"><span class="empty-icon">📭</span><h3>Belum ada kategori tersedia</h3></div>';
+        return;
+      }
+
+      grid.innerHTML = categories.map(cat => {
+        const dpText = cat.dp_type === 'percent'
+          ? `DP ${cat.dp_value}%`
+          : `DP Rp ${Number(cat.dp_value).toLocaleString('id-ID')}`;
+        return `
+        <div class="category-card" id="cat-${cat.slug}" data-slug="${cat.slug}"
+             style="--cat-color: ${cat.color};"
+             onclick="selectCategory('${cat.slug}')" tabindex="0"
+             role="button" aria-label="Pilih kategori ${cat.name}">
+          <div class="cat-icon">${CATEGORY_ICONS[cat.slug] || '📷'}</div>
+          <div class="cat-name">${cat.name}</div>
+          <div class="cat-desc">${CATEGORY_DESCS[cat.slug] || ''}</div>
+          <span class="cat-dp-badge">${dpText}</span>
+        </div>`;
+      }).join('');
+
+      // keyboard support
+      grid.querySelectorAll('.category-card').forEach(card => {
+        card.addEventListener('keydown', e => {
+          if (e.key === 'Enter' || e.key === ' ') selectCategory(card.dataset.slug);
+        });
+      });
+    }
+
+    /* ── Select category ── */
+    function selectCategory(slug) {
+      selectedCat = categories.find(c => c.slug === slug);
+      if (!selectedCat) return;
+
+      // Update active state on cards
+      document.querySelectorAll('.category-card').forEach(c => c.classList.remove('active'));
+      const card = document.getElementById(`cat-${slug}`);
+      if (card) { card.classList.add('active'); card.style.setProperty('--cat-color', selectedCat.color); }
+
+      // Update steps
+      document.getElementById('step-1').classList.replace('active', 'done');
+      document.getElementById('step-2').classList.add('active');
+
+      // Update form header
+      document.getElementById('form-cat-icon').textContent = CATEGORY_ICONS[slug] || '📷';
+      document.getElementById('form-cat-name').textContent = `Booking ${selectedCat.name}`;
+      document.getElementById('dynamic-section-title').textContent = `Detail ${selectedCat.name}`;
+
+      // Render dynamic fields
+      renderDynamicFields(selectedCat.fields || []);
+      
+      // Reset jadwal
+      document.getElementById('event-date').value = '';
+      document.getElementById('time-slot-container').innerHTML = '<input type="time" id="event-time">';
+      document.getElementById('time-slot-hint').style.display = 'none';
+
+      // Show form
+      document.getElementById('form-section').classList.remove('hidden');
+      setTimeout(() => {
+        document.getElementById('form-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 100);
+    }
+
+    /* ── Date Change (Fetch Slots) ── */
+    document.getElementById('event-date').addEventListener('change', async (e) => {
+      const date = e.target.value;
+      if (!selectedCat || !date) return;
+      
+      const container = document.getElementById('time-slot-container');
+      const hint = document.getElementById('time-slot-hint');
+      
+      try {
+        container.innerHTML = '<span style="font-size:0.8rem; color:var(--text-3);">Memuat jadwal...</span>';
+        const res = await fetch(`/api/booking-categories/${selectedCat.slug}/slots?date=${date}`);
+        if (!res.ok) throw new Error();
+        const slots = await res.json();
+        
+        if (!slots || slots.length === 0) {
+          // Bebas isi jam
+          container.innerHTML = '<input type="time" id="event-time">';
+          hint.style.display = 'none';
+        } else {
+          // Pilihan jam berkuota
+          let opts = '<option value="">-- Pilih Jam --</option>';
+          slots.forEach(s => {
+            if (s.available) {
+              opts += `<option value="${s.time}">${s.time} (Sisa ${s.quota - s.booked})</option>`;
+            } else {
+              opts += `<option value="${s.time}" disabled>${s.time} (Penuh)</option>`;
+            }
+          });
+          container.innerHTML = `<select id="event-time" required>${opts}</select>`;
+          hint.style.display = 'block';
+        }
+      } catch (err) {
+        container.innerHTML = '<input type="time" id="event-time">';
+      }
+    });
+
+    /* ── Render dynamic fields ── */
+    function renderDynamicFields(fields) {
+      const container = document.getElementById('dynamic-fields');
+      if (!fields.length) { container.innerHTML = ''; return; }
+
+      container.innerHTML = fields.map(f => {
+        const req = f.required ? 'required' : '';
+        const label = `<label for="dyn-${f.key}">${f.label}${f.required ? ' *' : ''}</label>`;
+
+        if (f.type === 'select' && f.options) {
+          const opts = f.options.map(o => `<option value="${o}">${o}</option>`).join('');
+          return `<div class="form-group" style="margin-bottom:var(--sp-4);">${label}<select id="dyn-${f.key}" name="${f.key}" ${req}><option value="">-- Pilih --</option>${opts}</select></div>`;
+        }
+        if (f.type === 'textarea') {
+          return `<div class="form-group" style="margin-bottom:var(--sp-4);">${label}<textarea id="dyn-${f.key}" name="${f.key}" rows="3" ${req} placeholder="${f.label}"></textarea></div>`;
+        }
+        return `<div class="form-group" style="margin-bottom:var(--sp-4);">${label}<input type="${f.type === 'tel' ? 'tel' : f.type === 'number' ? 'number' : 'text'}" id="dyn-${f.key}" name="${f.key}" ${req} placeholder="${f.label}"></div>`;
+      }).join('');
+    }
+
+    /* ── Form submit ── */
+    document.getElementById('booking-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!selectedCat) { toast('Pilih kategori terlebih dahulu', 'error'); return; }
+
+      const alert = document.getElementById('form-alert');
+      alert.classList.add('hidden');
+
+      // Kumpulkan dynamic fields
+      const formData = {};
+      (selectedCat.fields || []).forEach(f => {
+        const el = document.getElementById(`dyn-${f.key}`);
+        if (el) formData[f.key] = el.value.trim();
+      });
+
+      const payload = {
+        clientName:  document.getElementById('client-name').value.trim(),
+        clientPhone: document.getElementById('client-phone').value.trim(),
+        eventDate:   document.getElementById('event-date').value,
+        eventTime:   document.getElementById('event-time').value || null,
+        location:    document.getElementById('event-location').value.trim(),
+        formData
+      };
+
+      if (!payload.clientName || !payload.clientPhone || !payload.eventDate) {
+        alert.textContent = 'Nama, no. WhatsApp, dan tanggal acara wajib diisi.';
+        alert.classList.remove('hidden');
+        return;
+      }
+
+      const btn = document.getElementById('btn-submit');
+      const spinner = document.getElementById('btn-submit-spinner');
+      const btnText = document.getElementById('btn-submit-text');
+      btn.disabled = true; spinner.classList.remove('hidden'); btnText.classList.add('hidden');
+
+      try {
+        const res = await fetch(`/api/bookings/${selectedCat.slug}`, {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify(payload)
+        });
+        const data = await res.json();
+
+        if (!res.ok) {
+          alert.textContent = data.error || 'Gagal submit booking';
+          alert.classList.remove('hidden');
+          btn.disabled = false; spinner.classList.add('hidden'); btnText.classList.remove('hidden');
+          return;
+        }
+
+        // Redirect ke halaman upload DP
+        window.location.href = `/upload-dp.html?booking=${data.bookingId}`;
+      } catch (err) {
+        alert.textContent = 'Terjadi kesalahan. Coba lagi.';
+        alert.classList.remove('hidden');
+        btn.disabled = false; spinner.classList.add('hidden'); btnText.classList.remove('hidden');
+      }
+    });
+
+    /* ── Init ── */
+    loadCategories();
+
+    // Set min date to today
+    const today = new Date().toISOString().slice(0, 10);
+    document.getElementById('event-date').min = today;
+  </script>
+</body>
+</html>

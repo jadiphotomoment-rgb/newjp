@@ -3,9 +3,17 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Dashboard — Sortir Foto Admin</title>
-  <meta name="description" content="Dashboard admin untuk mengelola sesi sortir foto klien">
+  <title>Dashboard — Jadiphoto.Moment Admin</title>
+  <meta name="description" content="Dashboard admin untuk mengelola sesi foto Jadiphoto.Moment">
   <meta name="robots" content="noindex, nofollow">
+
+  <!-- Open Graph / Link Preview Tags -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Jadiphoto.Moment">
+  <meta property="og:title" content="Dashboard — Jadiphoto.Moment Admin">
+  <meta property="og:description" content="Dashboard admin untuk mengelola sesi foto Jadiphoto.Moment">
+  <meta property="og:image" content="/og-preview.png">
+
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -22,13 +30,22 @@
       <div class="admin-nav-inner">
         <div class="nav-brand">
           <div class="nav-brand-icon" aria-hidden="true">📷</div>
-          <span>Sortir Foto</span>
+          <span>Jadiphoto.Moment</span>
         </div>
         <div class="nav-actions">
           <div class="user-chip">
             <div class="user-dot"></div>
             <span id="nav-username">Admin</span>
           </div>
+          <a href="/admin/bookings.html" class="btn btn-outline btn-sm" aria-label="Manajemen Booking">
+            📅 Booking
+          </a>
+          <a href="/admin/finance.html" class="btn btn-outline btn-sm" aria-label="Dashboard Keuangan">
+            💰 Keuangan
+          </a>
+          <a href="/admin/categories.html" class="btn btn-outline btn-sm" aria-label="Kelola Kategori">
+            ⚙️ Kategori
+          </a>
           <button class="btn btn-outline btn-sm" id="btn-change-pass" aria-label="Ganti password">
             🔐 Password
           </button>
@@ -50,8 +67,8 @@
 
       <!-- Page header -->
       <div class="page-header">
-        <h1>Dashboard</h1>
-        <p>Kelola sesi sortir foto klien Anda</p>
+        <h1>📷 Dashboard Jadiphoto.Moment</h1>
+        <p>Kelola sesi foto &amp; sortir klien Anda &middot; <a href="/admin/bookings.html" style="color:var(--purple-2);">Lihat Booking &rarr;</a></p>
       </div>
 
       <!-- Stats cards -->
@@ -75,6 +92,30 @@
           <div class="stat-label">Total Foto</div>
           <div class="stat-value" id="stat-photos">—</div>
           <div class="stat-sub">Dipilih klien</div>
+        </div>
+      </div>
+
+      <!-- Booking quick stats -->
+      <div class="stats-grid" aria-label="Statistik booking" style="margin-bottom:var(--sp-6);">
+        <div class="stat-card" style="cursor:pointer;" onclick="location.href='/admin/bookings.html'">
+          <div class="stat-label">📅 Total Booking</div>
+          <div class="stat-value" id="stat-bookings" style="color:var(--purple-2);">—</div>
+          <div class="stat-sub">Semua booking</div>
+        </div>
+        <div class="stat-card" style="cursor:pointer;" onclick="location.href='/admin/bookings.html'">
+          <div class="stat-label">⏳ Perlu Review DP</div>
+          <div class="stat-value" id="stat-dp-review" style="color:var(--orange);">—</div>
+          <div class="stat-sub">Menunggu verifikasi</div>
+        </div>
+        <div class="stat-card" style="cursor:pointer;" onclick="location.href='/admin/finance.html'">
+          <div class="stat-label">💰 Pemasukan Bulan Ini</div>
+          <div class="stat-value" id="stat-income" style="color:var(--green);font-size:1.1rem;">Rp —</div>
+          <div class="stat-sub">Approved payments</div>
+        </div>
+        <div class="stat-card" style="cursor:pointer;" onclick="location.href='/admin/bookings.html'">
+          <div class="stat-label">✅ Booking Confirmed</div>
+          <div class="stat-value" id="stat-confirmed" style="color:var(--green);">—</div>
+          <div class="stat-sub">Terkunci di kalender</div>
         </div>
       </div>
 
@@ -303,6 +344,33 @@
 
   <div id="toast-container" role="status" aria-live="polite"></div>
 
+  <script>
+    // Load booking & finance quick stats for dashboard
+    (async () => {
+      const tok = localStorage.getItem('sf_token');
+      if (!tok) return;
+      const H = { 'Authorization': `Bearer ${tok}` };
+      try {
+        const [bRes, fRes] = await Promise.all([
+          fetch('/api/bookings/admin/list', { headers: H }),
+          fetch('/api/finance/summary', { headers: H })
+        ]);
+        if (bRes.ok) {
+          const bookings = await bRes.json();
+          document.getElementById('stat-bookings').textContent = bookings.length;
+          document.getElementById('stat-dp-review').textContent = bookings.filter(b => b.status === 'dp_review').length;
+          document.getElementById('stat-confirmed').textContent = bookings.filter(b => b.status === 'confirmed').length;
+        }
+        if (fRes.ok) {
+          const fin = await fRes.json();
+          const income = Number(fin.thisMonthIncome || 0);
+          document.getElementById('stat-income').textContent = income >= 1000000
+            ? 'Rp ' + (income / 1000000).toFixed(1) + 'jt'
+            : 'Rp ' + income.toLocaleString('id-ID');
+        }
+      } catch (e) { /* non-critical, fail silently */ }
+    })();
+  </script>
   <script src="/js/admin-dashboard.js?v=5" defer></script>
 </body>
 </html>

@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kelola Kategori Booking — Jadiphoto.Moment Admin</title>
+  <meta name="description" content="Form-builder untuk mengelola kategori dan field booking Jadiphoto.Moment">
+  <meta name="robots" content="noindex, nofollow">
+
+  <!-- Open Graph / Link Preview Tags -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Jadiphoto.Moment">
+  <meta property="og:title" content="Kelola Kategori Booking — Jadiphoto.Moment Admin">
+  <meta property="og:description" content="Form-builder untuk mengelola kategori dan field booking Jadiphoto.Moment">
+  <meta property="og:image" content="/og-preview.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css?v=3">
+  <script src="/js/theme.js?v=3"></script>
+  <style>
+    .cat-card {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: var(--r-xl); padding: var(--sp-6);
+      margin-bottom: var(--sp-4); transition: all var(--t);
+      position: relative;
+    }
+    .cat-card.editing {
+      border-color: var(--purple);
+      box-shadow: 0 0 0 2px rgba(124,109,250,0.18);
+    }
+    .cat-card-header {
+      display: flex; align-items: center; gap: var(--sp-4);
+      margin-bottom: var(--sp-2);
+    }
+    .cat-color-swatch {
+      width: 16px; height: 16px; border-radius: 50%; flex-shrink: 0;
+    }
+    .cat-card-name { font-family: 'Outfit', sans-serif; font-weight: 800; font-size: 1.05rem; flex: 1; }
+    .cat-card-meta { font-size: 0.78rem; color: var(--text-2); margin-bottom: var(--sp-4); }
+
+    /* Field list */
+    .field-list { display: flex; flex-direction: column; gap: var(--sp-3); }
+    .field-item {
+      display: grid; grid-template-columns: 1fr 1fr 120px 36px;
+      gap: var(--sp-3); align-items: start;
+      padding: var(--sp-4); background: var(--bg-2);
+      border-radius: var(--r-lg); border: 1px solid var(--border);
+    }
+    @media (max-width: 640px) {
+      .field-item { grid-template-columns: 1fr 1fr; }
+      .field-item .field-actions { grid-column: 1/-1; justify-self: end; }
+    }
+    .field-item input, .field-item select { margin: 0; }
+    .field-required-toggle {
+      display: flex; align-items: center; gap: var(--sp-2);
+      font-size: 0.78rem; color: var(--text-2);
+    }
+
+    /* Options editor (for select type) */
+    .options-editor {
+      background: var(--bg-input); border: 1px solid var(--border);
+      border-radius: var(--r); padding: var(--sp-3);
+      margin-top: var(--sp-2);
+    }
+    .options-editor textarea {
+      min-height: 80px; resize: vertical; font-size: 0.82rem;
+      font-family: monospace;
+    }
+
+    /* Editor panel */
+    .editor-panel {
+      background: var(--bg-2); border: 1px solid var(--border);
+      border-radius: var(--r-lg); padding: var(--sp-5);
+      margin-top: var(--sp-4);
+    }
+    .editor-panel-title {
+      font-size: 0.72rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.07em; color: var(--text-3); margin-bottom: var(--sp-4);
+    }
+    .dp-settings {
+      display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-4);
+      margin-bottom: var(--sp-4);
+    }
+    @media (max-width: 520px) { .dp-settings { grid-template-columns: 1fr; } }
+
+    /* Variable chips for WA template */
+    .var-chips-section {
+      margin-top: 10px;
+      padding: 10px 12px;
+      background: var(--bg-1);
+      border: 1px solid var(--border);
+      border-radius: var(--r-md);
+      font-size: 0.75rem;
+    }
+    .var-chips-label {
+      font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.06em; color: var(--text-3); margin-bottom: 6px;
+    }
+    .var-chips {
+      display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 4px;
+    }
+    .var-chip-btn {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 3px 9px;
+      background: rgba(124,109,250,0.12);
+      border: 1px solid rgba(124,109,250,0.30);
+      border-radius: 20px;
+      color: var(--purple-2);
+      font-family: 'Courier New', monospace;
+      font-size: 0.75rem; font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.1s;
+      user-select: none;
+    }
+    .var-chip-btn:hover {
+      background: rgba(124,109,250,0.25);
+      transform: translateY(-1px);
+    }
+    .var-chip-btn:active { transform: translateY(0); }
+    .var-chip-btn .chip-icon { font-style: normal; font-size: 0.7rem; opacity: 0.7; }
+    .var-chip-btn.chip-form {
+      background: rgba(34,211,116,0.10);
+      border-color: rgba(34,211,116,0.30);
+      color: #22d374;
+    }
+    .var-chip-btn.chip-form:hover { background: rgba(34,211,116,0.22); }
+  </style>
+</head>
+<body>
+  <div class="bg-mesh" aria-hidden="true"></div>
+
+  <div class="admin-layout">
+    <!-- Nav -->
+    <nav class="admin-nav" role="navigation">
+      <div class="admin-nav-inner">
+        <div class="nav-brand">
+          <div class="nav-brand-icon" aria-hidden="true">📷</div>
+          <span>Jadiphoto.Moment</span>
+        </div>
+        <div class="nav-actions">
+          <div class="user-chip"><div class="user-dot"></div><span id="nav-username">Admin</span></div>
+          <a href="/admin/dashboard.html" class="btn btn-outline btn-sm">📷 Sortir</a>
+          <a href="/admin/bookings.html" class="btn btn-outline btn-sm">📅 Booking</a>
+          <a href="/admin/finance.html" class="btn btn-outline btn-sm">💰 Keuangan</a>
+          <button class="btn btn-outline btn-sm" onclick="toggleTheme()"><span class="theme-icon">☀️</span></button>
+          <button class="btn btn-outline btn-sm" id="btn-logout">↩ Keluar</button>
+        </div>
+      </div>
+    </nav>
+
+    <main class="admin-main" role="main">
+      <div class="page-header">
+        <h1>⚙️ Kelola Kategori Booking</h1>
+        <p>Kustomisasi field form, aturan DP, dan tampilan kalender untuk setiap kategori layanan</p>
+      </div>
+
+      <div class="alert alert-info" style="margin-bottom:var(--sp-6);">
+        💡 Perubahan field form akan langsung berlaku pada halaman booking klien. Tidak perlu deploy ulang.
+      </div>
+
+      <div id="categories-loading" class="loading-overlay" style="min-height:200px;">
+        <div class="spinner"></div><p>Memuat kategori...</p>
+      </div>
+      <div id="categories-container"></div>
+    </main>
+  </div>
+
+  <div id="toast-container" role="status" aria-live="polite"></div>
+
+  <script>
+    /* ── Auth check ── */
+    const TOKEN = localStorage.getItem('sf_token');
+    if (!TOKEN) location.href = '/admin/login.html';
+    const H = { 'Authorization': `Bearer ${TOKEN}`, 'Content-Type': 'application/json' };
+
+    function toast(msg, type = 'info') {
+      const el = document.createElement('div'); el.className = `toast toast-${type}`; el.textContent = msg;
+      document.getElementById('toast-container').appendChild(el);
+      requestAnimationFrame(() => requestAnimationFrame(() => el.classList.add('show')));
+      setTimeout(() => { el.classList.remove('show'); setTimeout(() => el.remove(), 300); }, 4000);
+    }
+
+    document.getElementById('btn-logout').addEventListener('click', () => { localStorage.clear(); location.href = '/admin/login.html'; });
+
+    /* ── Init ── */
+    const adminData = JSON.parse(localStorage.getItem('sf_admin') || '{}');
+    if (adminData.name) document.getElementById('nav-username').textContent = adminData.name;
+
+    const FIELD_TYPES = ['text', 'number', 'select', 'date', 'textarea', 'tel'];
+    const CAT_ICONS = { graduation: '🎓', wedding: '💍', event: '🎉', corporation: '🏢' };
+
+    let categories = [];
+    let editingId = null;
+
+    /* ── Load categories ── */
+    async function loadCategories() {
+      try {
+        const res = await fetch('/api/admin/categories', { headers: H });
+        if (!res.ok) throw new Error();
+        categories = await res.json();
+        renderCategories();
+      } catch (e) {
+        toast('Gagal memuat kategori', 'error');
+      } finally {
+        document.getElementById('categories-loading').style.display = 'none';
+      }
+    }
+
+    function renderCategories() {
+      const container = document.getElementById('categories-container');
+      container.innerHTML = categories.map(cat => `
+        <div class="cat-card ${editingId === cat.id ? 'editing' : ''}" id="cat-card-${cat.id}">
+          <div class="cat-card-header">
+            <div class="cat-color-swatch" style="background:${cat.color};"></div>
+            <span class="cat-card-name">${CAT_ICONS[cat.slug] || '📷'} ${cat.name}</span>
+            <span class="badge ${cat.is_active ? 'badge-active' : 'badge-expired'}">${cat.is_active ? 'Aktif' : 'Nonaktif'}</span>
+            <div style="display:flex;gap:var(--sp-2);">
+              <button class="btn btn-outline btn-sm" onclick="toggleEdit(${cat.id})">
+                ${editingId === cat.id ? '✕ Tutup' : '✏️ Edit'}
+              </button>
+              <button class="btn btn-outline btn-sm" onclick="toggleActive(${cat.id})">
+                ${cat.is_active ? '⏸ Nonaktifkan' : '▶ Aktifkan'}
+              </button>
+            </div>
+          </div>
+          <div class="cat-card-meta">
+            DP: ${cat.dp_type === 'percent' ? cat.dp_value + '%' : 'Rp ' + Number(cat.dp_value).toLocaleString('id-ID')} ·
+            ${cat.fields.length} field ·
+            Warna kalender: <span style="color:${cat.color};">●</span>
+          </div>
+
+          ${editingId === cat.id ? renderEditor(cat) : ''}
+        </div>
+      `).join('');
+    }
+
+    function renderEditor(cat) {
+      return `
+        <div class="editor-panel">
+          <!-- DP Settings -->
+          <div class="editor-panel-title">Pengaturan DP & Tampilan</div>
+          <div class="dp-settings">
+            <div class="form-group">
+              <label for="dp-type-${cat.id}">Tipe DP</label>
+              <select id="dp-type-${cat.id}">
+                <option value="percent" ${cat.dp_type === 'percent' ? 'selected' : ''}>Persentase (%)</option>
+                <option value="fixed" ${cat.dp_type === 'fixed' ? 'selected' : ''}>Nominal Tetap (Rp)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="dp-value-${cat.id}">Nilai DP</label>
+              <input type="number" id="dp-value-${cat.id}" value="${cat.dp_value}" min="0">
+            </div>
+            <div class="form-group">
+              <label for="cat-color-${cat.id}">Warna Kalender</label>
+              <input type="color" id="cat-color-${cat.id}" value="${cat.color}" style="height:42px;cursor:pointer;">
+            </div>
+            <div class="form-group">
+              <label for="cat-name-${cat.id}">Nama Kategori</label>
+              <input type="text" id="cat-name-${cat.id}" value="${cat.name}">
+            </div>
+          </div>
+
+          <!-- Time Slots Settings -->
+          <div class="editor-panel-title" style="margin-top:var(--sp-5);">Pengaturan Slot Waktu (Jam & Kuota)</div>
+          <div class="alert alert-info" style="font-size:0.8rem; margin-bottom:var(--sp-3);">
+            Biarkan kosong jika kategori ini bebas (tidak dibatasi kuota per jam).
+          </div>
+          <div class="field-list" id="slots-${cat.id}">
+            ${(cat.time_slots || []).map((s, i) => renderSlotRow(cat.id, s, i)).join('')}
+          </div>
+          <button class="btn btn-outline btn-sm" style="margin-top:var(--sp-4);" onclick="addSlot(${cat.id})">
+            ＋ Tambah Slot Jam
+          </button>
+
+          <!-- Fields editor -->
+          <div class="editor-panel-title" style="margin-top:var(--sp-5);">Form Fields</div>
+          <div class="field-list" id="fields-${cat.id}">
+            ${cat.fields.map((f, i) => renderFieldRow(cat.id, f, i)).join('')}
+          </div>
+          <button class="btn btn-outline btn-sm" style="margin-top:var(--sp-4);" onclick="addField(${cat.id})">
+            ＋ Tambah Field
+          </button>
+
+          <!-- WhatsApp Template -->
+          <div class="editor-panel-title" style="margin-top:var(--sp-5);">Template Pesan WhatsApp (Approve DP)</div>
+          <div class="form-group">
+            <textarea id="cat-wa-${cat.id}" rows="6" placeholder="Kosongkan untuk menggunakan template bawaan sistem...">${cat.wa_template || ''}</textarea>
+
+            <div class="var-chips-section">
+              <div class="var-chips-label">📌 Variabel Standar — klik untuk sisipkan</div>
+              <div class="var-chips">
+                ${['client_name','event_date','event_time','location','package_price','dp_amount']
+                  .map(v => `<button type="button" class="var-chip-btn" onclick="insertVar('cat-wa-${cat.id}','{{${v}}}')"><em class="chip-icon">＋</em>{{${v}}}</button>`).join('')}
+              </div>
+              ${ cat.fields.length ? `
+              <div class="var-chips-label" style="margin-top:8px;">🗂️ Variabel Form — klik untuk sisipkan</div>
+              <div class="var-chips">
+                ${cat.fields.map(f => `<button type="button" class="var-chip-btn chip-form" onclick="insertVar('cat-wa-${cat.id}','{{${f.key}}}')"><em class="chip-icon">＋</em>{{${f.key}}}</button>`).join('')}
+              </div>` : '' }
+            </div>
+          </div>
+
+          <!-- Save -->
+          <div style="display:flex;gap:var(--sp-3);margin-top:var(--sp-6);">
+            <button class="btn btn-primary" style="flex:1;" onclick="saveCategory(${cat.id})">
+              💾 Simpan Perubahan
+            </button>
+            <button class="btn btn-outline" onclick="toggleEdit(${cat.id})">Batal</button>
+          </div>
+        </div>
+      `;
+    }
+
+    /* ── Time Slots Rendering & Logic ── */
+    function renderSlotRow(catId, slot, idx) {
+      return `
+        <div class="field-item slot-item" id="slot-row-${catId}-${idx}" style="grid-template-columns: 1fr 1fr 36px;">
+          <div class="form-group">
+            <label style="font-size:0.72rem;">Jam (Contoh: 08:00)</label>
+            <input type="time" id="slot-time-${catId}-${idx}" value="${slot.time}">
+          </div>
+          <div class="form-group">
+            <label style="font-size:0.72rem;">Kuota (Batas Booking)</label>
+            <input type="number" id="slot-quota-${catId}-${idx}" value="${slot.quota}" min="1">
+          </div>
+          <div class="field-actions" style="display:flex;align-items:flex-start;padding-top:22px;">
+            <button class="btn btn-danger btn-icon" onclick="removeSlot(${catId}, ${idx})" aria-label="Hapus slot" style="padding:6px;">🗑</button>
+          </div>
+        </div>
+      `;
+    }
+
+    /* ── Insert variable into textarea at cursor position ── */
+    function insertVar(textareaId, variable) {
+      const ta = document.getElementById(textareaId);
+      if (!ta) return;
+      ta.focus();
+      const start = ta.selectionStart;
+      const end   = ta.selectionEnd;
+      const before = ta.value.substring(0, start);
+      const after  = ta.value.substring(end);
+      ta.value = before + variable + after;
+      // Move cursor right after inserted variable
+      const newPos = start + variable.length;
+      ta.selectionStart = newPos;
+      ta.selectionEnd   = newPos;
+      ta.focus();
+    }
+
+    function addSlot(catId) {
+      const cat = categories.find(c => c.id === catId);
+      if (!cat) return;
+      if (!cat.time_slots) cat.time_slots = [];
+      const idx = cat.time_slots.length;
+      cat.time_slots.push({ time: '08:00', quota: 1 });
+      const list = document.getElementById(`slots-${catId}`);
+      list.insertAdjacentHTML('beforeend', renderSlotRow(catId, cat.time_slots[idx], idx));
+    }
+
+    function removeSlot(catId, idx) {
+      const row = document.getElementById(`slot-row-${catId}-${idx}`);
+      if (row) row.remove();
+      const cat = categories.find(c => c.id === catId);
+      if (cat && cat.time_slots) cat.time_slots.splice(idx, 1);
+      toggleEdit(catId); toggleEdit(catId); // re-render to fix index
+    }
+
+    function renderFieldRow(catId, f, idx) {
+      const optionsHtml = f.type === 'select' ? `
+        <div class="options-editor" style="grid-column:1/-1;">
+          <label style="font-size:0.75rem;color:var(--text-3);margin-bottom:4px;display:block;">Opsi (satu per baris):</label>
+          <textarea id="field-options-${catId}-${idx}" placeholder="Opsi 1&#10;Opsi 2&#10;Opsi 3">${(f.options || []).join('\n')}</textarea>
+        </div>` : '';
+
+      return `
+        <div class="field-item" id="field-row-${catId}-${idx}">
+          <div class="form-group">
+            <label style="font-size:0.72rem;">Key (ID)</label>
+            <input type="text" id="field-key-${catId}-${idx}" value="${f.key}" placeholder="field_key">
+          </div>
+          <div class="form-group">
+            <label style="font-size:0.72rem;">Label</label>
+            <input type="text" id="field-label-${catId}-${idx}" value="${f.label}" placeholder="Label field">
+          </div>
+          <div class="form-group">
+            <label style="font-size:0.72rem;">Tipe</label>
+            <select id="field-type-${catId}-${idx}" onchange="onFieldTypeChange(${catId}, ${idx})">
+              ${FIELD_TYPES.map(t => `<option value="${t}" ${f.type === t ? 'selected' : ''}>${t}</option>`).join('')}
+            </select>
+            <label class="field-required-toggle" style="margin-top:4px;">
+              <input type="checkbox" id="field-req-${catId}-${idx}" ${f.required ? 'checked' : ''}> Wajib
+            </label>
+          </div>
+          <div class="field-actions" style="display:flex;align-items:flex-start;padding-top:22px;">
+            <button class="btn btn-danger btn-icon" onclick="removeField(${catId}, ${idx})" aria-label="Hapus field" style="padding:6px;">🗑</button>
+          </div>
+          ${optionsHtml}
+        </div>
+      `;
+    }
+
+    function onFieldTypeChange(catId, idx) {
+      const cat = categories.find(c => c.id === catId);
+      if (!cat) return;
+      const type = document.getElementById(`field-type-${catId}-${idx}`).value;
+      const row = document.getElementById(`field-row-${catId}-${idx}`);
+      // Remove existing options editor
+      const existing = row.querySelector('.options-editor');
+      if (existing) existing.remove();
+      if (type === 'select') {
+        row.insertAdjacentHTML('beforeend', `
+          <div class="options-editor" style="grid-column:1/-1;">
+            <label style="font-size:0.75rem;color:var(--text-3);margin-bottom:4px;display:block;">Opsi (satu per baris):</label>
+            <textarea id="field-options-${catId}-${idx}" placeholder="Opsi 1&#10;Opsi 2&#10;Opsi 3"></textarea>
+          </div>`);
+      }
+    }
+
+    function addField(catId) {
+      const cat = categories.find(c => c.id === catId);
+      if (!cat) return;
+      const idx = cat.fields.length;
+      cat.fields.push({ key: `field_${idx + 1}`, label: 'Field Baru', type: 'text', required: false });
+      const list = document.getElementById(`fields-${catId}`);
+      list.insertAdjacentHTML('beforeend', renderFieldRow(catId, cat.fields[idx], idx));
+    }
+
+    function removeField(catId, idx) {
+      const row = document.getElementById(`field-row-${catId}-${idx}`);
+      if (row) row.remove();
+      const cat = categories.find(c => c.id === catId);
+      if (cat) cat.fields.splice(idx, 1);
+      // Re-render all fields to fix indices
+      toggleEdit(catId); toggleEdit(catId);
+    }
+
+    function toggleEdit(id) {
+      editingId = editingId === id ? null : id;
+      renderCategories();
+      if (editingId) {
+        const card = document.getElementById(`cat-card-${id}`);
+        if (card) card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }
+
+    async function toggleActive(id) {
+      try {
+        const res = await fetch(`/api/admin/categories/${id}/toggle`, { method: 'PATCH', headers: H });
+        const data = await res.json();
+        if (!res.ok) { toast(data.error || 'Gagal', 'error'); return; }
+        toast(data.message, 'success');
+        loadCategories();
+      } catch (e) { toast('Gagal', 'error'); }
+    }
+
+    /* ── Collect fields from DOM and save ── */
+    async function saveCategory(catId) {
+      const cat = categories.find(c => c.id === catId);
+      if (!cat) return;
+
+      const name    = document.getElementById(`cat-name-${catId}`).value.trim();
+      const dpType  = document.getElementById(`dp-type-${catId}`).value;
+      const dpValue = document.getElementById(`dp-value-${catId}`).value;
+      const color   = document.getElementById(`cat-color-${catId}`).value;
+
+      // Collect fields from DOM
+      const fields = [];
+      const rows = document.querySelectorAll(`#fields-${catId} .field-item`);
+      rows.forEach((row, idx) => {
+        const keyEl   = row.querySelector(`[id^="field-key-"]`);
+        const labelEl = row.querySelector(`[id^="field-label-"]`);
+        const typeEl  = row.querySelector(`[id^="field-type-"]`);
+        const reqEl   = row.querySelector(`[id^="field-req-"]`);
+        const optEl   = row.querySelector(`[id^="field-options-"]`);
+        if (!keyEl || !keyEl.value.trim()) return;
+        const field = {
+          key:      keyEl.value.trim().replace(/\s+/g, '_').toLowerCase(),
+          label:    labelEl ? labelEl.value.trim() : '',
+          type:     typeEl ? typeEl.value : 'text',
+          required: reqEl ? reqEl.checked : false,
+        };
+        if (field.type === 'select' && optEl) {
+          field.options = optEl.value.split('\n').map(s => s.trim()).filter(Boolean);
+        }
+        fields.push(field);
+      });
+
+      // Collect time slots from DOM
+      const time_slots = [];
+      const slotRows = document.querySelectorAll(`#slots-${catId} .slot-item`);
+      slotRows.forEach(row => {
+        const timeEl  = row.querySelector(`[id^="slot-time-"]`);
+        const quotaEl = row.querySelector(`[id^="slot-quota-"]`);
+        if (!timeEl || !timeEl.value) return;
+        time_slots.push({
+          time: timeEl.value,
+          quota: parseInt(quotaEl.value, 10) || 1
+        });
+      });
+
+      const wa_template = document.getElementById(`cat-wa-${catId}`).value.trim();
+
+      try {
+        const res = await fetch(`/api/admin/categories/${catId}`, {
+          method:  'PUT',
+          headers: H,
+          body:    JSON.stringify({ name, fields, dp_type: dpType, dp_value: dpValue, color, time_slots, wa_template })
+        });
+        const data = await res.json();
+        if (!res.ok) { toast(data.error || 'Gagal simpan', 'error'); return; }
+        toast('Kategori berhasil disimpan ✅', 'success');
+        editingId = null;
+        loadCategories();
+      } catch (e) { toast('Gagal simpan', 'error'); }
+    }
+
+    loadCategories();
+  </script>
+</body>
+</html>

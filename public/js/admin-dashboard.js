@@ -298,7 +298,7 @@ async function viewSelections(uuid) {
           ${items.length} foto terpilih dari limit ${session.photo_limit || '?'}
         </p>
       </div>
-      <div class="confirm-list"><ol>${listHtml}</ol></div>
+      <div class="confirm-list"><ul style="list-style-type: none; padding-left: 0;">${listHtml}</ul></div>
       <div style="margin-top:16px; display:flex; justify-content:flex-end;">
         <button class="btn btn-outline btn-sm" onclick="copySelections(${JSON.stringify(items.map(f=>f.file_name))})" aria-label="Salin daftar filename">
           📋 Salin Daftar
@@ -358,7 +358,7 @@ async function updateEditStatus(uuid) {
 }
 
 function copySelections(names) {
-  const text = names.map((n, i) => `${i + 1}. ${n}`).join('\n');
+  const text = names.map((n, i) => `${n}`).join('\n');
   navigator.clipboard.writeText(text).then(() => showToast('Daftar disalin ke clipboard!', 'success'));
 }
 window.copySelections = copySelections;

@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Upload Bukti Transfer DP — Jadiphoto.Moment</title>
+  <meta name="description" content="Upload bukti transfer Down Payment untuk konfirmasi booking sesi foto Jadiphoto.Moment.">
+
+  <!-- Open Graph / Link Preview Tags -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Jadiphoto.Moment">
+  <meta property="og:title" content="Upload Bukti Transfer DP — Jadiphoto.Moment">
+  <meta property="og:description" content="Upload bukti transfer Down Payment untuk konfirmasi booking sesi foto Jadiphoto.Moment.">
+  <meta property="og:image" content="/og-preview.png">
+
+  <!-- Twitter Card Tags -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Upload Bukti Transfer DP — Jadiphoto.Moment">
+  <meta name="twitter:description" content="Upload bukti transfer Down Payment untuk konfirmasi booking sesi foto Jadiphoto.Moment.">
+  <meta name="twitter:image" content="/og-preview.png">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css?v=3">
+  <script src="/js/theme.js?v=3"></script>
+  <style>
+    .upload-page {
+      min-height: 100vh;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: flex-start;
+      padding: 0 var(--sp-5) var(--sp-10);
+    }
+    .upload-wrap { width: 100%; max-width: 560px; }
+
+    .booking-summary {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--r-xl);
+      padding: var(--sp-6);
+      margin-bottom: var(--sp-5);
+      animation: fadeUp 0.3s ease;
+    }
+    .booking-summary-header {
+      display: flex; align-items: center; gap: var(--sp-3);
+      margin-bottom: var(--sp-5);
+    }
+    .booking-cat-dot {
+      width: 12px; height: 12px; border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .booking-cat-label {
+      font-size: 0.75rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.07em;
+    }
+    .summary-grid {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: var(--sp-4);
+    }
+    .summary-item .label { font-size: 0.72rem; color: var(--text-3); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 3px; }
+    .summary-item .value { font-size: 0.93rem; font-weight: 600; color: var(--text-0); }
+
+    .dp-banner {
+      background: linear-gradient(135deg, rgba(34,211,116,0.12), rgba(34,211,116,0.06));
+      border: 1px solid rgba(34,211,116,0.30);
+      border-radius: var(--r-lg);
+      padding: var(--sp-5);
+      text-align: center;
+      margin-bottom: var(--sp-5);
+    }
+    .dp-banner .dp-label { font-size: 0.8rem; color: var(--text-2); margin-bottom: var(--sp-1); }
+    .dp-banner .dp-amount {
+      font-family: 'Outfit', sans-serif; font-size: 2rem; font-weight: 900; color: var(--green);
+    }
+    .dp-banner .dp-note { font-size: 0.75rem; color: var(--text-3); margin-top: var(--sp-1); }
+
+    /* Upload dropzone */
+    .upload-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--r-xl);
+      padding: var(--sp-6);
+      animation: fadeUp 0.35s ease;
+    }
+    .upload-card h2 {
+      font-family: 'Outfit', sans-serif; font-weight: 800; font-size: 1.1rem;
+      margin-bottom: var(--sp-2);
+    }
+    .upload-card > p { font-size: 0.85rem; color: var(--text-2); margin-bottom: var(--sp-5); }
+
+    .dropzone {
+      border: 2px dashed var(--border);
+      border-radius: var(--r-lg);
+      padding: var(--sp-8);
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.25s ease;
+      position: relative;
+    }
+    .dropzone:hover, .dropzone.drag-over {
+      border-color: var(--purple);
+      background: rgba(124,109,250,0.06);
+    }
+    .dropzone input[type=file] {
+      position: absolute; inset: 0; opacity: 0; cursor: pointer;
+      width: 100%; height: 100%;
+    }
+    .dropzone-icon { font-size: 2.5rem; margin-bottom: var(--sp-3); }
+    .dropzone-text { font-weight: 600; color: var(--text-1); margin-bottom: var(--sp-1); }
+    .dropzone-hint { font-size: 0.78rem; color: var(--text-3); }
+
+    /* Preview */
+    .file-preview {
+      display: none;
+      align-items: center; gap: var(--sp-4);
+      padding: var(--sp-4) var(--sp-5);
+      background: rgba(124,109,250,0.06);
+      border: 1px solid rgba(124,109,250,0.25);
+      border-radius: var(--r-lg);
+      margin-top: var(--sp-4);
+    }
+    .file-preview.show { display: flex; }
+    .file-preview-thumb {
+      width: 56px; height: 56px; border-radius: var(--r);
+      object-fit: cover; background: var(--bg-2);
+      flex-shrink: 0;
+    }
+    .file-preview-info { flex: 1; min-width: 0; }
+    .file-preview-name { font-size: 0.85rem; font-weight: 600; color: var(--text-0); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .file-preview-size { font-size: 0.75rem; color: var(--text-3); }
+    .file-preview-remove { background: none; border: none; color: var(--red); font-size: 1.1rem; flex-shrink: 0; }
+
+    /* Transfer info */
+    .transfer-info {
+      background: var(--bg-2);
+      border: 1px solid var(--border);
+      border-radius: var(--r-lg);
+      padding: var(--sp-5);
+      margin-bottom: var(--sp-5);
+    }
+    .transfer-info h3 { font-size: 0.85rem; font-weight: 700; margin-bottom: var(--sp-3); }
+    .transfer-info p { font-size: 0.82rem; color: var(--text-2); line-height: 1.7; }
+    .transfer-account {
+      font-size: 0.9rem; font-weight: 700; color: var(--text-0);
+      background: var(--bg-input); border-radius: var(--r);
+      padding: var(--sp-3) var(--sp-4); margin: var(--sp-3) 0;
+      font-family: monospace;
+    }
+
+    /* Success state */
+    .success-state {
+      text-align: center; padding: var(--sp-8);
+      animation: fadeUp 0.4s ease;
+    }
+    .success-state .success-icon { font-size: 4rem; margin-bottom: var(--sp-4); }
+    .success-state h2 { font-family: 'Outfit', sans-serif; font-size: 1.5rem; font-weight: 800; margin-bottom: var(--sp-3); }
+    .success-state p { color: var(--text-2); font-size: 0.9rem; line-height: 1.7; max-width: 380px; margin: 0 auto var(--sp-5); }
+  </style>
+</head>
+<body>
+  <div class="bg-mesh" aria-hidden="true"></div>
+
+  <!-- Nav -->
+  <nav class="admin-nav" role="navigation">
+    <div class="admin-nav-inner">
+      <div class="nav-brand">
+        <div class="nav-brand-icon" aria-hidden="true">📷</div>
+        <span>Jadiphoto.Moment</span>
+      </div>
+      <div class="nav-actions">
+        <a href="/booking.html" class="btn btn-outline btn-sm">← Kembali</a>
+        <button class="btn btn-outline btn-sm" onclick="toggleTheme()"><span class="theme-icon">☀️</span></button>
+      </div>
+    </div>
+  </nav>
+
+  <main class="upload-page" role="main">
+    <!-- Loading state -->
+    <div id="loading-state" class="state-screen">
+      <div class="spinner" style="width:40px;height:40px;border-width:3px;"></div>
+      <p style="color:var(--text-2);">Memuat data booking...</p>
+    </div>
+
+    <!-- Error state -->
+    <div id="error-state" class="state-screen hidden">
+      <div class="state-icon">⚠️</div>
+      <h2 class="state-title">Booking Tidak Ditemukan</h2>
+      <p class="state-desc">Link booking tidak valid atau sudah kadaluarsa.</p>
+      <a href="/booking.html" class="btn btn-primary">Buat Booking Baru</a>
+    </div>
+
+    <!-- Already confirmed state -->
+    <div id="confirmed-state" class="state-screen hidden">
+      <div class="state-icon">✅</div>
+      <h2 class="state-title">Booking Sudah Dikonfirmasi!</h2>
+      <p class="state-desc">Booking Anda telah dikonfirmasi dan tanggal sudah terkunci. Kami akan menghubungi Anda sebelum hari H.</p>
+    </div>
+
+    <!-- Main upload UI -->
+    <div class="upload-wrap hidden" id="upload-main" style="margin-top: var(--sp-8);">
+
+      <!-- Booking summary -->
+      <div class="booking-summary" id="booking-summary">
+        <div class="booking-summary-header">
+          <div class="booking-cat-dot" id="cat-dot"></div>
+          <span class="booking-cat-label" id="cat-label">—</span>
+          <span style="font-size:0.75rem; color:var(--text-3); margin-left:auto;">Booking #<span id="booking-id-display">—</span></span>
+        </div>
+        <div class="summary-grid">
+          <div class="summary-item"><div class="label">Nama Klien</div><div class="value" id="sum-name">—</div></div>
+          <div class="summary-item"><div class="label">No. WhatsApp</div><div class="value" id="sum-phone">—</div></div>
+          <div class="summary-item"><div class="label">Tanggal Acara</div><div class="value" id="sum-date">—</div></div>
+          <div class="summary-item"><div class="label">Lokasi</div><div class="value" id="sum-location">—</div></div>
+        </div>
+      </div>
+
+      <!-- DP banner -->
+      <div class="dp-banner">
+        <div class="dp-label">Nominal Down Payment (DP)</div>
+        <div class="dp-amount" id="dp-amount">Dikonfirmasi Admin</div>
+        <div class="dp-note" id="dp-note">Admin akan mengkonfirmasi nominal DP setelah mereview booking Anda</div>
+      </div>
+
+      <!-- Transfer info -->
+      <div class="transfer-info">
+        <h3>📋 Cara Pembayaran DP</h3>
+        <p>Transfer ke rekening berikut:</p>
+        <div class="transfer-account" id="transfer-account">Hubungi admin untuk info rekening</div>
+        <p>Setelah transfer, <strong>screenshot/foto bukti transfer</strong> dan upload di bawah ini. Admin akan memverifikasi dalam 1×24 jam.</p>
+      </div>
+
+      <!-- Upload section -->
+      <div class="upload-card">
+        <h2>📤 Upload Bukti Transfer</h2>
+        <p>Upload foto atau PDF bukti transfer DP Anda. Pastikan nominal, tanggal, dan rekening tujuan terlihat jelas.</p>
+
+        <div id="upload-alert" class="alert alert-error hidden" role="alert"></div>
+
+        <div class="dropzone" id="dropzone">
+          <input type="file" id="proof-file" accept="image/jpeg,image/png,image/webp,application/pdf" aria-label="Pilih file bukti transfer">
+          <div class="dropzone-icon">📎</div>
+          <div class="dropzone-text">Klik atau drag & drop file di sini</div>
+          <div class="dropzone-hint">JPG, PNG, WebP, PDF — Maks 5MB</div>
+        </div>
+
+        <div class="file-preview" id="file-preview">
+          <img class="file-preview-thumb" id="preview-thumb" src="" alt="Preview">
+          <div class="file-preview-info">
+            <div class="file-preview-name" id="preview-name">—</div>
+            <div class="file-preview-size" id="preview-size">—</div>
+          </div>
+          <button class="file-preview-remove" id="btn-remove-file" aria-label="Hapus file">✕</button>
+        </div>
+
+        <button class="btn btn-primary" style="width:100%; margin-top:var(--sp-5); padding:14px;" id="btn-upload" disabled>
+          <span id="btn-upload-text">Upload Bukti Transfer</span>
+          <div id="btn-upload-spinner" class="spinner hidden" aria-hidden="true"></div>
+        </button>
+      </div>
+    </div>
+
+    <!-- Success state -->
+    <div class="success-state hidden" id="success-state">
+      <div class="success-icon">🎉</div>
+      <h2>Bukti Transfer Terkirim!</h2>
+      <p>Bukti transfer DP Anda sudah kami terima dan sedang dalam proses verifikasi. Admin akan menghubungi Anda melalui WhatsApp setelah diverifikasi.</p>
+      <div class="alert alert-success" style="max-width:380px; margin:0 auto var(--sp-5);">
+        ✅ Notifikasi akan dikirim ke nomor WhatsApp Anda dalam 1×24 jam
+      </div>
+      <a href="/booking.html" class="btn btn-outline">Buat Booking Lain</a>
+    </div>
+  </main>
+
+  <div id="toast-container" role="status" aria-live="polite"></div>
+
+  <script>
+    function toast(msg, type = 'info') {
+      const el = document.createElement('div');
+      el.className = `toast toast-${type}`;
+      el.textContent = msg;
+      document.getElementById('toast-container').appendChild(el);
+      requestAnimationFrame(() => { requestAnimationFrame(() => el.classList.add('show')); });
+      setTimeout(() => { el.classList.remove('show'); setTimeout(() => el.remove(), 300); }, 4000);
+    }
+
+    /* ── Get booking ID from URL ── */
+    const params = new URLSearchParams(location.search);
+    const bookingId = params.get('booking');
+
+    if (!bookingId) {
+      document.getElementById('loading-state').classList.add('hidden');
+      document.getElementById('error-state').classList.remove('hidden');
+    } else {
+      loadBooking(bookingId);
+    }
+
+    async function loadBooking(id) {
+      try {
+        const res = await fetch(`/api/bookings/${id}`);
+        if (!res.ok) throw new Error();
+        const booking = await res.json();
+
+        document.getElementById('loading-state').classList.add('hidden');
+
+        if (booking.status === 'confirmed' || booking.status === 'completed') {
+          document.getElementById('confirmed-state').classList.remove('hidden');
+          return;
+        }
+        if (booking.status === 'dp_review') {
+          // Sudah upload, tapi belum confirmed — tampilkan status menunggu
+          document.getElementById('success-state').classList.remove('hidden');
+          return;
+        }
+
+        // Populate summary
+        document.getElementById('booking-id-display').textContent = booking.id;
+        document.getElementById('cat-dot').style.background = booking.color || '#7c6dfa';
+        document.getElementById('cat-label').textContent = booking.category_name || '—';
+        document.getElementById('sum-name').textContent = booking.client_name;
+        document.getElementById('sum-phone').textContent = booking.client_phone;
+        document.getElementById('sum-date').textContent = new Date(booking.event_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+        document.getElementById('sum-location').textContent = booking.location || '—';
+
+        if (booking.dp_amount) {
+          document.getElementById('dp-amount').textContent = 'Rp ' + Number(booking.dp_amount).toLocaleString('id-ID');
+          document.getElementById('dp-note').textContent = `${booking.dp_type === 'percent' ? booking.dp_value + '% dari harga paket' : 'Nominal tetap'}`;
+        } else if (booking.calculated_dp) {
+          document.getElementById('dp-amount').textContent = 'Rp ' + Number(booking.calculated_dp).toLocaleString('id-ID');
+        }
+
+        document.getElementById('upload-main').classList.remove('hidden');
+      } catch (e) {
+        document.getElementById('loading-state').classList.add('hidden');
+        document.getElementById('error-state').classList.remove('hidden');
+      }
+    }
+
+    /* ── File input handling ── */
+    let selectedFile = null;
+
+    const fileInput = document.getElementById('proof-file');
+    const dropzone  = document.getElementById('dropzone');
+    const preview   = document.getElementById('file-preview');
+    const uploadBtn = document.getElementById('btn-upload');
+
+    fileInput.addEventListener('change', () => handleFile(fileInput.files[0]));
+
+    dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('drag-over'); });
+    dropzone.addEventListener('dragleave', () => dropzone.classList.remove('drag-over'));
+    dropzone.addEventListener('drop', e => {
+      e.preventDefault(); dropzone.classList.remove('drag-over');
+      if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+    });
+
+    function handleFile(file) {
+      if (!file) return;
+      const allowed = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
+      if (!allowed.includes(file.type)) { toast('Hanya JPG, PNG, WebP, atau PDF', 'error'); return; }
+      if (file.size > 5 * 1024 * 1024) { toast('Ukuran file maks 5MB', 'error'); return; }
+
+      selectedFile = file;
+      document.getElementById('preview-name').textContent = file.name;
+      document.getElementById('preview-size').textContent = (file.size / 1024).toFixed(0) + ' KB';
+
+      if (file.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onload = e => document.getElementById('preview-thumb').src = e.target.result;
+        reader.readAsDataURL(file);
+        document.getElementById('preview-thumb').style.display = 'block';
+      } else {
+        document.getElementById('preview-thumb').src = '';
+        document.getElementById('preview-thumb').style.display = 'none';
+      }
+
+      preview.classList.add('show');
+      uploadBtn.disabled = false;
+    }
+
+    document.getElementById('btn-remove-file').addEventListener('click', () => {
+      selectedFile = null;
+      fileInput.value = '';
+      preview.classList.remove('show');
+      uploadBtn.disabled = true;
+    });
+
+    /* ── Upload ── */
+    uploadBtn.addEventListener('click', async () => {
+      if (!selectedFile || !bookingId) return;
+
+      const alert = document.getElementById('upload-alert');
+      alert.classList.add('hidden');
+      uploadBtn.disabled = true;
+      document.getElementById('btn-upload-spinner').classList.remove('hidden');
+      document.getElementById('btn-upload-text').classList.add('hidden');
+
+      const formData = new FormData();
+      formData.append('proof', selectedFile, selectedFile.name);
+
+      try {
+        const res = await fetch(`/api/bookings/${bookingId}/upload-dp`, {
+          method: 'POST',
+          body:   formData
+        });
+        const data = await res.json();
+
+        if (!res.ok) {
+          alert.textContent = data.error || 'Gagal upload. Coba lagi.';
+          alert.classList.remove('hidden');
+          uploadBtn.disabled = false;
+          document.getElementById('btn-upload-spinner').classList.add('hidden');
+          document.getElementById('btn-upload-text').classList.remove('hidden');
+          return;
+        }
+
+        // Show success
+        document.getElementById('upload-main').classList.add('hidden');
+        document.getElementById('success-state').classList.remove('hidden');
+      } catch (err) {
+        alert.textContent = 'Terjadi kesalahan jaringan. Coba lagi.';
+        alert.classList.remove('hidden');
+        uploadBtn.disabled = false;
+        document.getElementById('btn-upload-spinner').classList.add('hidden');
+        document.getElementById('btn-upload-text').classList.remove('hidden');
+      }
+    });
+  </script>
+</body>
+</html>

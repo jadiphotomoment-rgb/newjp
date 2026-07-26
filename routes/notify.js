@@ -117,14 +117,14 @@ router.post('/', async (req, res) => {
   // ── Build WhatsApp message ────────────────────────────────
   const fileList = selectedFiles
     .map((f, i) => {
-      let line = `${i + 1}. ${f.name}`;
+      let line = `${f.name}`;
       if (f.note && f.note.trim()) line += `\n   _Catatan: ${f.note.trim()}_`;
       return line;
     })
     .join('\n');
 
   const message = [
-    '*NOTIFIKASI SORTIR FOTO BARU*',
+    '*NOTIFIKASI SORTIR FOTO BARU — JADIPHOTO.MOMENT*',
     '------------------------------------',
     `*Nama Klien / Folder:* ${session.client_name}`,
     `*Tanggal Seleksi:* ${formatDateWIB()}`,
@@ -133,7 +133,7 @@ router.post('/', async (req, res) => {
     '*DAFTAR FILE FOTO:*',
     fileList,
     '------------------------------------',
-    '_Pesan ini dikirim otomatis oleh Sistem Server Sortir Foto._',
+    '_Pesan ini dikirim otomatis oleh System Jadiphoto.Moment._',
   ].join('\n');
 
   // ── Send WhatsApp (skip if not configured) ────────────────

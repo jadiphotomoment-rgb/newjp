@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard Keuangan — Jadiphoto.Moment Admin</title>
+  <meta name="description" content="Dashboard keuangan Jadiphoto.Moment — laporan pemasukan dan pembayaran">
+  <meta name="robots" content="noindex, nofollow">
+
+  <!-- Open Graph / Link Preview Tags -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Jadiphoto.Moment">
+  <meta property="og:title" content="Dashboard Keuangan — Jadiphoto.Moment Admin">
+  <meta property="og:description" content="Dashboard keuangan Jadiphoto.Moment — laporan pemasukan dan pembayaran">
+  <meta property="og:image" content="/og-preview.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css?v=3">
+  <script src="/js/theme.js?v=3"></script>
+  <style>
+    .finance-income-card {
+      background: linear-gradient(135deg, rgba(34,211,116,0.15) 0%, rgba(34,211,116,0.05) 100%);
+      border: 1px solid rgba(34,211,116,0.25);
+      border-radius: var(--r-xl);
+      padding: var(--sp-8);
+      text-align: center;
+      margin-bottom: var(--sp-6);
+    }
+    .finance-income-card .label { font-size: 0.8rem; color: var(--text-2); font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: var(--sp-2); }
+    .finance-income-card .amount {
+      font-family: 'Outfit', sans-serif; font-size: clamp(2rem, 6vw, 3.5rem);
+      font-weight: 900; color: var(--green); line-height: 1;
+      margin-bottom: var(--sp-2);
+    }
+    .finance-income-card .sub { font-size: 0.85rem; color: var(--text-2); }
+
+    /* Chart */
+    .chart-card {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: var(--r-xl); padding: var(--sp-6);
+      margin-bottom: var(--sp-6);
+    }
+    .chart-card h3 { font-family: 'Outfit', sans-serif; font-weight: 700; font-size: 1rem; margin-bottom: var(--sp-5); }
+    .chart-wrap { position: relative; height: 220px; }
+
+    /* Category breakdown */
+    .cat-breakdown { display: flex; flex-direction: column; gap: var(--sp-3); }
+    .cat-row {
+      display: flex; align-items: center; gap: var(--sp-4);
+      padding: var(--sp-4); background: var(--bg-2);
+      border-radius: var(--r-lg);
+    }
+    .cat-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+    .cat-row-name { font-weight: 600; font-size: 0.9rem; flex: 1; }
+    .cat-row-count { font-size: 0.78rem; color: var(--text-2); }
+    .cat-row-income { font-weight: 700; font-family: 'Outfit', sans-serif; color: var(--green); }
+    .cat-bar-track { height: 4px; background: var(--border); border-radius: 99px; margin-top: var(--sp-1); }
+    .cat-bar-fill { height: 100%; border-radius: 99px; transition: width 0.8s ease; }
+
+    /* Payment table actions */
+    .badge-pending  { background: rgba(251,146,60,0.15); color: #fb923c; }
+    .badge-approved { background: rgba(34,211,116,0.15); color: #22d374; }
+    .badge-rejected { background: rgba(248,113,113,0.15); color: #f87171; }
+
+    /* Filter bar */
+    .filter-bar { display: flex; gap: var(--sp-3); flex-wrap: wrap; margin-bottom: var(--sp-5); }
+    .filter-bar select, .filter-bar input[type=month] { width: auto; min-width: 140px; font-size: 0.85rem; padding: 8px 12px; }
+
+    /* Payment proof preview popup */
+    .proof-popup {
+      position: fixed; z-index: 9999;
+      top: 50%; left: 50%; transform: translate(-50%, -50%);
+      background: var(--bg-2); border: 1px solid var(--border);
+      border-radius: var(--r-xl); padding: var(--sp-5);
+      box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+      max-width: 420px; width: 95%;
+    }
+    .proof-popup img { width: 100%; border-radius: var(--r-lg); margin-bottom: var(--sp-3); max-height: 300px; object-fit: contain; background:#111; }
+    .proof-popup-backdrop {
+      position: fixed; inset: 0; z-index: 9998;
+      background: rgba(0,0,0,0.6); backdrop-filter: blur(4px);
+    }
+    .proof-popup-title { font-weight: 800; font-size: 0.95rem; margin-bottom: var(--sp-3); }
+    .proof-popup-info { display: flex; flex-direction: column; gap: 4px; font-size: 0.82rem; margin-bottom: var(--sp-4); }
+    .proof-popup-info .pi-row { display: flex; gap: 8px; }
+    .proof-popup-info .pi-key { color: var(--text-3); min-width: 80px; }
+    .proof-popup-actions { display: flex; gap: var(--sp-3); }
+    .proof-popup-actions button { flex: 1; }
+
+    /* Grid layout */
+    .finance-grid {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: var(--sp-5); margin-bottom: var(--sp-6);
+    }
+    @media (max-width: 768px) { .finance-grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <div class="bg-mesh" aria-hidden="true"></div>
+
+  <div class="admin-layout">
+    <!-- Nav -->
+    <nav class="admin-nav" role="navigation">
+      <div class="admin-nav-inner">
+        <div class="nav-brand">
+          <div class="nav-brand-icon" aria-hidden="true">📷</div>
+          <span>Jadiphoto.Moment</span>
+        </div>
+        <div class="nav-actions">
+          <div class="user-chip"><div class="user-dot"></div><span id="nav-username">Admin</span></div>
+          <a href="/admin/dashboard.html" class="btn btn-outline btn-sm">📷 Sortir</a>
+          <a href="/admin/bookings.html" class="btn btn-outline btn-sm">📅 Booking</a>
+          <a href="/admin/categories.html" class="btn btn-outline btn-sm">⚙️ Kategori</a>
+          <button class="btn btn-outline btn-sm" onclick="toggleTheme()"><span class="theme-icon">☀️</span></button>
+          <button class="btn btn-outline btn-sm" id="btn-logout">↩ Keluar</button>
+        </div>
+      </div>
+    </nav>
+
+    <main class="admin-main" role="main">
+      <div class="page-header">
+        <h1>💰 Dashboard Keuangan</h1>
+        <p>Laporan pemasukan, pembayaran, dan breakdown per kategori layanan</p>
+      </div>
+
+      <!-- Main income card -->
+      <div class="finance-income-card" id="income-card">
+        <div class="label">Total Pemasukan (Approved)</div>
+        <div class="amount" id="total-income">—</div>
+        <div class="sub" id="income-sub">Memuat data...</div>
+      </div>
+
+      <!-- Stats row -->
+      <div class="stats-grid" style="margin-bottom:var(--sp-6);">
+        <div class="stat-card">
+          <div class="stat-label">Bulan Ini</div>
+          <div class="stat-value" style="color:var(--green);" id="this-month-income">—</div>
+          <div class="stat-sub">Pemasukan bulan berjalan</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Menunggu Verifikasi</div>
+          <div class="stat-value" style="color:var(--orange);" id="pending-count">—</div>
+          <div class="stat-sub" id="pending-amount">Perlu direview</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Total Booking</div>
+          <div class="stat-value" id="total-bookings">—</div>
+          <div class="stat-sub">Semua status</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Booking Confirmed</div>
+          <div class="stat-value" style="color:var(--purple-2);" id="confirmed-bookings">—</div>
+          <div class="stat-sub">Terkunci di kalender</div>
+        </div>
+      </div>
+
+      <!-- Chart + Breakdown -->
+      <div class="finance-grid">
+        <!-- Monthly chart -->
+        <div class="chart-card">
+          <h3>📈 Pemasukan per Bulan</h3>
+          <div class="chart-wrap">
+            <canvas id="monthly-chart"></canvas>
+          </div>
+        </div>
+
+        <!-- Category breakdown -->
+        <div class="chart-card">
+          <h3>🏷 Breakdown per Kategori</h3>
+          <div class="cat-breakdown" id="cat-breakdown">
+            <div class="loading-overlay" style="min-height:100px;"><div class="spinner"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Payments table -->
+      <div class="section-header" style="display: flex; justify-content: space-between; align-items: center;">
+        <h2>Daftar Pembayaran</h2>
+        <button class="btn btn-outline btn-sm" id="btn-export-csv" onclick="exportCsv()">📥 Ekspor CSV</button>
+      </div>
+      <div class="filter-bar">
+        <select id="filter-status">
+          <option value="">Semua Status</option>
+          <option value="pending">Menunggu</option>
+          <option value="approved">Disetujui</option>
+          <option value="rejected">Ditolak</option>
+        </select>
+        <select id="filter-category">
+          <option value="">Semua Kategori</option>
+        </select>
+        <input type="month" id="filter-month">
+        <button class="btn btn-outline btn-sm" id="btn-filter">🔍 Filter</button>
+        <button class="btn btn-outline btn-sm" id="btn-reset">✕ Reset</button>
+      </div>
+
+      <div id="payments-loading" class="loading-overlay" style="min-height:150px;"><div class="spinner"></div></div>
+      <div id="payments-empty" class="empty-state hidden">
+        <span class="empty-icon">💳</span><h3>Belum ada pembayaran</h3>
+      </div>
+      <div class="table-wrap hidden" id="payments-table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Klien</th>
+              <th>Kategori</th>
+              <th>Tanggal Acara</th>
+              <th>Jenis</th>
+              <th>Nominal</th>
+              <th>Harga Paket</th>
+              <th>Bukti</th>
+              <th>Status</th>
+              <th>Aksi</th>
+            </tr>
+          </thead>
+          <tbody id="payments-tbody"></tbody>
+        </table>
+      </div>
+      <div class="session-cards hidden" id="payments-cards"></div>
+    </main>
+  </div>
+
+  <div id="toast-container" role="status" aria-live="polite"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script>
+    /* ── Auth check ── */
+    const TOKEN = localStorage.getItem('sf_token');
+    if (!TOKEN) location.href = '/admin/login.html';
+    const H = { 'Authorization': `Bearer ${TOKEN}`, 'Content-Type': 'application/json' };
+
+    function toast(msg, type = 'info') {
+      const el = document.createElement('div'); el.className = `toast toast-${type}`; el.textContent = msg;
+      document.getElementById('toast-container').appendChild(el);
+      requestAnimationFrame(() => requestAnimationFrame(() => el.classList.add('show')));
+      setTimeout(() => { el.classList.remove('show'); setTimeout(() => el.remove(), 300); }, 4000);
+    }
+
+    document.getElementById('btn-logout').addEventListener('click', () => { localStorage.clear(); location.href = '/admin/login.html'; });
+    
+    /* ── Init ── */
+    const adminData = JSON.parse(localStorage.getItem('sf_admin') || '{}');
+    if (adminData.name) document.getElementById('nav-username').textContent = adminData.name;
+
+    function fmtMoney(n) { return 'Rp ' + Number(n || 0).toLocaleString('id-ID'); }
+    function fmtDate(d) { return d ? new Date(d).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'; }
+
+    let monthlyChart = null;
+
+    /* ── Load summary ── */
+    async function loadSummary() {
+      try {
+        const res = await fetch('/api/finance/summary', { headers: H });
+        if (!res.ok) throw new Error();
+        const data = await res.json();
+
+        document.getElementById('total-income').textContent = fmtMoney(data.totalIncome);
+        document.getElementById('income-sub').textContent = `${data.totalPayments} transaksi disetujui`;
+        document.getElementById('this-month-income').textContent = fmtMoney(data.thisMonthIncome);
+        document.getElementById('pending-count').textContent = data.pendingCount;
+        document.getElementById('pending-amount').textContent = `≈ ${fmtMoney(data.pendingAmount)} menunggu`;
+
+        const stats = data.bookingStats || {};
+        const total = Object.values(stats).reduce((a, b) => a + b, 0);
+        document.getElementById('total-bookings').textContent = total;
+        document.getElementById('confirmed-bookings').textContent = stats.confirmed || 0;
+
+        renderCategoryBreakdown(data.byCategory, data.totalIncome);
+        renderMonthlyChart(data.byMonth);
+      } catch (e) {
+        document.getElementById('income-sub').textContent = 'Gagal memuat data';
+      }
+    }
+
+    function renderCategoryBreakdown(cats, totalIncome) {
+      const container = document.getElementById('cat-breakdown');
+      if (!cats.length) { container.innerHTML = '<p style="color:var(--text-3);font-size:0.85rem;">Belum ada data</p>'; return; }
+
+      const maxIncome = Math.max(...cats.map(c => parseFloat(c.income) || 0), 1);
+      container.innerHTML = cats.map(c => {
+        const pct = Math.round(((parseFloat(c.income) || 0) / maxIncome) * 100);
+        return `
+          <div class="cat-row">
+            <div>
+              <div class="cat-dot" style="background:${c.color};"></div>
+            </div>
+            <div style="flex:1;">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+                <span class="cat-row-name">${c.category}</span>
+                <span class="cat-row-income">${fmtMoney(c.income)}</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                <span class="cat-row-count">${c.booking_count} booking</span>
+              </div>
+              <div class="cat-bar-track">
+                <div class="cat-bar-fill" style="width:${pct}%;background:${c.color};"></div>
+              </div>
+            </div>
+          </div>`;
+      }).join('');
+    }
+
+    function renderMonthlyChart(months) {
+      const ctx = document.getElementById('monthly-chart').getContext('2d');
+      if (monthlyChart) monthlyChart.destroy();
+
+      const labels = months.map(m => {
+        const [y, mo] = m.month.split('-');
+        return new Date(y, parseInt(mo) - 1).toLocaleDateString('id-ID', { month: 'short', year: '2-digit' });
+      });
+      const data = months.map(m => parseFloat(m.income) || 0);
+
+      monthlyChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [{
+            label: 'Pemasukan',
+            data,
+            backgroundColor: 'rgba(34,211,116,0.25)',
+            borderColor: '#22d374',
+            borderWidth: 2,
+            borderRadius: 6,
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            y: {
+              ticks: {
+                color: '#8b89b0',
+                callback: v => 'Rp ' + Number(v).toLocaleString('id-ID')
+              },
+              grid: { color: 'rgba(255,255,255,0.05)' }
+            },
+            x: { ticks: { color: '#8b89b0' }, grid: { display: false } }
+          }
+        }
+      });
+    }
+
+    /* ── Load payments ── */
+    async function loadPayments() {
+      const status   = document.getElementById('filter-status').value;
+      const category = document.getElementById('filter-category').value;
+      const month    = document.getElementById('filter-month').value;
+      const qs = new URLSearchParams({ ...(status && { status }), ...(category && { category }), ...(month && { month }) });
+
+      document.getElementById('payments-loading').style.display = 'flex';
+      document.getElementById('payments-empty').classList.add('hidden');
+      document.getElementById('payments-table-wrap').classList.add('hidden');
+      document.getElementById('payments-cards').classList.add('hidden');
+
+      try {
+        const res = await fetch(`/api/finance/payments?${qs}`, { headers: H });
+        const payments = await res.json();
+        renderPayments(payments);
+      } catch (e) { toast('Gagal memuat pembayaran', 'error'); }
+      finally { document.getElementById('payments-loading').style.display = 'none'; }
+    }
+
+    let paymentsData = [];
+
+    function renderPayments(list) {
+      paymentsData = list;
+
+      if (!list.length) {
+        document.getElementById('payments-empty').classList.remove('hidden');
+        return;
+      }
+
+      const tbody = document.getElementById('payments-tbody');
+      tbody.innerHTML = list.map((p, idx) => `
+        <tr>
+          <td class="td-name">${p.client_name}<span>${p.client_phone}</span></td>
+          <td><span class="badge" style="background:color-mix(in srgb,${p.color} 15%,transparent);color:${p.color};">${p.category_name}</span></td>
+          <td style="font-size:0.82rem;">${fmtDate(p.event_date)}</td>
+          <td style="text-transform:capitalize;">${p.payment_type}</td>
+          <td style="font-weight:700;font-family:'Outfit',sans-serif;color:var(--green);">${fmtMoney(p.amount)}</td>
+          <td style="font-size:0.82rem;color:var(--text-2);">${p.package_price ? fmtMoney(p.package_price) : '—'}</td>
+          <td>
+            ${p.proof_url
+              ? `<button class="btn btn-outline btn-sm" onclick='showProofPopup(paymentsData[${idx}])'>🔍 Review</button>`
+              : '<span style="color:var(--text-3);">Belum upload</span>'}
+          </td>
+          <td><span class="badge badge-${p.status}">${p.status === 'pending' ? '⏳ Menunggu' : p.status === 'approved' ? '✅ Disetujui' : '❌ Ditolak'}</span></td>
+          <td class="td-actions">
+            ${p.status === 'pending' ? `
+              <button class="btn btn-primary btn-sm" onclick="approvePayment(${p.id})">✓</button>
+              <button class="btn btn-danger btn-sm" onclick="rejectPayment(${p.id})">✕</button>
+            ` : p.approved_by_name ? `<small style="color:var(--text-3);">oleh ${p.approved_by_name}</small>` : '—'}
+          </td>
+        </tr>
+      `).join('');
+
+      const cards = document.getElementById('payments-cards');
+      cards.innerHTML = list.map((p, idx) => `
+        <div class="session-card">
+          <div class="session-card-header">
+            <div>
+              <div class="session-card-name">${p.client_name}</div>
+              <div class="session-card-meta">${p.category_name} · ${fmtDate(p.event_date)}</div>
+            </div>
+            <span class="badge badge-${p.status}">${p.status === 'pending' ? '⏳ Menunggu' : p.status === 'approved' ? '✅ OK' : '❌ Tolak'}</span>
+          </div>
+          <div style="margin-bottom:var(--sp-3);">
+            <div style="font-size:1.1rem;font-weight:800;color:var(--green);">${fmtMoney(p.amount)} <span style="font-size:0.75rem;color:var(--text-3);font-weight:400;">${p.payment_type}</span></div>
+            ${p.package_price ? `<div style="font-size:0.78rem;color:var(--text-3);">Paket: ${fmtMoney(p.package_price)}</div>` : ''}
+          </div>
+          <div class="session-card-footer">
+            ${p.proof_url ? `<button class="btn btn-outline btn-sm" onclick='showProofPopup(paymentsData[${idx}])'>🔍 Review Bukti</button>` : '<span style="font-size:0.78rem;color:var(--text-3);">Belum upload</span>'}
+            ${p.status === 'pending' ? `
+              <button class="btn btn-primary btn-sm" onclick="approvePayment(${p.id})">✓ Approve</button>
+              <button class="btn btn-danger btn-sm" onclick="rejectPayment(${p.id})">✕ Reject</button>
+            ` : ''}
+          </div>
+        </div>
+      `).join('');
+
+      document.getElementById('payments-table-wrap').classList.remove('hidden');
+      document.getElementById('payments-cards').classList.remove('hidden');
+    }
+
+    /* ── Proof popup ── */
+    function showProofPopup(p) {
+      const fmtM = n => 'Rp ' + Number(n||0).toLocaleString('id-ID');
+      const backdrop = document.createElement('div');
+      backdrop.className = 'proof-popup-backdrop';
+      const popup = document.createElement('div');
+      popup.className = 'proof-popup';
+
+      const isImg = p.proof_url && !p.proof_url.endsWith('.pdf');
+      popup.innerHTML = `
+        <div class="proof-popup-title">Bukti Pembayaran — ${p.client_name}</div>
+        ${isImg ? `<img src="${p.proof_url}" alt="Bukti Transfer">` : ''}
+        <div class="proof-popup-info">
+          <div class="pi-row"><span class="pi-key">Kategori</span><span>${p.category_name}</span></div>
+          <div class="pi-row"><span class="pi-key">Jenis</span><span style="text-transform:capitalize">${p.payment_type}</span></div>
+          <div class="pi-row"><span class="pi-key">Nominal DP</span><span style="font-weight:700;color:var(--green)">${fmtM(p.amount)}</span></div>
+          ${p.package_price ? `<div class="pi-row"><span class="pi-key">Harga Paket</span><span>${fmtM(p.package_price)}</span></div>` : ''}
+          <div class="pi-row"><span class="pi-key">Tgl Acara</span><span>${fmtDate(p.event_date)}</span></div>
+          ${p.reject_reason ? `<div class="pi-row"><span class="pi-key">Alasan</span><span style="color:var(--red)">${p.reject_reason}</span></div>` : ''}
+        </div>
+        ${p.proof_url ? `<a href="${p.proof_url}" target="_blank" class="btn btn-outline btn-sm" style="width:100%;text-align:center;margin-bottom:var(--sp-3);">&#x1F517; Buka File Asli</a>` : ''}
+        <div class="proof-popup-actions">
+          ${p.status === 'pending' ? `
+            <button class="btn btn-primary" onclick="approvePayment(${p.id}); closeProofPopup()">✅ Approve</button>
+            <button class="btn btn-danger" onclick="rejectPayment(${p.id}); closeProofPopup()">❌ Reject</button>
+          ` : `<button class="btn btn-outline" onclick="closeProofPopup()">Tutup</button>`}
+          ${p.status !== 'pending' ? '' : ''}
+          <button class="btn btn-outline" onclick="closeProofPopup()" style="${p.status === 'pending' ? 'flex:0;padding:8px 12px;' : ''}">&#x2715;</button>
+        </div>
+      `;
+
+      document.body.appendChild(backdrop);
+      document.body.appendChild(popup);
+      backdrop.addEventListener('click', closeProofPopup);
+      window._proofPopupEl = popup;
+      window._proofBackdropEl = backdrop;
+    }
+
+    function closeProofPopup() {
+      if (window._proofPopupEl) { window._proofPopupEl.remove(); window._proofPopupEl = null; }
+      if (window._proofBackdropEl) { window._proofBackdropEl.remove(); window._proofBackdropEl = null; }
+    }
+
+    async function approvePayment(id) {
+      if (!confirm('Approve pembayaran ini?')) return;
+      try {
+        const res = await fetch(`/api/finance/payments/${id}/approve`, { method: 'PATCH', headers: H });
+        if (!res.ok) { toast('Gagal approve', 'error'); return; }
+        toast('Pembayaran disetujui ✅', 'success');
+        loadPayments(); loadSummary();
+      } catch (e) { toast('Gagal', 'error'); }
+    }
+
+    async function rejectPayment(id) {
+      const reason = prompt('Alasan penolakan (opsional):');
+      if (reason === null) return;
+      try {
+        const res = await fetch(`/api/finance/payments/${id}/reject`, {
+          method: 'PATCH', headers: H, body: JSON.stringify({ reason })
+        });
+        if (!res.ok) { toast('Gagal reject', 'error'); return; }
+        toast('Pembayaran ditolak', 'info');
+        loadPayments(); loadSummary();
+      } catch (e) { toast('Gagal', 'error'); }
+    }
+
+    async function loadCategories() {
+      try {
+        const res = await fetch('/api/bookings/categories');
+        const cats = await res.json();
+        const sel = document.getElementById('filter-category');
+        cats.forEach(c => {
+          const opt = document.createElement('option'); opt.value = c.slug; opt.textContent = c.name;
+          sel.appendChild(opt);
+        });
+      } catch (e) {}
+    }
+
+    document.getElementById('btn-filter').addEventListener('click', loadPayments);
+    document.getElementById('btn-reset').addEventListener('click', () => {
+      ['filter-status', 'filter-category', 'filter-month'].forEach(id => { document.getElementById(id).value = ''; });
+      loadPayments();
+    });
+
+    async function exportCsv() {
+      try {
+        const res = await fetch('/api/finance/export', { headers: H });
+        if (!res.ok) throw new Error('Gagal export');
+        const blob = await res.blob();
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = 'Laporan_Keuangan_Jadiphoto_Moment.csv';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+      } catch (e) {
+        toast('Gagal mengunduh laporan', 'error');
+      }
+    }
+
+    loadCategories();
+    loadSummary();
+    loadPayments();
+  </script>
+</body>
+</html>

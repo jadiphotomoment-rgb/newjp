@@ -18,16 +18,33 @@ app.use(express.urlencoded({ extended: true }));
 // Serve static files from public/
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Serve uploaded payment proofs
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
 // ── API Routes ───────────────────────────────────────────────
-app.use('/api/auth',     require('./routes/auth'));
-app.use('/api/sessions', require('./routes/sessions'));
-app.use('/api/drive',    require('./routes/drive'));
-app.use('/api/notify',   require('./routes/notify'));
+app.use('/api/auth',       require('./routes/auth'));
+app.use('/api/sessions',   require('./routes/sessions'));
+app.use('/api/drive',      require('./routes/drive'));
+app.use('/api/notify',     require('./routes/notify'));
+
+// ── Scale-Up Routes ───────────────────────────────────────────
+app.use('/api/bookings',             require('./routes/bookings'));
+app.use('/api/booking-categories',   require('./routes/bookings'));  // alias publik
+app.use('/api/admin/categories',     require('./routes/categories'));
+app.use('/api/finance',              require('./routes/finance'));
 
 // ── Page Routes ──────────────────────────────────────────────
 // Root → redirect to admin login
 app.get('/', (req, res) => {
   res.redirect('/admin/login.html');
+});
+
+// Booking public pages
+app.get('/booking', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'booking.html'));
+});
+app.get('/upload-dp', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'upload-dp.html'));
 });
 
 // Ignore favicon to prevent 404 logs
@@ -65,11 +82,18 @@ app.use((err, req, res, next) => {
 
 // ── Start Server (Only if not running on Vercel) ───────────────
 if (require.main === module) {
-  app.listen(PORT, () => {
-    console.log('\n🚀 Sortir Foto Server berjalan!');
-    console.log(`   ➜ Local:   http://localhost:${PORT}`);
-    console.log(`   ➜ Admin:   http://localhost:${PORT}/admin/login.html`);
-    console.log(`   ➜ Gallery: http://localhost:${PORT}/gallery.html?session=UUID\n`);
+  db.init()
+  .then(() => {
+    app.listen(PORT, () => {
+      console.log(`✅ Server berjalan di http://localhost:${PORT}`);
+      // Initialize cron jobs
+      const { initBookingCleaner } = require('./cron/booking_cleaner');
+      initBookingCleaner();
+    });
+  })
+  .catch(err => {
+    console.error('❌ Gagal inisialisasi database:', err);
+    process.exit(1);
   });
 }
 
