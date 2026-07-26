@@ -226,6 +226,7 @@
           </div>
           <div class="cat-card-meta">
             DP: ${cat.dp_type === 'percent' ? cat.dp_value + '%' : 'Rp ' + Number(cat.dp_value).toLocaleString('id-ID')} ·
+            ${(cat.packages || []).length} paket harga ·
             ${cat.fields.length} field ·
             Warna kalender: <span style="color:${cat.color};">●</span>
           </div>
@@ -272,6 +273,18 @@
           </div>
           <button class="btn btn-outline btn-sm" style="margin-top:var(--sp-4);" onclick="addSlot(${cat.id})">
             ＋ Tambah Slot Jam
+          </button>
+
+          <!-- Package Price Settings -->
+          <div class="editor-panel-title" style="margin-top:var(--sp-5);">Daftar Paket Harga (Synchronized dengan DP Payment)</div>
+          <div class="alert alert-info" style="font-size:0.8rem; margin-bottom:var(--sp-3);">
+            Paket harga yang ditawarkan kepada klien saat memilih kategori ini. Nominal DP otomatis dihitung berdasarkan aturan DP di atas.
+          </div>
+          <div class="field-list" id="packages-${cat.id}">
+            ${(cat.packages || []).map((pkg, i) => renderPackageRow(cat.id, pkg, i)).join('')}
+          </div>
+          <button class="btn btn-outline btn-sm" style="margin-top:var(--sp-4);" onclick="addPackage(${cat.id})">
+            ＋ Tambah Paket Harga
           </button>
 
           <!-- Fields editor -->
@@ -365,6 +378,49 @@
       const cat = categories.find(c => c.id === catId);
       if (cat && cat.time_slots) cat.time_slots.splice(idx, 1);
       toggleEdit(catId); toggleEdit(catId); // re-render to fix index
+    }
+
+    /* ── Package Price Rendering & Logic ── */
+    function renderPackageRow(catId, pkg, idx) {
+      return `
+        <div class="field-item package-item" id="pkg-row-${catId}-${idx}" style="grid-template-columns: 1fr 1fr 1fr 36px; gap: 8px;">
+          <input type="hidden" id="pkg-id-${catId}-${idx}" value="${pkg.id || ''}">
+          <div class="form-group" style="margin:0;">
+            <label style="font-size:0.72rem;">Nama Paket</label>
+            <input type="text" id="pkg-name-${catId}-${idx}" value="${pkg.name || ''}" placeholder="Nama Paket (e.g. Silver)">
+          </div>
+          <div class="form-group" style="margin:0;">
+            <label style="font-size:0.72rem;">Harga (Rp)</label>
+            <input type="number" id="pkg-price-${catId}-${idx}" value="${pkg.price || 0}" min="0" placeholder="1000000">
+          </div>
+          <div class="form-group" style="margin:0;">
+            <label style="font-size:0.72rem;">Deskripsi / Fitur Paket</label>
+            <input type="text" id="pkg-desc-${catId}-${idx}" value="${pkg.description || ''}" placeholder="1 Photographer, 15 edited photos...">
+          </div>
+          <div class="field-actions" style="display:flex;align-items:flex-start;padding-top:22px;">
+            <button class="btn btn-danger btn-icon" onclick="removePackage(${catId}, ${idx})" aria-label="Hapus paket" style="padding:6px;">🗑</button>
+          </div>
+        </div>
+      `;
+    }
+
+    function addPackage(catId) {
+      const cat = categories.find(c => c.id === catId);
+      if (!cat) return;
+      if (!cat.packages) cat.packages = [];
+      const idx = cat.packages.length;
+      const newPkg = { id: `pkg_${Date.now()}_${idx}`, name: 'Paket Baru', price: 500000, description: 'Detail fitur paket' };
+      cat.packages.push(newPkg);
+      const list = document.getElementById(`packages-${catId}`);
+      if (list) list.insertAdjacentHTML('beforeend', renderPackageRow(catId, newPkg, idx));
+    }
+
+    function removePackage(catId, idx) {
+      const row = document.getElementById(`pkg-row-${catId}-${idx}`);
+      if (row) row.remove();
+      const cat = categories.find(c => c.id === catId);
+      if (cat && cat.packages) cat.packages.splice(idx, 1);
+      toggleEdit(catId); toggleEdit(catId);
     }
 
     function renderFieldRow(catId, f, idx) {
@@ -500,13 +556,30 @@
         });
       });
 
+      // Collect packages from DOM
+      const packages = [];
+      const pkgRows = document.querySelectorAll(`#packages-${catId} .package-item`);
+      pkgRows.forEach(row => {
+        const idEl    = row.querySelector(`[id^="pkg-id-"]`);
+        const nameEl  = row.querySelector(`[id^="pkg-name-"]`);
+        const priceEl = row.querySelector(`[id^="pkg-price-"]`);
+        const descEl  = row.querySelector(`[id^="pkg-desc-"]`);
+        if (!nameEl || !nameEl.value.trim()) return;
+        packages.push({
+          id: idEl && idEl.value ? idEl.value : `pkg_${Date.now()}_${Math.random().toString(36).substr(2,4)}`,
+          name: nameEl.value.trim(),
+          price: parseFloat(priceEl.value) || 0,
+          description: descEl ? descEl.value.trim() : ''
+        });
+      });
+
       const wa_template = document.getElementById(`cat-wa-${catId}`).value.trim();
 
       try {
         const res = await fetch(`/api/admin/categories/${catId}`, {
           method:  'PUT',
           headers: H,
-          body:    JSON.stringify({ name, fields, dp_type: dpType, dp_value: dpValue, color, time_slots, wa_template })
+          body:    JSON.stringify({ name, fields, packages, dp_type: dpType, dp_value: dpValue, color, time_slots, wa_template })
         });
         const data = await res.json();
         if (!res.ok) { toast(data.error || 'Gagal simpan', 'error'); return; }

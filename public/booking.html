@@ -231,6 +231,12 @@
       <div id="form-alert" class="alert alert-error hidden" role="alert"></div>
 
       <form id="booking-form" novalidate>
+        <!-- Package Selection -->
+        <div class="form-section" id="package-section" style="display:none;">
+          <div class="form-section-title">Pilih Paket Harga</div>
+          <div class="category-grid" id="package-grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); margin-bottom: var(--sp-4); padding: 0;"></div>
+        </div>
+
         <!-- Data Klien -->
         <div class="form-section">
           <div class="form-section-title">Data Klien</div>
@@ -298,6 +304,7 @@
     /* ── State ── */
     let categories = [];
     let selectedCat = null;
+    let selectedPkg = null;
 
     const CATEGORY_ICONS = {
       graduation: '🎓',
@@ -392,6 +399,9 @@
       // Render dynamic fields
       renderDynamicFields(selectedCat.fields || []);
       
+      // Render package options
+      renderPackages(selectedCat);
+
       // Reset jadwal
       document.getElementById('event-date').value = '';
       document.getElementById('time-slot-container').innerHTML = '<input type="time" id="event-time">';
@@ -402,6 +412,67 @@
       setTimeout(() => {
         document.getElementById('form-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
       }, 100);
+    }
+
+    /* ── Packages Logic ── */
+    function renderPackages(cat) {
+      const container = document.getElementById('package-section');
+      const grid = document.getElementById('package-grid');
+      const pkgs = cat.packages || [];
+      if (!pkgs.length) {
+        container.style.display = 'none';
+        selectedPkg = null;
+        updateDpDisplay();
+        return;
+      }
+      container.style.display = 'block';
+      grid.innerHTML = pkgs.map((p, idx) => `
+        <div class="category-card package-card ${idx === 0 ? 'active' : ''}" id="pkg-card-${p.id}"
+             style="padding: var(--sp-4); --cat-color: ${cat.color}; cursor:pointer;"
+             onclick="selectPackage('${p.id}')">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 6px;">
+            <div class="cat-name" style="font-size:1rem; margin:0;">${p.name}</div>
+            <span class="cat-dp-badge" style="margin:0; font-size:0.75rem;">Rp ${Number(p.price).toLocaleString('id-ID')}</span>
+          </div>
+          <div class="cat-desc" style="font-size:0.78rem;">${p.description || ''}</div>
+        </div>
+      `).join('');
+      selectPackage(pkgs[0].id);
+    }
+
+    function selectPackage(pkgId) {
+      if (!selectedCat || !selectedCat.packages) return;
+      selectedPkg = selectedCat.packages.find(p => p.id === pkgId) || null;
+      document.querySelectorAll('.package-card').forEach(c => c.classList.remove('active'));
+      const card = document.getElementById(`pkg-card-${pkgId}`);
+      if (card) card.classList.add('active');
+      updateDpDisplay();
+    }
+
+    function updateDpDisplay() {
+      const box = document.getElementById('dp-info-box');
+      const amountEl = document.getElementById('dp-amount-display');
+      const noteEl = document.getElementById('dp-note');
+      if (!selectedCat) { box.style.display = 'none'; return; }
+      box.style.display = 'block';
+
+      if (selectedPkg && selectedPkg.price > 0) {
+        let dp = 0;
+        if (selectedCat.dp_type === 'percent') {
+          dp = (selectedPkg.price * parseFloat(selectedCat.dp_value)) / 100;
+          noteEl.textContent = `Harga Paket (${selectedPkg.name}): Rp ${Number(selectedPkg.price).toLocaleString('id-ID')} · DP ${selectedCat.dp_value}%`;
+        } else {
+          dp = parseFloat(selectedCat.dp_value);
+          noteEl.textContent = `Harga Paket (${selectedPkg.name}): Rp ${Number(selectedPkg.price).toLocaleString('id-ID')} · DP Nominal Tetap`;
+        }
+        amountEl.textContent = `Rp ${Number(dp).toLocaleString('id-ID')}`;
+      } else if (selectedCat.dp_type === 'fixed') {
+        amountEl.textContent = `Rp ${Number(selectedCat.dp_value).toLocaleString('id-ID')}`;
+        noteEl.textContent = `DP Nominal Tetap Kategori ${selectedCat.name}`;
+      } else {
+        amountEl.textContent = `DP ${selectedCat.dp_value}%`;
+        noteEl.textContent = `Nominal DP dihitung berdasarkan total harga paket`;
+      }
     }
 
     /* ── Date Change (Fetch Slots) ── */
@@ -476,11 +547,14 @@
       });
 
       const payload = {
-        clientName:  document.getElementById('client-name').value.trim(),
-        clientPhone: document.getElementById('client-phone').value.trim(),
-        eventDate:   document.getElementById('event-date').value,
-        eventTime:   document.getElementById('event-time').value || null,
-        location:    document.getElementById('event-location').value.trim(),
+        clientName:   document.getElementById('client-name').value.trim(),
+        clientPhone:  document.getElementById('client-phone').value.trim(),
+        eventDate:    document.getElementById('event-date').value,
+        eventTime:    document.getElementById('event-time').value || null,
+        location:     document.getElementById('event-location').value.trim(),
+        packageId:    selectedPkg ? selectedPkg.id : null,
+        packagePrice: selectedPkg ? selectedPkg.price : null,
+        packageName:  selectedPkg ? selectedPkg.name : null,
         formData
       };
 

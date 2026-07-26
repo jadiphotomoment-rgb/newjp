@@ -139,7 +139,7 @@ function sendWhatsApp(target, message) {
 router.get('/categories', async (req, res) => {
   try {
     const { rows } = await db.query(
-      `SELECT id, slug, name, fields, dp_type, dp_value, color
+      `SELECT id, slug, name, fields, packages, dp_type, dp_value, color
        FROM booking_categories WHERE is_active = true ORDER BY id`
     );
     res.json(rows);
@@ -153,7 +153,7 @@ router.get('/categories', async (req, res) => {
 router.get('/categories/:slug', async (req, res) => {
   try {
     const { rows } = await db.query(
-      `SELECT id, slug, name, fields, dp_type, dp_value, color
+      `SELECT id, slug, name, fields, packages, dp_type, dp_value, color
        FROM booking_categories WHERE slug = $1 AND is_active = true`,
       [req.params.slug]
     );
@@ -221,7 +221,7 @@ router.get('/categories/:slug/slots', async (req, res) => {
 // POST /api/bookings/:categorySlug — submit booking baru
 router.post('/:categorySlug', async (req, res) => {
   const { categorySlug } = req.params;
-  const { clientName, clientPhone, eventDate, eventTime, location, formData } = req.body;
+  const { clientName, clientPhone, eventDate, eventTime, location, formData, packageId, packagePrice, packageName } = req.body;
 
   if (!clientName || !clientPhone || !eventDate) {
     return res.status(400).json({ error: 'clientName, clientPhone, dan eventDate wajib diisi' });
@@ -229,16 +229,45 @@ router.post('/:categorySlug', async (req, res) => {
 
   try {
     const catRes = await db.query(
-      'SELECT id, dp_type, dp_value, time_slots FROM booking_categories WHERE slug = $1 AND is_active = true',
+      'SELECT id, dp_type, dp_value, time_slots, packages FROM booking_categories WHERE slug = $1 AND is_active = true',
       [categorySlug]
     );
     if (!catRes.rows[0]) return res.status(404).json({ error: 'Kategori tidak ditemukan' });
     const category = catRes.rows[0];
 
+    // Tentukan paket harga & kalkulasi DP
+    let finalPackagePrice = parseFloat(packagePrice) || 0;
+    let finalPackageName = packageName || '';
+
+    const pkgs = category.packages || [];
+    if (packageId) {
+      const matchedPkg = pkgs.find(p => p.id === packageId);
+      if (matchedPkg) {
+        finalPackagePrice = parseFloat(matchedPkg.price) || 0;
+        finalPackageName = matchedPkg.name;
+      }
+    }
+
+    let dpAmount = 0;
+    if (finalPackagePrice > 0) {
+      if (category.dp_type === 'percent') {
+        dpAmount = (finalPackagePrice * parseFloat(category.dp_value)) / 100;
+      } else {
+        dpAmount = parseFloat(category.dp_value);
+      }
+    } else if (category.dp_type === 'fixed') {
+      dpAmount = parseFloat(category.dp_value);
+    }
+
+    const fullFormData = Object.assign({}, formData || {});
+    if (finalPackageName) {
+      fullFormData['_package_name'] = finalPackageName;
+      fullFormData['_package_price'] = finalPackagePrice;
+    }
+
     // Jika kategori memiliki time_slots yang diatur dan jam diisi
     const timeSlots = category.time_slots || [];
     if (timeSlots.length > 0 && eventTime) {
-      // Validasi apakah jam valid dan tidak penuh
       const slotConfig = timeSlots.find(s => s.time === eventTime);
       if (!slotConfig) {
         return res.status(400).json({ error: 'Jam yang dipilih tidak tersedia untuk layanan ini.' });
@@ -257,7 +286,6 @@ router.post('/:categorySlug', async (req, res) => {
         return res.status(409).json({ error: 'Maaf, jam yang dipilih sudah penuh (mencapai kuota). Silakan pilih jam atau tanggal lain.' });
       }
     } else {
-      // Cek bentrok fallback jika tidak menggunakan sistem time_slots
       const conflictRes = await db.query(
         `SELECT id FROM bookings WHERE event_date = $1 AND event_time = $2 AND status = 'confirmed'`,
         [eventDate, eventTime]
@@ -268,8 +296,8 @@ router.post('/:categorySlug', async (req, res) => {
     }
 
     const { rows } = await db.query(
-      `INSERT INTO bookings (category_id, client_name, client_phone, event_date, event_time, location, form_data)
-       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
+      `INSERT INTO bookings (category_id, client_name, client_phone, event_date, event_time, location, form_data, package_price, dp_amount)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
       [
         category.id,
         clientName.trim(),
@@ -277,7 +305,9 @@ router.post('/:categorySlug', async (req, res) => {
         eventDate,
         eventTime || null,
         location ? location.trim() : null,
-        JSON.stringify(formData || {})
+        JSON.stringify(fullFormData),
+        finalPackagePrice > 0 ? finalPackagePrice : null,
+        dpAmount > 0 ? dpAmount : null
       ]
     );
 

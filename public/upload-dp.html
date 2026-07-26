@@ -319,11 +319,14 @@
         document.getElementById('sum-name').textContent = booking.client_name;
         document.getElementById('sum-phone').textContent = booking.client_phone;
         document.getElementById('sum-date').textContent = new Date(booking.event_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
-        document.getElementById('sum-location').textContent = booking.location || '—';
+        
+        const pkgName = (booking.form_data && booking.form_data._package_name) || (booking.package_price ? 'Paket Custom' : 'Standard');
+        const pkgPriceFmt = booking.package_price ? ` (Rp ${Number(booking.package_price).toLocaleString('id-ID')})` : '';
+        document.getElementById('sum-location').textContent = pkgName + pkgPriceFmt;
 
         if (booking.dp_amount) {
           document.getElementById('dp-amount').textContent = 'Rp ' + Number(booking.dp_amount).toLocaleString('id-ID');
-          document.getElementById('dp-note').textContent = `${booking.dp_type === 'percent' ? booking.dp_value + '% dari harga paket' : 'Nominal tetap'}`;
+          document.getElementById('dp-note').textContent = `Down Payment (${booking.dp_type === 'percent' ? booking.dp_value + '% dari harga paket' : 'Nominal tetap'}) untuk ${pkgName}`;
         } else if (booking.calculated_dp) {
           document.getElementById('dp-amount').textContent = 'Rp ' + Number(booking.calculated_dp).toLocaleString('id-ID');
         }

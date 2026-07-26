@@ -124,6 +124,7 @@ CREATE TABLE booking_categories (
   slug VARCHAR(30) UNIQUE,              -- 'graduation','wedding','event','corporation'
   name VARCHAR(100),
   fields JSONB,                         -- schema field custom kategori ini
+  packages JSONB DEFAULT '[]',          -- daftar paket harga (CRUD admin, tersinkronisasi DP)
   dp_type VARCHAR(10) DEFAULT 'percent',-- 'percent' atau 'fixed'
   dp_value NUMERIC(12,2),               -- misal 30 (%) atau 500000 (rupiah)
   color VARCHAR(10),                    -- kode warna untuk tampilan kalender
@@ -245,10 +246,10 @@ PUT   /api/admin/booking-categories/:id              → update schema field & a
 
 ## 12. Hal yang Perlu Diputuskan Lebih Lanjut
 
-- [ ] Apakah `package_price` diisi manual oleh admin per booking, atau disiapkan sebagai daftar paket tetap per kategori?
+- [x] **Paket Harga Terstruktur (Disepakati & Diimplementasikan)**: `package_price` disiapkan sebagai daftar paket tetap per kategori (`packages` JSONB) yang dapat di-CRUD oleh Admin, dan terintegrasi otomatis dengan sistem pembayaran DP saat booking.
 - [ ] Apakah dibutuhkan fitur pelunasan bertahap (DP → cicilan → pelunasan), atau cukup dua tahap (DP → pelunasan)?
 - [ ] Apakah `dp_deadline` dan auto-cancel diperlukan di versi awal, atau bisa menyusul?
-- [ ] Format laporan keuangan: cukup ringkasan di dashboard, atau perlu fitur ekspor (misal ke Excel/PDF)?
+- [x] **Format laporan keuangan**: Fitur ekspor CSV (`Laporan_Keuangan_Jadiphoto_Moment.csv`) telah diimplementasikan.
 
 ---
 

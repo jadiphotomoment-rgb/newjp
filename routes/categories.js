@@ -33,9 +33,9 @@ router.get('/:id', auth, async (req, res) => {
   }
 });
 
-// PUT /api/admin/categories/:id — update kategori (form-builder)
+// PUT /api/admin/categories/:id — update kategori (form-builder & paket harga)
 router.put('/:id', auth, async (req, res) => {
-  const { name, fields, dp_type, dp_value, color, time_slots, wa_template } = req.body;
+  const { name, fields, packages, dp_type, dp_value, color, time_slots, wa_template } = req.body;
 
   if (!name) return res.status(400).json({ error: 'Nama kategori wajib diisi' });
   if (!['percent', 'fixed'].includes(dp_type)) {
@@ -59,16 +59,34 @@ router.put('/:id', auth, async (req, res) => {
     }
   }
 
+  // Validasi packages jika dikirim
+  const validPackages = Array.isArray(packages) ? packages.map((p, idx) => ({
+    id: p.id || `pkg_${Date.now()}_${idx}`,
+    name: (p.name || '').trim(),
+    price: parseFloat(p.price) || 0,
+    description: (p.description || '').trim()
+  })) : [];
+
   try {
     const { rows } = await db.query(
       `UPDATE booking_categories
-       SET name = $1, fields = $2, dp_type = $3, dp_value = $4, color = $5, time_slots = $6, wa_template = $7
-       WHERE id = $8
+       SET name = $1, fields = $2, dp_type = $3, dp_value = $4, color = $5, time_slots = $6, wa_template = $7, packages = $8
+       WHERE id = $9
        RETURNING *`,
-      [name.trim(), JSON.stringify(fields), dp_type, parseFloat(dp_value), color || '#7c6dfa', JSON.stringify(time_slots || []), wa_template || null, req.params.id]
+      [
+        name.trim(),
+        JSON.stringify(fields),
+        dp_type,
+        parseFloat(dp_value),
+        color || '#7c6dfa',
+        JSON.stringify(time_slots || []),
+        wa_template || null,
+        JSON.stringify(validPackages),
+        req.params.id
+      ]
     );
     if (!rows[0]) return res.status(404).json({ error: 'Kategori tidak ditemukan' });
-    res.json({ message: 'Kategori berhasil diperbarui', category: rows[0] });
+    res.json({ message: 'Kategori & Paket Harga berhasil diperbarui', category: rows[0] });
   } catch (err) {
     console.error('[categories] PUT error:', err);
     res.status(500).json({ error: 'Database error' });

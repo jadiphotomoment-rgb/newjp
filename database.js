@@ -93,6 +93,9 @@ const db = {
           IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='booking_categories' AND column_name='wa_template') THEN
             ALTER TABLE booking_categories ADD COLUMN wa_template TEXT;
           END IF;
+          IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='booking_categories' AND column_name='packages') THEN
+            ALTER TABLE booking_categories ADD COLUMN packages JSONB DEFAULT '[]'::jsonb;
+          END IF;
         END
         $$;
 
@@ -113,6 +116,7 @@ const db = {
           is_active  BOOLEAN NOT NULL DEFAULT true,
           time_slots JSONB DEFAULT '[]'::jsonb,
           wa_template TEXT,
+          packages   JSONB DEFAULT '[]'::jsonb,
           created_at TIMESTAMP DEFAULT now()
         );
 
@@ -170,6 +174,11 @@ const db = {
               { key: 'people_count', label: 'Jumlah Orang dalam Frame', type: 'number', required: true },
               { key: 'graduation_location', label: 'Lokasi Wisuda', type: 'text', required: true }
             ]),
+            packages: JSON.stringify([
+              { id: 'pkg_grad_1', name: 'Graduation Basic', price: 350000, description: '1 Sesi Foto, 10 High Res Edit Photos, All Raw Files via Drive' },
+              { id: 'pkg_grad_2', name: 'Graduation Premium', price: 650000, description: '2 Sesi Foto (Individual + Family), 20 Edited Photos, Cetak 10R Premium Frame' },
+              { id: 'pkg_grad_3', name: 'Graduation Ultimate', price: 1200000, description: 'Full Outdoor/Studio Session, Unlimited Edit Photos, Video Highlight 1 Menit' }
+            ]),
             dp_type: 'percent', dp_value: 20, color: '#22d374'
           },
           {
@@ -182,6 +191,11 @@ const db = {
               { key: 'session_count', label: 'Jumlah Sesi (Akad, Resepsi, dll)', type: 'number', required: true },
               { key: 'dresscode', label: 'Tema / Dresscode', type: 'text', required: false }
             ]),
+            packages: JSON.stringify([
+              { id: 'pkg_wed_1', name: 'Akad Only Package', price: 2500000, description: '1 Photographer, 1 Videographer, 50 Edited Photos, Video Teaser 1 Menit' },
+              { id: 'pkg_wed_2', name: 'Silver Wedding Package', price: 5000000, description: 'Akad + Resepsi (Max 6 Jam), 2 Photographers, Exclusive Album 20x30' },
+              { id: 'pkg_wed_3', name: 'Gold Luxury Wedding', price: 8500000, description: 'Full Day Coverage, Drone Cinematic Video, Photobooth 2 Jam, Premium Leather Album' }
+            ]),
             dp_type: 'percent', dp_value: 30, color: '#f472b6'
           },
           {
@@ -192,6 +206,10 @@ const db = {
               { key: 'event_type', label: 'Jenis Event', type: 'select', options: ['Ulang Tahun', 'Gathering', 'Seminar', 'Konser', 'Lainnya'], required: true },
               { key: 'guest_count', label: 'Estimasi Jumlah Tamu', type: 'number', required: false },
               { key: 'duration_hours', label: 'Durasi Acara (jam)', type: 'number', required: true }
+            ]),
+            packages: JSON.stringify([
+              { id: 'pkg_evt_1', name: 'Half Day Event', price: 1500000, description: 'Durasi hingga 4 Jam, 1 Photographer, All High-Res Softcopy Files' },
+              { id: 'pkg_evt_2', name: 'Full Day Event', price: 2800000, description: 'Durasi hingga 8 Jam, 2 Photographers, Highlight Reel Edit Photos' }
             ]),
             dp_type: 'percent', dp_value: 25, color: '#fb923c'
           },
@@ -205,18 +223,51 @@ const db = {
               { key: 'doc_type', label: 'Jenis Dokumentasi', type: 'select', options: ['Foto Produk', 'Corporate Event', 'Headshot Karyawan', 'Video Profil', 'Lainnya'], required: true },
               { key: 'npwp', label: 'NPWP Perusahaan (opsional)', type: 'text', required: false }
             ]),
+            packages: JSON.stringify([
+              { id: 'pkg_corp_1', name: 'Corporate Headshot', price: 2000000, description: 'Studio Lighting Setup, Up to 15 Executives Headshot, Retouched High-Res' },
+              { id: 'pkg_corp_2', name: 'Company Profile & Product', price: 4500000, description: 'Commercial Rights, Product Catalog Shoot, Office & Team In-Action Photo/Video' }
+            ]),
             dp_type: 'percent', dp_value: 50, color: '#60a5fa'
           }
         ];
 
         for (const cat of defaultCategories) {
           await pool.query(
-            `INSERT INTO booking_categories (slug, name, fields, dp_type, dp_value, color)
-             VALUES ($1, $2, $3, $4, $5, $6)`,
-            [cat.slug, cat.name, cat.fields, cat.dp_type, cat.dp_value, cat.color]
+            `INSERT INTO booking_categories (slug, name, fields, packages, dp_type, dp_value, color)
+             VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+            [cat.slug, cat.name, cat.fields, cat.packages, cat.dp_type, cat.dp_value, cat.color]
           );
         }
-        console.log('✅ Default booking categories seeded (graduation, wedding, event, corporation)');
+        console.log('✅ Default booking categories & packages seeded (graduation, wedding, event, corporation)');
+      }
+
+      // Populate packages for existing categories if packages is empty array
+      const seedPackages = {
+        graduation: [
+          { id: 'pkg_grad_1', name: 'Graduation Basic', price: 350000, description: '1 Sesi Foto, 10 High Res Edit Photos, All Raw Files via Drive' },
+          { id: 'pkg_grad_2', name: 'Graduation Premium', price: 650000, description: '2 Sesi Foto (Individual + Family), 20 Edited Photos, Cetak 10R Premium Frame' },
+          { id: 'pkg_grad_3', name: 'Graduation Ultimate', price: 1200000, description: 'Full Outdoor/Studio Session, Unlimited Edit Photos, Video Highlight 1 Menit' }
+        ],
+        wedding: [
+          { id: 'pkg_wed_1', name: 'Akad Only Package', price: 2500000, description: '1 Photographer, 1 Videographer, 50 Edited Photos, Video Teaser 1 Menit' },
+          { id: 'pkg_wed_2', name: 'Silver Wedding Package', price: 5000000, description: 'Akad + Resepsi (Max 6 Jam), 2 Photographers, Exclusive Album 20x30' },
+          { id: 'pkg_wed_3', name: 'Gold Luxury Wedding', price: 8500000, description: 'Full Day Coverage, Drone Cinematic Video, Photobooth 2 Jam, Premium Leather Album' }
+        ],
+        event: [
+          { id: 'pkg_evt_1', name: 'Half Day Event', price: 1500000, description: 'Durasi hingga 4 Jam, 1 Photographer, All High-Res Softcopy Files' },
+          { id: 'pkg_evt_2', name: 'Full Day Event', price: 2800000, description: 'Durasi hingga 8 Jam, 2 Photographers, Highlight Reel Edit Photos' }
+        ],
+        corporation: [
+          { id: 'pkg_corp_1', name: 'Corporate Headshot', price: 2000000, description: 'Studio Lighting Setup, Up to 15 Executives Headshot, Retouched High-Res' },
+          { id: 'pkg_corp_2', name: 'Company Profile & Product', price: 4500000, description: 'Commercial Rights, Product Catalog Shoot, Office & Team In-Action Photo/Video' }
+        ]
+      };
+
+      for (const [slug, pkgs] of Object.entries(seedPackages)) {
+        await pool.query(
+          `UPDATE booking_categories SET packages = $1 WHERE slug = $2 AND (packages IS NULL OR packages = '[]'::jsonb OR jsonb_array_length(packages) = 0)`,
+          [JSON.stringify(pkgs), slug]
+        );
       }
 
       // ── Seed default admin ────────────────────────────────────────
