@@ -119,6 +119,32 @@
         </div>
       </div>
 
+      <!-- Drive Config Panel -->
+      <div class="booking-summary" id="drive-config-panel" style="max-width:100%; margin-bottom:var(--sp-6); background:var(--bg-card); border:1px solid var(--border); border-radius:var(--r-xl); padding:var(--sp-6);">
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:var(--sp-4);">
+          <div style="display:flex; align-items:center; gap:var(--sp-3);">
+            <div style="font-size:1.5rem;">📁</div>
+            <div>
+              <div style="font-weight:700; font-size:0.95rem;">Google Drive — Folder Bukti Transfer (Global)</div>
+              <div style="font-size:0.78rem; color:var(--text-3);">Folder fallback jika kategori tidak punya folder sendiri</div>
+            </div>
+          </div>
+          <div id="drive-config-status" style="font-size:0.75rem; padding:4px 12px; border-radius:20px; font-weight:600; background:rgba(251,146,60,0.12); color:var(--orange); border:1px solid rgba(251,146,60,0.3);">Belum dikonfigurasi</div>
+        </div>
+        <div style="display:flex; gap:var(--sp-3); align-items:flex-end;">
+          <div class="form-group" style="flex:1; margin:0;">
+            <label for="global-drive-url" style="font-size:0.78rem;">URL Folder Google Drive Global</label>
+            <input type="text" id="global-drive-url" placeholder="https://drive.google.com/drive/folders/..." style="font-size:0.82rem;">
+          </div>
+          <button class="btn btn-primary btn-sm" id="btn-save-drive" onclick="saveGlobalDrive()" style="white-space:nowrap; padding:10px 16px;">💾 Simpan</button>
+          <button class="btn btn-outline btn-sm" id="btn-clear-drive" onclick="clearGlobalDrive()" style="white-space:nowrap; padding:10px 16px;">✕ Hapus</button>
+        </div>
+        <div id="drive-folder-display" style="display:none; margin-top:var(--sp-3); padding:var(--sp-3) var(--sp-4); background:rgba(34,211,116,0.05); border:1px solid rgba(34,211,116,0.25); border-radius:var(--r); font-size:0.82rem;">
+          <span style="color:var(--green); font-weight:600;">📂</span> <span id="drive-folder-display-name" style="font-weight:600;"></span>
+          <div style="font-size:0.72rem; color:var(--text-3); margin-top:2px;">ID: <span id="drive-folder-display-id" style="font-family:monospace;"></span></div>
+        </div>
+      </div>
+
       <!-- Session list header -->
       <div class="section-header">
         <h2>Sesi Sortir</h2>
@@ -345,15 +371,16 @@
   <div id="toast-container" role="status" aria-live="polite"></div>
 
   <script>
+    const _dashTok = localStorage.getItem('sf_token');
+    const _dashH   = { 'Authorization': `Bearer ${_dashTok}`, 'Content-Type': 'application/json' };
+
     // Load booking & finance quick stats for dashboard
     (async () => {
-      const tok = localStorage.getItem('sf_token');
-      if (!tok) return;
-      const H = { 'Authorization': `Bearer ${tok}` };
+      if (!_dashTok) return;
       try {
         const [bRes, fRes] = await Promise.all([
-          fetch('/api/bookings/admin/list', { headers: H }),
-          fetch('/api/finance/summary', { headers: H })
+          fetch('/api/bookings/admin/list', { headers: _dashH }),
+          fetch('/api/finance/summary', { headers: _dashH })
         ]);
         if (bRes.ok) {
           const bookings = await bRes.json();
@@ -370,6 +397,96 @@
         }
       } catch (e) { /* non-critical, fail silently */ }
     })();
+
+    /* ── Drive Global Config ── */
+    function extractDriveFolderId(input) {
+      if (!input) return null;
+      const urlMatch = input.match(/\/folders\/([a-zA-Z0-9_-]{10,})/);
+      if (urlMatch) return urlMatch[1];
+      if (/^[a-zA-Z0-9_-]{10,80}$/.test(input.trim())) return input.trim();
+      return null;
+    }
+
+    function driveToast(msg, type = 'info') {
+      const el = document.createElement('div');
+      el.className = `toast toast-${type}`; el.textContent = msg;
+      document.getElementById('toast-container').appendChild(el);
+      requestAnimationFrame(() => requestAnimationFrame(() => el.classList.add('show')));
+      setTimeout(() => { el.classList.remove('show'); setTimeout(() => el.remove(), 300); }, 4000);
+    }
+
+    async function loadGlobalDriveSettings() {
+      if (!_dashTok) return;
+      try {
+        const res = await fetch('/api/admin/categories/settings/all', { headers: _dashH });
+        if (!res.ok) return;
+        const data = await res.json();
+        const folderId = data.global_payment_folder_id?.value;
+        const statusEl = document.getElementById('drive-config-status');
+        const displayEl = document.getElementById('drive-folder-display');
+        const inputEl   = document.getElementById('global-drive-url');
+        if (folderId) {
+          if (statusEl) {
+            statusEl.textContent = '✅ Terkonfigurasi';
+            statusEl.style.background = 'rgba(34,211,116,0.12)';
+            statusEl.style.color = 'var(--green)';
+            statusEl.style.borderColor = 'rgba(34,211,116,0.3)';
+          }
+          if (inputEl) inputEl.value = 'https://drive.google.com/drive/folders/' + folderId;
+          if (displayEl) {
+            displayEl.style.display = 'block';
+            document.getElementById('drive-folder-display-name').textContent = data.global_payment_folder_name?.value || 'Folder Global Drive';
+            document.getElementById('drive-folder-display-id').textContent = folderId;
+          }
+        }
+      } catch (e) { /* non-critical */ }
+    }
+
+    async function saveGlobalDrive() {
+      const input = document.getElementById('global-drive-url');
+      if (!input || !input.value.trim()) { driveToast('Masukkan URL folder Drive terlebih dahulu', 'error'); return; }
+      const folderId = extractDriveFolderId(input.value.trim());
+      if (!folderId) { driveToast('URL folder Google Drive tidak valid', 'error'); return; }
+
+      try {
+        const res = await fetch('/api/admin/categories/settings/all', {
+          method: 'PUT', headers: _dashH,
+          body: JSON.stringify({ settings: {
+            global_payment_folder_id: folderId,
+            global_payment_folder_name: 'Folder Bukti Transfer Global'
+          }})
+        });
+        if (!res.ok) throw new Error();
+        driveToast('✅ Folder Drive global berhasil disimpan!', 'success');
+        loadGlobalDriveSettings();
+      } catch (e) { driveToast('Gagal menyimpan. Coba lagi.', 'error'); }
+    }
+
+    async function clearGlobalDrive() {
+      try {
+        const res = await fetch('/api/admin/categories/settings/all', {
+          method: 'PUT', headers: _dashH,
+          body: JSON.stringify({ settings: {
+            global_payment_folder_id: null,
+            global_payment_folder_name: null
+          }})
+        });
+        if (!res.ok) throw new Error();
+        document.getElementById('global-drive-url').value = '';
+        document.getElementById('drive-folder-display').style.display = 'none';
+        const statusEl = document.getElementById('drive-config-status');
+        if (statusEl) {
+          statusEl.textContent = 'Belum dikonfigurasi';
+          statusEl.style.background = 'rgba(251,146,60,0.12)';
+          statusEl.style.color = 'var(--orange)';
+          statusEl.style.borderColor = 'rgba(251,146,60,0.3)';
+        }
+        driveToast('Folder Drive global dihapus', 'info');
+      } catch (e) { driveToast('Gagal menghapus. Coba lagi.', 'error'); }
+    }
+
+    // Load Drive settings on page ready
+    loadGlobalDriveSettings();
   </script>
   <script src="/js/admin-dashboard.js?v=5" defer></script>
 </body>

@@ -56,3 +56,55 @@ Aplikasi ini adalah **Jadiphoto.Moment** (Aplikasi Booking, Keuangan & Perantara
 **5. Proses Pengerjaan (Kembali ke Admin)**
 - Admin menerima notifikasi, mengecek dashboard, dan melihat daftar foto mana saja (beserta catatannya) yang dipilih oleh klien.
 - Admin mengubah status pengerjaan (misalnya menjadi `editing`). Setelah pengeditan foto klien selesai, admin dapat memindahkan statusnya ke `done`.
+
+---
+
+## 🚀 Cara Menjalankan Secara Lokal
+
+### 1. Prasyarat
+- **Node.js** (v18.x atau v20.x direkomendasikan)
+- **npm** (bawaan Node.js)
+- Database **PostgreSQL** (bisa menggunakan [Neon](https://neon.tech), Supabase, atau PostgreSQL lokal)
+
+### 2. Instalasi & Konfigurasi
+
+1. **Masuk ke Direktori Proyek & Install Dependensi**:
+   ```bash
+   npm install
+   ```
+
+2. **Konfigurasi Environment (`.env`)**:
+   Salin file `.env.example` menjadi `.env` (jika belum ada):
+   ```bash
+   cp .env.example .env
+   ```
+   Buka file `.env` dan lengkapi konfigurasi berikut:
+   - `PORT`: Port server (default: `3000`)
+   - `JWT_SECRET`: Secret key acak untuk autentikasi JWT
+   - `DATABASE_URL`: Connection string PostgreSQL (contoh: `postgresql://user:password@host/dbname?sslmode=require`)
+   - `FONNTE_TOKEN`: Token API Fonnte untuk notifikasi WhatsApp
+   - `ADMIN_WHATSAPP`: Nomor WhatsApp Admin (format: `628xxxxxxxx`)
+   - `GOOGLE_SERVICE_ACCOUNT_EMAIL`: Email Service Account dari Google Cloud Console
+   - `GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY`: Private Key Service Account (dibungkus tanda kutip ganda `"..."`)
+
+### 3. Jalankan Aplikasi
+
+- **Mode Standar / Produksi**:
+  ```bash
+  npm start
+  ```
+
+- **Mode Pengembang (dengan auto-reload Nodemon)**:
+  ```bash
+  npm run dev
+  ```
+
+Saat dijalankan pertama kali, aplikasi akan otomatis membuat tabel-tabel yang diperlukan di database.
+
+### 4. Akses Halaman Web
+
+Setelah server berjalan di `http://localhost:3000`:
+- 🔐 **Admin Login**: `http://localhost:3000/` atau `http://localhost:3000/admin/login.html`
+- 📅 **Halaman Booking Publik**: `http://localhost:3000/booking`
+- 📊 **Dashboard Admin**: `http://localhost:3000/admin/dashboard.html`
+

@@ -9,6 +9,7 @@
 const params      = new URLSearchParams(location.search);
 const sessionUuid = params.get('session');
 const STORAGE_KEY_FAV = sessionUuid ? `sf_fav_${sessionUuid}` : null;
+const STORAGE_KEY_SEL = sessionUuid ? `sf_sel_${sessionUuid}` : null;
 
 // ── State ────────────────────────────────────────────────────────
 let sessionData   = null;
@@ -25,6 +26,24 @@ if (STORAGE_KEY_FAV) {
     favorites = new Set(saved);
   } catch (_) {}
 }
+
+// ── Load selectedFiles dari localStorage (persist antar refresh) ─
+if (STORAGE_KEY_SEL) {
+  try {
+    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY_SEL) || '[]');
+    // saved = array of { id, name, note }
+    saved.forEach(entry => selectedFiles.set(entry.id, entry));
+  } catch (_) {}
+}
+
+// ── Peringatan sebelum menutup/refresh halaman ───────────────────
+window.addEventListener('beforeunload', (e) => {
+  if (selectedFiles.size > 0) {
+    e.preventDefault();
+    // Teks ini mungkin tidak ditampilkan oleh browser modern, tapi event-nya cukup
+    e.returnValue = 'Anda memiliki pilihan foto yang belum dikirim. Yakin ingin meninggalkan halaman?';
+  }
+});
 
 // ── DOM refs ─────────────────────────────────────────────────────
 const stateLoading   = document.getElementById('state-loading');
@@ -130,6 +149,20 @@ function saveFavorites() {
   }
 }
 
+// ── Save selectedFiles to localStorage ───────────────────────────
+function saveSelections() {
+  if (STORAGE_KEY_SEL) {
+    localStorage.setItem(STORAGE_KEY_SEL, JSON.stringify([...selectedFiles.values()]));
+  }
+}
+
+// ── Clear savedSelections (setelah submit berhasil) ───────────────
+function clearSelections() {
+  if (STORAGE_KEY_SEL) {
+    localStorage.removeItem(STORAGE_KEY_SEL);
+  }
+}
+
 // ── Toggle favorite ──────────────────────────────────────────────
 function toggleFavorite(file, btn) {
   if (favorites.has(file.id)) {
@@ -180,6 +213,7 @@ function toggleSelect(file) {
     }
     selectedFiles.set(file.id, { id: file.id, name: file.name, note: '' });
   }
+  saveSelections(); // ← persist ke localStorage setiap ada perubahan
   updateQuotaUI();
 }
 
@@ -277,7 +311,10 @@ function createPhotoCard(file) {
   noteInput.addEventListener('input', (e) => {
     e.stopPropagation();
     const entry = selectedFiles.get(file.id);
-    if (entry) entry.note = noteInput.value;
+    if (entry) {
+      entry.note = noteInput.value;
+      saveSelections(); // ← persist note ke localStorage
+    }
   });
   noteInput.addEventListener('click', e => e.stopPropagation());
   noteInput.addEventListener('keydown', e => e.stopPropagation());
@@ -423,6 +460,10 @@ document.getElementById('btn-confirm-submit').addEventListener('click', async ()
     }).join('');
     showState('success');
 
+    // Hapus data pilihan dari localStorage setelah submit berhasil
+    clearSelections();
+    localStorage.removeItem(STORAGE_KEY_FAV); // bersihkan juga favorites
+
     // Refresh page jadi tracker setelah 3 detik
     setTimeout(() => location.reload(), 3000);
 
@@ -562,6 +603,12 @@ async function init() {
 
   // 4. Render gallery
   showState('gallery');
+
+  // Restore pilihan dari localStorage yang tersimpan sebelumnya
+  if (selectedFiles.size > 0) {
+    showToast(`♻️ ${selectedFiles.size} pilihan foto sebelumnya berhasil dipulihkan.`, 'info');
+  }
+
   updateQuotaUI();
   updateFavCounter();
   renderNextBatch();

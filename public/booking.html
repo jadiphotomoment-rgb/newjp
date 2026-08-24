@@ -100,8 +100,8 @@
 
     /* Dynamic form */
     .booking-form-wrap {
-      max-width: 680px; margin: 0 auto;
-      padding: 0 var(--sp-5) var(--sp-10);
+      max-width: 720px; margin: 0 auto;
+      padding: 0 var(--sp-5) var(--sp-16);
     }
     .booking-form-card {
       background: var(--bg-card);
@@ -169,7 +169,233 @@
     .step.done .step-dot { background: var(--green); border-color: var(--green); color: #fff; }
     .step-label { font-size: 0.7rem; color: var(--text-3); }
     .step.active .step-label { color: var(--purple-2); font-weight: 600; }
+
+    /* ========== TIX ID Style Components ========== */
+
+    /* Date Pill Row */
+    .date-picker-wrap {
+      margin-bottom: var(--sp-5);
+    }
+    .date-picker-label {
+      font-size: 0.72rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.08em; color: var(--text-3);
+      margin-bottom: var(--sp-3);
+    }
+    .date-pill-row {
+      display: flex; gap: var(--sp-2); overflow-x: auto;
+      padding-bottom: var(--sp-2); scrollbar-width: none;
+    }
+    .date-pill-row::-webkit-scrollbar { display: none; }
+    .date-pill {
+      flex-shrink: 0;
+      display: flex; flex-direction: column; align-items: center;
+      padding: var(--sp-3) var(--sp-4);
+      border-radius: var(--r-lg); border: 2px solid var(--border);
+      cursor: pointer; background: var(--bg-2);
+      min-width: 64px;
+      transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+      user-select: none;
+    }
+    .date-pill:hover:not(.disabled) {
+      border-color: var(--cat-color, var(--purple));
+      transform: translateY(-2px);
+      background: var(--bg-card);
+    }
+    .date-pill.active {
+      border-color: var(--cat-color, var(--purple));
+      background: color-mix(in srgb, var(--cat-color, var(--purple)) 12%, transparent);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--cat-color, var(--purple)) 20%, transparent);
+      transform: translateY(-2px);
+    }
+    .date-pill.disabled { opacity: 0.4; cursor: not-allowed; }
+    .date-pill-day {
+      font-size: 0.68rem; font-weight: 600; color: var(--text-3);
+      text-transform: uppercase; letter-spacing: 0.05em;
+    }
+    .date-pill-date {
+      font-family: 'Outfit', sans-serif; font-size: 1.25rem; font-weight: 800;
+      color: var(--text-0); line-height: 1;
+    }
+    .date-pill.active .date-pill-day,
+    .date-pill.active .date-pill-date { color: var(--cat-color, var(--purple)); }
+    .date-pill-month { font-size: 0.65rem; color: var(--text-3); }
+
+    /* Slot Time Grid */
+    .slot-section {
+      margin-bottom: var(--sp-5);
+      animation: fadeUp 0.25s ease;
+    }
+    .slot-loading {
+      display: flex; align-items: center; gap: var(--sp-2);
+      color: var(--text-3); font-size: 0.82rem; padding: var(--sp-4) 0;
+    }
+    .slot-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+      gap: var(--sp-2);
+    }
+    .slot-box {
+      display: flex; flex-direction: column; align-items: center;
+      padding: var(--sp-3) var(--sp-2);
+      border-radius: var(--r-lg); border: 2px solid var(--border);
+      cursor: pointer; background: var(--bg-2);
+      transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+      position: relative; overflow: hidden;
+      user-select: none;
+    }
+    .slot-box::before {
+      content: ''; position: absolute; inset: 0;
+      background: var(--cat-color, var(--purple));
+      opacity: 0; transition: opacity 0.2s;
+    }
+    .slot-box:hover:not(.slot-full):not(.slot-free-time) {
+      border-color: var(--cat-color, var(--purple));
+      transform: translateY(-2px);
+    }
+    .slot-box:hover:not(.slot-full)::before { opacity: 0.08; }
+    .slot-box.slot-selected {
+      border-color: var(--cat-color, var(--purple));
+      background: color-mix(in srgb, var(--cat-color, var(--purple)) 10%, var(--bg-2));
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--cat-color, var(--purple)) 20%, transparent);
+      transform: translateY(-2px);
+    }
+    .slot-box.slot-selected::before { opacity: 0.06; }
+    .slot-box.slot-full {
+      opacity: 0.4; cursor: not-allowed;
+    }
+    .slot-box.slot-limited {
+      border-color: rgba(251,146,60,0.5);
+    }
+    .slot-box.slot-free-time {
+      cursor: default; border-style: dashed;
+    }
+    .slot-box * { position: relative; z-index: 1; }
+    .slot-time {
+      font-family: 'Outfit', sans-serif; font-size: 1rem; font-weight: 800;
+      color: var(--text-0);
+    }
+    .slot-box.slot-selected .slot-time { color: var(--cat-color, var(--purple)); }
+    .slot-quota {
+      font-size: 0.65rem; font-weight: 600; margin-top: 2px;
+      color: var(--text-3);
+    }
+    .slot-box.slot-selected .slot-quota { color: var(--cat-color, var(--purple)); opacity: 0.8; }
+    .slot-box.slot-limited .slot-quota { color: var(--orange); }
+    .slot-box.slot-full .slot-quota { color: var(--red); }
+    .slot-check {
+      position: absolute; top: 4px; right: 6px;
+      font-size: 0.65rem; opacity: 0;
+      transition: opacity 0.2s;
+    }
+    .slot-box.slot-selected .slot-check { opacity: 1; }
+
+    /* Free time input (when no slots configured) */
+    .free-time-input-wrap {
+      display: flex; align-items: center; gap: var(--sp-3);
+      padding: var(--sp-4);
+      background: var(--bg-2);
+      border: 1px solid var(--border);
+      border-radius: var(--r-lg);
+    }
+    .free-time-input-wrap label {
+      margin: 0; font-size: 0.82rem; white-space: nowrap; color: var(--text-2);
+    }
+    .free-time-input-wrap input[type=time] { margin: 0; max-width: 160px; }
+
+    /* Premium Package Stack */
+    .pkg-stack {
+      display: flex; flex-direction: column; gap: var(--sp-3);
+      margin-bottom: var(--sp-5);
+    }
+    .pkg-stack-item {
+      display: flex; align-items: stretch;
+      border: 2px solid var(--border);
+      border-radius: var(--r-xl);
+      cursor: pointer; overflow: hidden;
+      transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+      background: var(--bg-2);
+      position: relative;
+    }
+    .pkg-stack-item:hover {
+      border-color: var(--cat-color, var(--purple));
+      transform: translateX(4px);
+      background: var(--bg-card);
+    }
+    .pkg-stack-item.selected {
+      border-color: var(--cat-color, var(--purple));
+      background: color-mix(in srgb, var(--cat-color, var(--purple)) 6%, var(--bg-card));
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--cat-color, var(--purple)) 20%, transparent),
+                  0 4px 20px rgba(0,0,0,0.15);
+      transform: translateX(4px);
+    }
+    .pkg-stack-accent {
+      width: 5px; flex-shrink: 0;
+      background: var(--cat-color, var(--purple));
+      opacity: 0.4;
+      transition: opacity 0.25s;
+    }
+    .pkg-stack-item.selected .pkg-stack-accent { opacity: 1; }
+    .pkg-stack-body {
+      flex: 1; padding: var(--sp-4) var(--sp-5);
+      display: flex; align-items: center; gap: var(--sp-4);
+    }
+    .pkg-stack-info { flex: 1; }
+    .pkg-stack-name {
+      font-family: 'Outfit', sans-serif; font-weight: 800;
+      font-size: 0.98rem; margin-bottom: 4px;
+    }
+    .pkg-stack-item.selected .pkg-stack-name { color: var(--cat-color, var(--purple)); }
+    .pkg-stack-desc { font-size: 0.78rem; color: var(--text-2); line-height: 1.5; }
+    .pkg-stack-right { text-align: right; flex-shrink: 0; }
+    .pkg-stack-price {
+      font-family: 'Outfit', sans-serif; font-weight: 900;
+      font-size: 1.05rem; color: var(--text-0);
+    }
+    .pkg-stack-item.selected .pkg-stack-price { color: var(--cat-color, var(--purple)); }
+    .pkg-stack-dp {
+      font-size: 0.68rem; color: var(--text-3); margin-top: 2px;
+    }
+    .pkg-stack-check {
+      width: 22px; height: 22px; border-radius: 50%;
+      border: 2px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.75rem; flex-shrink: 0;
+      transition: all 0.2s;
+    }
+    .pkg-stack-item.selected .pkg-stack-check {
+      background: var(--cat-color, var(--purple));
+      border-color: var(--cat-color, var(--purple));
+      color: #fff;
+    }
+
+    /* Sticky Summary Bar */
+    .sticky-summary {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      z-index: 100;
+      background: var(--bg-card);
+      border-top: 1px solid var(--border);
+      padding: var(--sp-4) var(--sp-5);
+      display: none;
+      align-items: center; gap: var(--sp-4);
+      box-shadow: 0 -8px 32px rgba(0,0,0,0.12);
+      backdrop-filter: blur(12px);
+    }
+    .sticky-summary.visible { display: flex; }
+    .sticky-summary-info { flex: 1; display: flex; gap: var(--sp-4); flex-wrap: wrap; }
+    .sticky-chip {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 0.78rem;
+    }
+    .sticky-chip-label { color: var(--text-3); }
+    .sticky-chip-value { font-weight: 700; color: var(--text-0); }
+    .sticky-chip-dp {
+      font-size: 0.72rem; padding: 2px 8px;
+      background: rgba(34,211,116,0.12);
+      border: 1px solid rgba(34,211,116,0.3);
+      border-radius: 20px; font-weight: 700; color: var(--green);
+    }
   </style>
+
 </head>
 <body>
   <div class="bg-mesh" aria-hidden="true"></div>
@@ -231,10 +457,10 @@
       <div id="form-alert" class="alert alert-error hidden" role="alert"></div>
 
       <form id="booking-form" novalidate>
-        <!-- Package Selection -->
+        <!-- Package Selection — Premium TIX-style Stack -->
         <div class="form-section" id="package-section" style="display:none;">
-          <div class="form-section-title">Pilih Paket Harga</div>
-          <div class="category-grid" id="package-grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); margin-bottom: var(--sp-4); padding: 0;"></div>
+          <div class="form-section-title">Pilih Paket Layanan</div>
+          <div class="pkg-stack" id="package-grid"></div>
         </div>
 
         <!-- Data Klien -->
@@ -252,22 +478,29 @@
           </div>
         </div>
 
-        <!-- Jadwal -->
-        <div class="form-section">
-          <div class="form-section-title">Jadwal Acara</div>
-          <div class="form-row">
-            <div class="form-group">
-              <label for="event-date">Tanggal Acara *</label>
-              <input type="date" id="event-date" required>
-            </div>
-            <div class="form-group">
-              <label for="event-time">Jam Acara</label>
-              <div id="time-slot-container">
-                <input type="time" id="event-time">
-              </div>
-              <small id="time-slot-hint" style="color:var(--text-3); font-size:0.7rem; display:none;">Pilih tanggal untuk melihat jam tersedia.</small>
-            </div>
+        <!-- TIX ID-style: Pilih Tanggal + Sesi -->
+        <div class="form-section" id="schedule-section">
+          <div class="form-section-title">Pilih Tanggal &amp; Sesi</div>
+
+          <!-- Date Pill Row -->
+          <div class="date-picker-wrap">
+            <div class="date-picker-label">📅 Pilih Tanggal</div>
+            <div class="date-pill-row" id="date-pill-row" aria-label="Pilih tanggal acara"></div>
           </div>
+
+          <!-- Slot Time Grid (appears after date selection) -->
+          <div class="slot-section" id="slot-section" style="display:none;">
+            <div class="date-picker-label">🕐 Pilih Sesi Waktu</div>
+            <div id="slot-content">
+              <div class="slot-loading">
+                <div class="spinner" style="width:16px;height:16px;border-width:2px;"></div>
+                <span>Mengecek ketersediaan sesi...</span>
+              </div>
+            </div>
+            <div class="alert alert-info" id="slot-hint" style="font-size:0.78rem; margin-top:var(--sp-3); display:none;"></div>
+          </div>
+
+          <!-- Location -->
           <div class="form-group" style="margin-top: var(--sp-4);">
             <label for="event-location">Lokasi Acara</label>
             <input type="text" id="event-location" placeholder="Nama gedung / kota">
@@ -300,11 +533,37 @@
 
   <div id="toast-container" role="status" aria-live="polite"></div>
 
+  <!-- Sticky Summary Bar -->
+  <div class="sticky-summary" id="sticky-summary" role="status" aria-label="Ringkasan booking">
+    <div class="sticky-summary-info">
+      <div class="sticky-chip">
+        <span class="sticky-chip-label">Layanan:</span>
+        <span class="sticky-chip-value" id="sticky-cat">—</span>
+      </div>
+      <div class="sticky-chip">
+        <span class="sticky-chip-label">Paket:</span>
+        <span class="sticky-chip-value" id="sticky-pkg">—</span>
+      </div>
+      <div class="sticky-chip">
+        <span class="sticky-chip-label">Tanggal:</span>
+        <span class="sticky-chip-value" id="sticky-date">—</span>
+      </div>
+      <div class="sticky-chip">
+        <span class="sticky-chip-label">Sesi:</span>
+        <span class="sticky-chip-value" id="sticky-time">—</span>
+      </div>
+      <div class="sticky-chip-dp" id="sticky-dp" style="display:none;"></div>
+    </div>
+  </div>
+
   <script>
     /* ── State ── */
     let categories = [];
     let selectedCat = null;
     let selectedPkg = null;
+    let selectedDate = null;  // 'YYYY-MM-DD'
+    let selectedTime = null;  // 'HH:MM' or null
+    let currentSlots = [];    // slots for current date
 
     const CATEGORY_ICONS = {
       graduation: '🎓',
@@ -318,6 +577,8 @@
       event: 'Ulang tahun, gathering, seminar, konser, dan acara khusus',
       corporation: 'Foto produk, headshot karyawan, dan event perusahaan'
     };
+    const DAY_NAMES = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
+    const MONTH_NAMES = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Ags','Sep','Okt','Nov','Des'];
 
     /* ── Toast ── */
     function toast(msg, type = 'info') {
@@ -326,10 +587,7 @@
       el.textContent = msg;
       document.getElementById('toast-container').appendChild(el);
       requestAnimationFrame(() => { requestAnimationFrame(() => el.classList.add('show')); });
-      setTimeout(() => {
-        el.classList.remove('show');
-        setTimeout(() => el.remove(), 300);
-      }, 4000);
+      setTimeout(() => { el.classList.remove('show'); setTimeout(() => el.remove(), 300); }, 4000);
     }
 
     /* ── Load categories ── */
@@ -369,7 +627,6 @@
         </div>`;
       }).join('');
 
-      // keyboard support
       grid.querySelectorAll('.category-card').forEach(card => {
         card.addEventListener('keydown', e => {
           if (e.key === 'Enter' || e.key === ' ') selectCategory(card.dataset.slug);
@@ -382,39 +639,189 @@
       selectedCat = categories.find(c => c.slug === slug);
       if (!selectedCat) return;
 
-      // Update active state on cards
+      // Reset state
+      selectedPkg = null;
+      selectedDate = null;
+      selectedTime = null;
+      currentSlots = [];
+
       document.querySelectorAll('.category-card').forEach(c => c.classList.remove('active'));
       const card = document.getElementById(`cat-${slug}`);
-      if (card) { card.classList.add('active'); card.style.setProperty('--cat-color', selectedCat.color); }
+      if (card) { card.classList.add('active'); }
 
-      // Update steps
+      // Set CSS variable for cat color on form
+      document.getElementById('form-section').style.setProperty('--cat-color', selectedCat.color);
+
       document.getElementById('step-1').classList.replace('active', 'done');
       document.getElementById('step-2').classList.add('active');
 
-      // Update form header
       document.getElementById('form-cat-icon').textContent = CATEGORY_ICONS[slug] || '📷';
       document.getElementById('form-cat-name').textContent = `Booking ${selectedCat.name}`;
       document.getElementById('dynamic-section-title').textContent = `Detail ${selectedCat.name}`;
 
-      // Render dynamic fields
       renderDynamicFields(selectedCat.fields || []);
-      
-      // Render package options
       renderPackages(selectedCat);
+      renderDatePills();
 
-      // Reset jadwal
-      document.getElementById('event-date').value = '';
-      document.getElementById('time-slot-container').innerHTML = '<input type="time" id="event-time">';
-      document.getElementById('time-slot-hint').style.display = 'none';
+      // Reset slot section
+      document.getElementById('slot-section').style.display = 'none';
+      document.getElementById('dp-info-box').style.display = 'none';
 
-      // Show form
+      updateStickySummary();
+
       document.getElementById('form-section').classList.remove('hidden');
       setTimeout(() => {
         document.getElementById('form-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
       }, 100);
     }
 
-    /* ── Packages Logic ── */
+    /* ── TIX-style: Date Pills ── */
+    function renderDatePills() {
+      const row = document.getElementById('date-pill-row');
+      const today = new Date();
+      today.setHours(0,0,0,0);
+      const pills = [];
+      for (let i = 0; i < 14; i++) {
+        const d = new Date(today);
+        d.setDate(today.getDate() + i);
+        const dateStr = d.toISOString().slice(0, 10);
+        const dayName = DAY_NAMES[d.getDay()];
+        const dateNum = d.getDate();
+        const monthStr = MONTH_NAMES[d.getMonth()];
+        const isActive = dateStr === selectedDate;
+        pills.push(`
+          <div class="date-pill ${isActive ? 'active' : ''}" 
+               onclick="selectDate('${dateStr}')"
+               role="button" tabindex="0"
+               aria-label="${dayName} ${dateNum} ${monthStr}"
+               aria-pressed="${isActive}">
+            <div class="date-pill-day">${dayName}</div>
+            <div class="date-pill-date">${dateNum}</div>
+            <div class="date-pill-month">${monthStr}</div>
+          </div>`);
+      }
+      row.innerHTML = pills.join('');
+      row.querySelectorAll('.date-pill').forEach(pill => {
+        pill.addEventListener('keydown', e => {
+          const dateStr = pill.getAttribute('onclick').match(/'(.+)'/)?.[1];
+          if ((e.key === 'Enter' || e.key === ' ') && dateStr) selectDate(dateStr);
+        });
+      });
+    }
+
+    /* ── TIX-style: Select Date ── */
+    async function selectDate(dateStr) {
+      if (selectedDate === dateStr) return;
+      selectedDate = dateStr;
+      selectedTime = null;
+
+      // Update pill active state
+      document.querySelectorAll('.date-pill').forEach(p => p.classList.remove('active'));
+      const clickedPills = document.querySelectorAll('.date-pill');
+      clickedPills.forEach(p => {
+        if (p.getAttribute('onclick')?.includes(dateStr)) p.classList.add('active');
+      });
+
+      // Show slot section + loading
+      const slotSection = document.getElementById('slot-section');
+      slotSection.style.display = 'block';
+      document.getElementById('slot-content').innerHTML = `
+        <div class="slot-loading">
+          <div class="spinner" style="width:16px;height:16px;border-width:2px;"></div>
+          <span>Mengecek ketersediaan sesi...</span>
+        </div>`;
+      document.getElementById('slot-hint').style.display = 'none';
+
+      updateStickySummary();
+
+      if (!selectedCat) return;
+      try {
+        const res = await fetch(`/api/booking-categories/${selectedCat.slug}/slots?date=${dateStr}`);
+        if (!res.ok) throw new Error();
+        currentSlots = await res.json();
+        renderSlotGrid(currentSlots);
+      } catch (err) {
+        currentSlots = [];
+        renderSlotGrid([]);
+      }
+    }
+
+    /* ── TIX-style: Slot Grid ── */
+    function renderSlotGrid(slots) {
+      const content = document.getElementById('slot-content');
+      const hint = document.getElementById('slot-hint');
+
+      if (!slots || slots.length === 0) {
+        // Bebas isi jam (free time input)
+        content.innerHTML = `
+          <div class="free-time-input-wrap">
+            <label for="event-time-free">⏰ Jam Acara:</label>
+            <input type="time" id="event-time-free" onchange="selectFreeTime(this.value)">
+          </div>`;
+        hint.textContent = 'Tidak ada sesi terjadwal — Anda bebas memilih jam.';
+        hint.style.display = 'block';
+        selectedTime = null;
+        return;
+      }
+
+      const hasLimited = slots.some(s => s.available && (s.quota - s.booked) <= 2);
+      if (hasLimited) {
+        hint.textContent = '⚠️ Beberapa sesi hampir penuh. Segera booking!';
+        hint.style.display = 'block';
+      }
+
+      content.innerHTML = `<div class="slot-grid">` +
+        slots.map(s => {
+          const remaining = s.quota - s.booked;
+          const pct = s.booked / s.quota;
+          let cls = 'slot-box';
+          let quotaText = '';
+          let statusText = '';
+          if (!s.available) {
+            cls += ' slot-full';
+            quotaText = 'Penuh';
+            statusText = '✕';
+          } else if (pct >= 0.6) {
+            cls += ' slot-limited';
+            quotaText = `Sisa ${remaining}`;
+          } else {
+            quotaText = `${remaining} tersedia`;
+          }
+          if (s.time === selectedTime) cls += ' slot-selected';
+          return `
+          <div class="${cls}" 
+               onclick="${s.available ? `selectSlot('${s.time}')` : ''}"
+               role="${s.available ? 'button' : 'presentation'}"
+               tabindex="${s.available ? '0' : '-1'}"
+               aria-label="Jam ${s.time} ${quotaText}"
+               aria-pressed="${s.time === selectedTime}">
+            <span class="slot-check">✓</span>
+            <div class="slot-time">${s.time}</div>
+            <div class="slot-quota">${quotaText}</div>
+          </div>`;
+        }).join('') + `</div>`;
+
+      content.querySelectorAll('.slot-box:not(.slot-full)').forEach(box => {
+        box.addEventListener('keydown', e => {
+          const t = box.getAttribute('onclick')?.match(/'(.+)'/)?.[1];
+          if ((e.key === 'Enter' || e.key === ' ') && t) selectSlot(t);
+        });
+      });
+    }
+
+    function selectSlot(time) {
+      selectedTime = time;
+      // Re-render grid to update active state
+      renderSlotGrid(currentSlots);
+      updateStickySummary();
+    }
+
+    function selectFreeTime(time) {
+      selectedTime = time || null;
+      updateStickySummary();
+    }
+
+    /* ── Premium Package Stack ── */
     function renderPackages(cat) {
       const container = document.getElementById('package-section');
       const grid = document.getElementById('package-grid');
@@ -426,27 +833,73 @@
         return;
       }
       container.style.display = 'block';
-      grid.innerHTML = pkgs.map((p, idx) => `
-        <div class="category-card package-card ${idx === 0 ? 'active' : ''}" id="pkg-card-${p.id}"
-             style="padding: var(--sp-4); --cat-color: ${cat.color}; cursor:pointer;"
-             onclick="selectPackage('${p.id}')">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 6px;">
-            <div class="cat-name" style="font-size:1rem; margin:0;">${p.name}</div>
-            <span class="cat-dp-badge" style="margin:0; font-size:0.75rem;">Rp ${Number(p.price).toLocaleString('id-ID')}</span>
+
+      let dpCalc = '';
+      if (cat.dp_type === 'percent') {
+        dpCalc = `DP ${cat.dp_value}%`;
+      } else {
+        dpCalc = `DP Rp ${Number(cat.dp_value).toLocaleString('id-ID')} (tetap)`;
+      }
+
+      grid.innerHTML = pkgs.map((p, idx) => {
+        let dp = 0;
+        if (cat.dp_type === 'percent') {
+          dp = (p.price * parseFloat(cat.dp_value)) / 100;
+        } else {
+          dp = parseFloat(cat.dp_value);
+        }
+        const dpFmt = `DP: Rp ${Number(dp).toLocaleString('id-ID')}`;
+        const isFirst = idx === 0;
+        return `
+        <div class="pkg-stack-item ${isFirst ? 'selected' : ''}" id="pkg-card-${p.id}"
+             style="--cat-color:${cat.color};"
+             onclick="selectPackage('${p.id}')"
+             role="button" tabindex="0"
+             aria-label="Pilih paket ${p.name}" aria-pressed="${isFirst}">
+          <div class="pkg-stack-accent"></div>
+          <div class="pkg-stack-body">
+            <div class="pkg-stack-info">
+              <div class="pkg-stack-name">${p.name}</div>
+              <div class="pkg-stack-desc">${p.description || ''}</div>
+            </div>
+            <div class="pkg-stack-right">
+              <div class="pkg-stack-price">Rp ${Number(p.price).toLocaleString('id-ID')}</div>
+              <div class="pkg-stack-dp">${dpFmt}</div>
+            </div>
+            <div class="pkg-stack-check" id="pkg-check-${p.id}">${isFirst ? '✓' : ''}</div>
           </div>
-          <div class="cat-desc" style="font-size:0.78rem;">${p.description || ''}</div>
-        </div>
-      `).join('');
+        </div>`;
+      }).join('');
+
+      // Keyboard support
+      grid.querySelectorAll('.pkg-stack-item').forEach(item => {
+        item.addEventListener('keydown', e => {
+          const id = item.getAttribute('onclick')?.match(/'(.+)'/)?.[1];
+          if ((e.key === 'Enter' || e.key === ' ') && id) selectPackage(id);
+        });
+      });
+
+      // Select first package by default
       selectPackage(pkgs[0].id);
     }
 
     function selectPackage(pkgId) {
       if (!selectedCat || !selectedCat.packages) return;
       selectedPkg = selectedCat.packages.find(p => p.id === pkgId) || null;
-      document.querySelectorAll('.package-card').forEach(c => c.classList.remove('active'));
-      const card = document.getElementById(`pkg-card-${pkgId}`);
-      if (card) card.classList.add('active');
+
+      document.querySelectorAll('.pkg-stack-item').forEach(c => {
+        c.classList.remove('selected');
+        c.setAttribute('aria-pressed', 'false');
+      });
+      document.querySelectorAll('[id^="pkg-check-"]').forEach(c => { c.textContent = ''; });
+
+      const card  = document.getElementById(`pkg-card-${pkgId}`);
+      const check = document.getElementById(`pkg-check-${pkgId}`);
+      if (card)  { card.classList.add('selected'); card.setAttribute('aria-pressed', 'true'); }
+      if (check) check.textContent = '✓';
+
       updateDpDisplay();
+      updateStickySummary();
     }
 
     function updateDpDisplay() {
@@ -475,41 +928,35 @@
       }
     }
 
-    /* ── Date Change (Fetch Slots) ── */
-    document.getElementById('event-date').addEventListener('change', async (e) => {
-      const date = e.target.value;
-      if (!selectedCat || !date) return;
-      
-      const container = document.getElementById('time-slot-container');
-      const hint = document.getElementById('time-slot-hint');
-      
-      try {
-        container.innerHTML = '<span style="font-size:0.8rem; color:var(--text-3);">Memuat jadwal...</span>';
-        const res = await fetch(`/api/booking-categories/${selectedCat.slug}/slots?date=${date}`);
-        if (!res.ok) throw new Error();
-        const slots = await res.json();
-        
-        if (!slots || slots.length === 0) {
-          // Bebas isi jam
-          container.innerHTML = '<input type="time" id="event-time">';
-          hint.style.display = 'none';
-        } else {
-          // Pilihan jam berkuota
-          let opts = '<option value="">-- Pilih Jam --</option>';
-          slots.forEach(s => {
-            if (s.available) {
-              opts += `<option value="${s.time}">${s.time} (Sisa ${s.quota - s.booked})</option>`;
-            } else {
-              opts += `<option value="${s.time}" disabled>${s.time} (Penuh)</option>`;
-            }
-          });
-          container.innerHTML = `<select id="event-time" required>${opts}</select>`;
-          hint.style.display = 'block';
-        }
-      } catch (err) {
-        container.innerHTML = '<input type="time" id="event-time">';
+    /* ── Sticky Summary Bar ── */
+    function updateStickySummary() {
+      const bar = document.getElementById('sticky-summary');
+      if (!selectedCat) { bar.classList.remove('visible'); return; }
+
+      bar.classList.add('visible');
+      document.getElementById('sticky-cat').textContent  = `${CATEGORY_ICONS[selectedCat.slug] || '📷'} ${selectedCat.name}`;
+      document.getElementById('sticky-pkg').textContent  = selectedPkg ? selectedPkg.name : '—';
+
+      if (selectedDate) {
+        const d = new Date(selectedDate + 'T00:00:00');
+        document.getElementById('sticky-date').textContent = `${d.getDate()} ${MONTH_NAMES[d.getMonth()]}`;
+      } else {
+        document.getElementById('sticky-date').textContent = '—';
       }
-    });
+      document.getElementById('sticky-time').textContent = selectedTime || '—';
+
+      // DP chip
+      const dpEl = document.getElementById('sticky-dp');
+      if (selectedPkg && selectedPkg.price > 0) {
+        let dp = selectedCat.dp_type === 'percent'
+          ? (selectedPkg.price * parseFloat(selectedCat.dp_value)) / 100
+          : parseFloat(selectedCat.dp_value);
+        dpEl.textContent = `DP Rp ${Number(dp).toLocaleString('id-ID')}`;
+        dpEl.style.display = 'block';
+      } else {
+        dpEl.style.display = 'none';
+      }
+    }
 
     /* ── Render dynamic fields ── */
     function renderDynamicFields(fields) {
@@ -535,11 +982,19 @@
     document.getElementById('booking-form').addEventListener('submit', async (e) => {
       e.preventDefault();
       if (!selectedCat) { toast('Pilih kategori terlebih dahulu', 'error'); return; }
+      if (!selectedDate) { toast('Pilih tanggal terlebih dahulu', 'error'); return; }
 
-      const alert = document.getElementById('form-alert');
-      alert.classList.add('hidden');
+      const alertEl = document.getElementById('form-alert');
+      alertEl.classList.add('hidden');
 
-      // Kumpulkan dynamic fields
+      // Resolve event time
+      let eventTime = selectedTime;
+      if (!eventTime) {
+        // Try free time input
+        const freeInput = document.getElementById('event-time-free');
+        if (freeInput) eventTime = freeInput.value || null;
+      }
+
       const formData = {};
       (selectedCat.fields || []).forEach(f => {
         const el = document.getElementById(`dyn-${f.key}`);
@@ -549,8 +1004,8 @@
       const payload = {
         clientName:   document.getElementById('client-name').value.trim(),
         clientPhone:  document.getElementById('client-phone').value.trim(),
-        eventDate:    document.getElementById('event-date').value,
-        eventTime:    document.getElementById('event-time').value || null,
+        eventDate:    selectedDate,
+        eventTime:    eventTime || null,
         location:     document.getElementById('event-location').value.trim(),
         packageId:    selectedPkg ? selectedPkg.id : null,
         packagePrice: selectedPkg ? selectedPkg.price : null,
@@ -559,8 +1014,8 @@
       };
 
       if (!payload.clientName || !payload.clientPhone || !payload.eventDate) {
-        alert.textContent = 'Nama, no. WhatsApp, dan tanggal acara wajib diisi.';
-        alert.classList.remove('hidden');
+        alertEl.textContent = 'Nama, no. WhatsApp, dan tanggal acara wajib diisi.';
+        alertEl.classList.remove('hidden');
         return;
       }
 
@@ -578,27 +1033,22 @@
         const data = await res.json();
 
         if (!res.ok) {
-          alert.textContent = data.error || 'Gagal submit booking';
-          alert.classList.remove('hidden');
+          alertEl.textContent = data.error || 'Gagal submit booking';
+          alertEl.classList.remove('hidden');
           btn.disabled = false; spinner.classList.add('hidden'); btnText.classList.remove('hidden');
           return;
         }
 
-        // Redirect ke halaman upload DP
         window.location.href = `/upload-dp.html?booking=${data.bookingId}`;
       } catch (err) {
-        alert.textContent = 'Terjadi kesalahan. Coba lagi.';
-        alert.classList.remove('hidden');
+        alertEl.textContent = 'Terjadi kesalahan. Coba lagi.';
+        alertEl.classList.remove('hidden');
         btn.disabled = false; spinner.classList.add('hidden'); btnText.classList.remove('hidden');
       }
     });
 
     /* ── Init ── */
     loadCategories();
-
-    // Set min date to today
-    const today = new Date().toISOString().slice(0, 10);
-    document.getElementById('event-date').min = today;
   </script>
 </body>
 </html>

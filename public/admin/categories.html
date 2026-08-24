@@ -125,6 +125,30 @@
       color: #22d374;
     }
     .var-chip-btn.chip-form:hover { background: rgba(34,211,116,0.22); }
+
+    /* Drive Folder Picker */
+    .drive-folder-picker {
+      background: rgba(66,133,244,0.06);
+      border: 1px solid rgba(66,133,244,0.25);
+      border-radius: var(--r-lg);
+      padding: var(--sp-5);
+      margin-top: var(--sp-4);
+    }
+    .drive-folder-picker .folder-status {
+      display: flex; align-items: center; gap: var(--sp-3);
+      padding: var(--sp-3) var(--sp-4);
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      margin-top: var(--sp-3);
+      font-size: 0.82rem;
+    }
+    .drive-folder-picker .folder-status.ok { border-color: rgba(34,211,116,0.4); background: rgba(34,211,116,0.05); }
+    .drive-folder-picker .folder-status.empty { border-color: rgba(251,146,60,0.4); background: rgba(251,146,60,0.05); }
+    .drive-folder-icon { font-size: 1.2rem; flex-shrink: 0; }
+    .drive-folder-info { flex: 1; min-width: 0; }
+    .drive-folder-name { font-weight: 600; color: var(--text-0); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .drive-folder-id { font-size: 0.72rem; color: var(--text-3); font-family: monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   </style>
 </head>
 <body>
@@ -295,6 +319,29 @@
           <button class="btn btn-outline btn-sm" style="margin-top:var(--sp-4);" onclick="addField(${cat.id})">
             ＋ Tambah Field
           </button>
+
+          <!-- Drive Folder Picker -->
+          <div class="editor-panel-title" style="margin-top:var(--sp-5);">📁 Folder Google Drive untuk Bukti Transfer</div>
+          <div class="drive-folder-picker" id="drive-picker-${cat.id}">
+            <div style="font-size:0.82rem; color:var(--text-2); margin-bottom:var(--sp-3);">
+              Tentukan folder Google Drive tempat bukti transfer kategori <strong>${cat.name}</strong> akan disimpan. Kosongkan untuk pakai folder global.
+            </div>
+            <div class="form-group" style="margin-bottom:var(--sp-2);">
+              <label for="drive-url-${cat.id}">URL atau ID Folder Google Drive</label>
+              <div style="display:flex; gap:var(--sp-2);">
+                <input type="text" id="drive-url-${cat.id}" value="${cat.drive_folder_id ? 'https://drive.google.com/drive/folders/' + cat.drive_folder_id : ''}" placeholder="https://drive.google.com/drive/folders/..." style="flex:1; font-size:0.82rem;">
+                <button type="button" class="btn btn-outline btn-sm" onclick="applyDriveUrl(${cat.id})" style="white-space:nowrap;">✓ Terapkan</button>
+              </div>
+            </div>
+            <div class="folder-status ${cat.drive_folder_id ? 'ok' : 'empty'}" id="drive-status-${cat.id}">
+              <span class="drive-folder-icon">${cat.drive_folder_id ? '📂' : '📁'}</span>
+              <div class="drive-folder-info">
+                <div class="drive-folder-name" id="drive-fname-${cat.id}">${cat.drive_folder_id ? (cat.drive_folder_name || 'Folder dikonfigurasi') : 'Belum ada folder yang dipilih'}</div>
+                <div class="drive-folder-id" id="drive-fid-${cat.id}">${cat.drive_folder_id ? 'ID: ' + cat.drive_folder_id : 'Upload akan menggunakan folder global atau .env'}</div>
+              </div>
+              ${cat.drive_folder_id ? `<button type="button" style="background:rgba(239,68,68,0.1);color:var(--red);border:none;font-size:0.75rem;padding:4px 8px;border-radius:6px;cursor:pointer;" onclick="clearDriveFolder(${cat.id})">✕ Hapus</button>` : ''}
+            </div>
+          </div>
 
           <!-- WhatsApp Template -->
           <div class="editor-panel-title" style="margin-top:var(--sp-5);">Template Pesan WhatsApp (Approve DP)</div>
@@ -575,11 +622,24 @@
 
       const wa_template = document.getElementById(`cat-wa-${catId}`).value.trim();
 
+      // Collect drive folder from DOM
+      const driveUrlEl = document.getElementById(`drive-url-${catId}`);
+      let drive_folder_id = null;
+      let drive_folder_name = null;
+      if (driveUrlEl && driveUrlEl.value.trim()) {
+        drive_folder_id = extractDriveFolderId(driveUrlEl.value.trim());
+        if (!drive_folder_id) {
+          toast('URL folder Google Drive tidak valid', 'error');
+          return;
+        }
+        drive_folder_name = driveUrlEl.dataset.folderName || null;
+      }
+
       try {
         const res = await fetch(`/api/admin/categories/${catId}`, {
           method:  'PUT',
           headers: H,
-          body:    JSON.stringify({ name, fields, packages, dp_type: dpType, dp_value: dpValue, color, time_slots, wa_template })
+          body:    JSON.stringify({ name, fields, packages, dp_type: dpType, dp_value: dpValue, color, time_slots, wa_template, drive_folder_id, drive_folder_name })
         });
         const data = await res.json();
         if (!res.ok) { toast(data.error || 'Gagal simpan', 'error'); return; }
@@ -587,6 +647,50 @@
         editingId = null;
         loadCategories();
       } catch (e) { toast('Gagal simpan', 'error'); }
+    }
+
+    /* ── Drive Folder Helper Functions ── */
+    function extractDriveFolderId(input) {
+      if (!input) return null;
+      // Coba extract dari URL: /folders/FOLDER_ID atau /folders/FOLDER_ID?...
+      const urlMatch = input.match(/\/folders\/([a-zA-Z0-9_-]{10,})/);
+      if (urlMatch) return urlMatch[1];
+      // Jika sudah berupa ID langsung (tanpa slash dan panjang 28-50 char)
+      if (/^[a-zA-Z0-9_-]{10,80}$/.test(input.trim())) return input.trim();
+      return null;
+    }
+
+    function applyDriveUrl(catId) {
+      const input = document.getElementById(`drive-url-${catId}`);
+      if (!input) return;
+      const folderId = extractDriveFolderId(input.value.trim());
+      if (!folderId) {
+        toast('Format URL tidak valid. Pastikan URL berisi /folders/...', 'error');
+        return;
+      }
+      // Update status display
+      const statusEl = document.getElementById(`drive-status-${catId}`);
+      const fnameEl  = document.getElementById(`drive-fname-${catId}`);
+      const fidEl    = document.getElementById(`drive-fid-${catId}`);
+      if (statusEl) { statusEl.className = 'folder-status ok'; }
+      if (fnameEl)  fnameEl.textContent = 'Folder dikonfigurasi (simpan untuk menyimpan)';
+      if (fidEl)    fidEl.textContent   = 'ID: ' + folderId;
+      // Simpan ID ke data attr supaya saveCategory bisa baca
+      input.value = 'https://drive.google.com/drive/folders/' + folderId;
+      input.dataset.folderId = folderId;
+      toast('✅ Folder ID berhasil diekstrak: ' + folderId.substring(0,12) + '...', 'success');
+    }
+
+    function clearDriveFolder(catId) {
+      const input  = document.getElementById(`drive-url-${catId}`);
+      const status = document.getElementById(`drive-status-${catId}`);
+      const fname  = document.getElementById(`drive-fname-${catId}`);
+      const fid    = document.getElementById(`drive-fid-${catId}`);
+      if (input)  { input.value = ''; delete input.dataset.folderId; delete input.dataset.folderName; }
+      if (status) status.className = 'folder-status empty';
+      if (fname)  fname.textContent = 'Belum ada folder yang dipilih';
+      if (fid)    fid.textContent   = 'Upload akan menggunakan folder global atau .env';
+      toast('Folder Drive dihapus dari kategori ini', 'info');
     }
 
     loadCategories();

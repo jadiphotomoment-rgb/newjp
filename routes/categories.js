@@ -35,7 +35,7 @@ router.get('/:id', auth, async (req, res) => {
 
 // PUT /api/admin/categories/:id — update kategori (form-builder & paket harga)
 router.put('/:id', auth, async (req, res) => {
-  const { name, fields, packages, dp_type, dp_value, color, time_slots, wa_template } = req.body;
+  const { name, fields, packages, dp_type, dp_value, color, time_slots, wa_template, drive_folder_id, drive_folder_name } = req.body;
 
   if (!name) return res.status(400).json({ error: 'Nama kategori wajib diisi' });
   if (!['percent', 'fixed'].includes(dp_type)) {
@@ -70,8 +70,9 @@ router.put('/:id', auth, async (req, res) => {
   try {
     const { rows } = await db.query(
       `UPDATE booking_categories
-       SET name = $1, fields = $2, dp_type = $3, dp_value = $4, color = $5, time_slots = $6, wa_template = $7, packages = $8
-       WHERE id = $9
+       SET name = $1, fields = $2, dp_type = $3, dp_value = $4, color = $5, time_slots = $6, wa_template = $7, packages = $8,
+           drive_folder_id = $9, drive_folder_name = $10
+       WHERE id = $11
        RETURNING *`,
       [
         name.trim(),
@@ -82,6 +83,8 @@ router.put('/:id', auth, async (req, res) => {
         JSON.stringify(time_slots || []),
         wa_template || null,
         JSON.stringify(validPackages),
+        drive_folder_id ? drive_folder_id.trim() : null,
+        drive_folder_name ? drive_folder_name.trim() : null,
         req.params.id
       ]
     );
@@ -104,6 +107,41 @@ router.patch('/:id/toggle', auth, async (req, res) => {
     res.json({ message: `Kategori ${rows[0].is_active ? 'diaktifkan' : 'dinonaktifkan'}`, ...rows[0] });
   } catch (err) {
     console.error('[categories] toggle error:', err);
+    res.status(500).json({ error: 'Database error' });
+  }
+});
+
+// GET /api/admin/settings — ambil semua konfigurasi app
+router.get('/settings/all', auth, async (req, res) => {
+  try {
+    const { rows } = await db.query('SELECT key, value, label FROM app_settings ORDER BY key');
+    const settings = {};
+    for (const r of rows) settings[r.key] = { value: r.value, label: r.label };
+    res.json(settings);
+  } catch (err) {
+    console.error('[settings] GET error:', err);
+    res.status(500).json({ error: 'Database error' });
+  }
+});
+
+// PUT /api/admin/settings — update konfigurasi app
+router.put('/settings/all', auth, async (req, res) => {
+  const { settings } = req.body; // { key: value, ... }
+  if (!settings || typeof settings !== 'object') {
+    return res.status(400).json({ error: 'Body harus berupa { settings: { key: value } }' });
+  }
+  try {
+    for (const [key, value] of Object.entries(settings)) {
+      await db.query(
+        `INSERT INTO app_settings (key, value, updated_at)
+         VALUES ($1, $2, now())
+         ON CONFLICT (key) DO UPDATE SET value = $2, updated_at = now()`,
+        [key, value || null]
+      );
+    }
+    res.json({ message: 'Pengaturan berhasil disimpan' });
+  } catch (err) {
+    console.error('[settings] PUT error:', err);
     res.status(500).json({ error: 'Database error' });
   }
 });

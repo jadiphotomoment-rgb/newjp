@@ -96,10 +96,33 @@ const db = {
           IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='booking_categories' AND column_name='packages') THEN
             ALTER TABLE booking_categories ADD COLUMN packages JSONB DEFAULT '[]'::jsonb;
           END IF;
+          IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='booking_categories' AND column_name='drive_folder_id') THEN
+            ALTER TABLE booking_categories ADD COLUMN drive_folder_id VARCHAR(255);
+          END IF;
+          IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='booking_categories' AND column_name='drive_folder_name') THEN
+            ALTER TABLE booking_categories ADD COLUMN drive_folder_name VARCHAR(255);
+          END IF;
         END
         $$;
 
         CREATE INDEX IF NOT EXISTS idx_sessions_slug ON sessions(short_slug);
+      `);
+
+      // ── Create app_settings table (key-value store untuk konfigurasi) ──
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS app_settings (
+          key        VARCHAR(100) PRIMARY KEY,
+          value      TEXT,
+          label      VARCHAR(255),
+          updated_at TIMESTAMP DEFAULT now()
+        );
+
+        -- Seed default Drive settings jika belum ada
+        INSERT INTO app_settings (key, value, label)
+        VALUES
+          ('global_payment_folder_id',   NULL, 'ID Folder Google Drive (Global Fallback)'),
+          ('global_payment_folder_name', NULL, 'Nama Folder Google Drive (Global Fallback)')
+        ON CONFLICT (key) DO NOTHING;
       `);
 
       // ── Create new tables (Scale-Up) ──────────────────────────────
