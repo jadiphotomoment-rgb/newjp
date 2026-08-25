@@ -245,7 +245,7 @@
   </div>
 
   <script type="module">
-    import { upload } from 'https://esm.sh/@vercel/blob@0.27.3/client';
+    import { put } from 'https://esm.sh/@vercel/blob@0.27.3/client';
 
     let selectedFile = null;
 
@@ -356,10 +356,9 @@
         if (!clientToken) throw new Error('Server tidak mengembalikan clientToken.');
         log(`[Step 1 OK] Token diterima: ${clientToken.slice(0, 30)}...`, 'success');
 
-        // STEP 2: Upload langsung ke Vercel Blob dengan token eksplisit
-        // (BUKAN handleUploadUrl — supaya tidak ada 2-phase protocol yang konflik CORS)
+        // STEP 2: Upload langsung ke Vercel Blob dengan put() + token eksplisit
         log(`[Step 2] Mengunggah file ke Vercel Blob Storage...`, 'info');
-        const blobResult = await upload(pathname, selectedFile, {
+        const blobResult = await put(pathname, selectedFile, {
           access: 'public',
           token: clientToken,
           onUploadProgress: ({ percentage }) => {

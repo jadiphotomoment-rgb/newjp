@@ -307,7 +307,7 @@
   <div id="toast-container" role="status" aria-live="polite"></div>
 
   <script type="module">
-    import { upload } from 'https://esm.sh/@vercel/blob@0.27.3/client';
+    import { put } from 'https://esm.sh/@vercel/blob@0.27.3/client';
 
     function toast(msg, type = 'info') {
       const el = document.createElement('div');
@@ -477,10 +477,9 @@
         const { clientToken } = await tokenRes.json();
         if (!clientToken) return setError('Token upload tidak valid. Coba muat ulang halaman.');
 
-        // STEP 2: Upload langsung ke Vercel Blob menggunakan SDK resmi
-        // (SDK menangani CORS dengan benar via clientToken vercel_blob_client_...)
+        // STEP 2: Upload langsung ke Vercel Blob menggunakan put() dengan client token
         setProgress(30, 'Mengunggah file...');
-        const blobResult = await upload(pathname, selectedFile, {
+        const blobResult = await put(pathname, selectedFile, {
           access: 'public',
           token: clientToken,
           onUploadProgress: ({ percentage }) => {
