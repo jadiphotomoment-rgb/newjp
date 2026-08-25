@@ -44,6 +44,23 @@ function isBlobConfigured() {
 }
 
 /**
+ * GET /api/upload/status
+ *
+ * Cek status konfigurasi Vercel Blob di server
+ */
+router.get('/status', (req, res) => {
+  const configured = isBlobConfigured();
+  res.json({
+    configured: configured,
+    message: configured
+      ? '✅ Vercel Blob Storage terkonfigurasi di server.'
+      : '⚠️ BLOB_READ_WRITE_TOKEN belum diset di file .env server.',
+    allowedTypes: ALLOWED_MIME_TYPES,
+    maxSizeMB: MAX_FILE_SIZE / (1024 * 1024),
+  });
+});
+
+/**
  * POST /api/upload/token
  *
  * Endpoint yang dipanggil oleh client saat inisialisasi upload ke Vercel Blob.

@@ -82,10 +82,9 @@ Aplikasi ini adalah **Jadiphoto.Moment** (Aplikasi Booking, Keuangan & Perantara
    - `PORT`: Port server (default: `3000`)
    - `JWT_SECRET`: Secret key acak untuk autentikasi JWT
    - `DATABASE_URL`: Connection string PostgreSQL (contoh: `postgresql://user:password@host/dbname?sslmode=require`)
+   - `BLOB_READ_WRITE_TOKEN`: Token akses Vercel Blob (didapat dari Vercel Dashboard > Storage > Blob Store)
    - `FONNTE_TOKEN`: Token API Fonnte untuk notifikasi WhatsApp
    - `ADMIN_WHATSAPP`: Nomor WhatsApp Admin (format: `628xxxxxxxx`)
-   - `GOOGLE_SERVICE_ACCOUNT_EMAIL`: Email Service Account dari Google Cloud Console
-   - `GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY`: Private Key Service Account (dibungkus tanda kutip ganda `"..."`)
 
 ### 3. Jalankan Aplikasi
 

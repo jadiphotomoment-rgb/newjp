@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Testing Setup Vercel Blob Upload</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css?v=3">
+  <style>
+    body {
+      min-height: 100vh;
+      background: var(--bg-0);
+      color: var(--text-0);
+      font-family: 'Inter', sans-serif;
+      padding: var(--sp-6) var(--sp-4);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .test-container {
+      width: 100%;
+      max-width: 640px;
+      margin: 0 auto;
+    }
+    .header-box {
+      text-align: center;
+      margin-bottom: var(--sp-6);
+    }
+    .header-box h1 {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.6rem;
+      font-weight: 800;
+      margin-bottom: var(--sp-2);
+      background: linear-gradient(135deg, #fff, #94a3b8);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .header-box p {
+      font-size: 0.88rem;
+      color: var(--text-2);
+    }
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--r-xl);
+      padding: var(--sp-6);
+      margin-bottom: var(--sp-5);
+      box-shadow: var(--shadow-sm);
+    }
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      margin-bottom: var(--sp-4);
+    }
+    .status-ok {
+      background: rgba(34, 211, 116, 0.15);
+      color: var(--green);
+      border: 1px solid rgba(34, 211, 116, 0.3);
+    }
+    .status-err {
+      background: rgba(244, 63, 94, 0.15);
+      color: var(--red);
+      border: 1px solid rgba(244, 63, 94, 0.3);
+    }
+    .form-group {
+      margin-bottom: var(--sp-4);
+    }
+    .form-group label {
+      display: block;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-2);
+      margin-bottom: var(--sp-2);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .form-control {
+      width: 100%;
+      padding: 10px 14px;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      color: var(--text-0);
+      font-size: 0.9rem;
+      font-family: inherit;
+    }
+    .form-control:focus {
+      outline: none;
+      border-color: var(--purple);
+    }
+    .dropzone {
+      border: 2px dashed var(--border);
+      border-radius: var(--r-lg);
+      padding: var(--sp-6);
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      position: relative;
+      background: var(--bg-2);
+    }
+    .dropzone:hover, .dropzone.drag-over {
+      border-color: var(--purple);
+      background: rgba(124, 109, 250, 0.08);
+    }
+    .dropzone input[type=file] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+      width: 100%;
+      height: 100%;
+    }
+    .file-info {
+      display: none;
+      padding: var(--sp-3) var(--sp-4);
+      background: rgba(124, 109, 250, 0.1);
+      border: 1px solid rgba(124, 109, 250, 0.3);
+      border-radius: var(--r);
+      margin-top: var(--sp-3);
+      font-size: 0.85rem;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .file-info.show { display: flex; }
+    .log-box {
+      background: #090d16;
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: var(--r-lg);
+      padding: var(--sp-4);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.78rem;
+      line-height: 1.6;
+      max-height: 220px;
+      overflow-y: auto;
+      color: #94a3b8;
+    }
+    .log-item { margin-bottom: 4px; }
+    .log-item.info { color: #38bdf8; }
+    .log-item.success { color: #4ade80; }
+    .log-item.warn { color: #fbbf24; }
+    .log-item.error { color: #f87171; }
+    .result-box {
+      display: none;
+      margin-top: var(--sp-5);
+      padding-top: var(--sp-5);
+      border-top: 1px solid var(--border);
+    }
+    .result-box.show { display: block; }
+    .preview-img {
+      width: 100%;
+      max-height: 260px;
+      object-fit: contain;
+      background: #000;
+      border-radius: var(--r);
+      margin-top: var(--sp-3);
+      border: 1px solid var(--border);
+    }
+  </style>
+</head>
+<body>
+  <div class="test-container">
+    <div class="header-box">
+      <h1>🧪 Vercel Blob Upload Tester</h1>
+      <p>Halaman pengujian cepat koneksi & fungsi direct upload ke Vercel Blob Storage</p>
+    </div>
+
+    <!-- Server Status Card -->
+    <div class="card">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:var(--sp-2);">
+        <span style="font-weight:700; font-size:0.9rem;">Status Konfigurasi Backend</span>
+        <button class="btn btn-outline btn-sm" onclick="checkStatus()">🔄 Refresh Status</button>
+      </div>
+      <div id="status-container">
+        <div class="status-badge" style="background:var(--bg-2); color:var(--text-3);">Memeriksa server...</div>
+      </div>
+      <div id="status-hint" style="font-size:0.8rem; color:var(--text-3); line-height:1.5;"></div>
+    </div>
+
+    <!-- Upload Tester Form -->
+    <div class="card">
+      <div class="form-group">
+        <label>Kategori Upload (file_type)</label>
+        <select id="file-type" class="form-control">
+          <option value="payment_proof">Bukti Transfer DP (payment_proof)</option>
+          <option value="reference">Foto Referensi (reference)</option>
+          <option value="portfolio">Foto Portofolio (portfolio)</option>
+          <option value="result">Hasil Foto (result)</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>Booking ID (Opsional untuk testing relasi database)</label>
+        <input type="number" id="booking-id" class="form-control" placeholder="Contoh: 1, 16, atau kosongkan">
+      </div>
+
+      <div class="form-group">
+        <label>Pilih File untuk Diuji (Maks 5MB)</label>
+        <div class="dropzone" id="dropzone">
+          <input type="file" id="test-file" accept="image/jpeg,image/png,image/webp,application/pdf">
+          <div style="font-size: 2rem; margin-bottom: 6px;">📂</div>
+          <div style="font-weight:600; font-size:0.9rem; margin-bottom:2px;">Pilih atau seret file ke sini</div>
+          <div style="font-size:0.75rem; color:var(--text-3);">JPG, PNG, WebP, PDF</div>
+        </div>
+
+        <div class="file-info" id="file-info">
+          <div>
+            <strong id="file-name">—</strong>
+            <span id="file-size" style="color:var(--text-3); margin-left:8px;">—</span>
+          </div>
+          <button style="background:none; border:none; color:var(--red); cursor:pointer; font-weight:bold;" onclick="clearFile()">✕ Hapus</button>
+        </div>
+      </div>
+
+      <button class="btn btn-primary" id="btn-submit" style="width:100%; padding:12px; margin-top:var(--sp-3);" onclick="startTestUpload()" disabled>
+        🚀 Jalankan Test Upload
+      </button>
+
+      <!-- Logs -->
+      <div style="margin-top:var(--sp-5);">
+        <div style="font-size:0.75rem; font-weight:700; text-transform:uppercase; color:var(--text-3); margin-bottom:6px;">Live Execution Logs:</div>
+        <div class="log-box" id="log-box">
+          <div class="log-item info">[Ready] Siap melakukan pengujian upload...</div>
+        </div>
+      </div>
+
+      <!-- Result View -->
+      <div class="result-box" id="result-box">
+        <div style="font-weight:700; font-size:0.95rem; color:var(--green); margin-bottom:var(--sp-3);">
+          🎉 Upload Berhasil Tersimpan di Vercel Blob & Database!
+        </div>
+        <div style="font-size:0.82rem; margin-bottom:var(--sp-2);">
+          <strong>Direct URL:</strong><br>
+          <a id="res-url" href="#" target="_blank" style="color:var(--purple); word-break:break-all;"></a>
+        </div>
+        <div id="img-preview-container"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let selectedFile = null;
+
+    function log(msg, type = 'info') {
+      const box = document.getElementById('log-box');
+      const item = document.createElement('div');
+      item.className = `log-item ${type}`;
+      const time = new Date().toLocaleTimeString('id-ID');
+      item.textContent = `[${time}] ${msg}`;
+      box.appendChild(item);
+      box.scrollTop = box.scrollHeight;
+    }
+
+    async function checkStatus() {
+      const container = document.getElementById('status-container');
+      const hint = document.getElementById('status-hint');
+      container.innerHTML = `<div class="status-badge" style="background:var(--bg-2);">Memeriksa server...</div>`;
+      hint.textContent = '';
+
+      try {
+        const res = await fetch('/api/upload/status');
+        const data = await res.json();
+
+        if (data.configured) {
+          container.innerHTML = `<div class="status-badge status-ok">✅ BLOB_READ_WRITE_TOKEN Aktif & Siap</div>`;
+          hint.innerHTML = `Maksimal ukuran file: <strong>${data.maxSizeMB} MB</strong>. Tipe diizinkan: <code>${data.allowedTypes.join(', ')}</code>`;
+          log('Koneksi server & konfigurasi Vercel Blob OK', 'success');
+        } else {
+          container.innerHTML = `<div class="status-badge status-err">❌ BLOB_READ_WRITE_TOKEN Belum Diset</div>`;
+          hint.innerHTML = `Silakan tambahkan <code>BLOB_READ_WRITE_TOKEN=vercel_blob_rw_...</code> ke file <code>.env</code> Anda di server lokal.`;
+          log('Token Vercel Blob belum diset di .env server', 'error');
+        }
+      } catch (e) {
+        container.innerHTML = `<div class="status-badge status-err">❌ Gagal Terhubung ke Backend</div>`;
+        hint.textContent = 'Pastikan server Node.js sedang berjalan di port 3000.';
+        log('Gagal menghubungi backend: ' + e.message, 'error');
+      }
+    }
+
+    // File selection
+    const fileInput = document.getElementById('test-file');
+    const dropzone = document.getElementById('dropzone');
+
+    fileInput.addEventListener('change', () => handleFile(fileInput.files[0]));
+    dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('drag-over'); });
+    dropzone.addEventListener('dragleave', () => dropzone.classList.remove('drag-over'));
+    dropzone.addEventListener('drop', e => {
+      e.preventDefault(); dropzone.classList.remove('drag-over');
+      if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+    });
+
+    function handleFile(file) {
+      if (!file) return;
+      if (file.size > 5 * 1024 * 1024) {
+        alert('File melebihi 5MB');
+        return;
+      }
+      selectedFile = file;
+      document.getElementById('file-name').textContent = file.name;
+      document.getElementById('file-size').textContent = (file.size / 1024).toFixed(1) + ' KB';
+      document.getElementById('file-info').classList.add('show');
+      document.getElementById('btn-submit').disabled = false;
+      log(`File dipilih: ${file.name} (${(file.size/1024).toFixed(1)} KB)`, 'info');
+    }
+
+    function clearFile() {
+      selectedFile = null;
+      fileInput.value = '';
+      document.getElementById('file-info').classList.remove('show');
+      document.getElementById('btn-submit').disabled = true;
+      document.getElementById('result-box').classList.remove('show');
+    }
+
+    async function startTestUpload() {
+      if (!selectedFile) return;
+
+      const btn = document.getElementById('btn-submit');
+      btn.disabled = true;
+      btn.textContent = '⏳ Mengunggah...';
+      document.getElementById('result-box').classList.remove('show');
+
+      const fileType = document.getElementById('file-type').value;
+      const bookingId = document.getElementById('booking-id').value || null;
+
+      try {
+        // STEP 1: Minta token ke backend
+        log(`[Step 1] Meminta upload token dari /api/upload/token...`, 'info');
+        const safeName = selectedFile.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+        const pathname = `test-uploads/${Date.now()}-${safeName}`;
+
+        const tokenRes = await fetch(`/api/upload/token?fileType=${fileType}&bookingId=${bookingId || ''}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: 'blob.generate-client-token',
+            payload: {
+              pathname: pathname,
+              callbackUrl: `${location.origin}/api/upload/token`,
+            }
+          })
+        });
+
+        if (!tokenRes.ok) {
+          const err = await tokenRes.json().catch(() => ({}));
+          throw new Error(err.error || `Server HTTP ${tokenRes.status}`);
+        }
+
+        const tokenData = await tokenRes.json();
+        const clientToken = tokenData.clientToken;
+        if (!clientToken) throw new Error('Token yang diterima kosong.');
+        log(`[Step 1 OK] Token berhasil di-generate oleh Vercel SDK`, 'success');
+
+        // STEP 2: Upload langsung ke Vercel Blob
+        log(`[Step 2] Uploading langsung dari browser ke Blob Storage (PUT https://blob.vercel-storage.com/${pathname})...`, 'info');
+        const blobUrl = `https://blob.vercel-storage.com/${pathname}`;
+
+        const putRes = await fetch(blobUrl, {
+          method: 'PUT',
+          headers: {
+            'Authorization': `Bearer ${clientToken}`,
+            'Content-Type': selectedFile.type,
+            'x-cache-control': 'public, max-age=31536000',
+          },
+          body: selectedFile,
+        });
+
+        if (!putRes.ok) {
+          const putErr = await putRes.text().catch(() => '');
+          throw new Error(`Blob Storage PUT error HTTP ${putRes.status}: ${putErr}`);
+        }
+
+        let uploadedUrl = blobUrl;
+        try {
+          const resJson = await putRes.json();
+          uploadedUrl = resJson.url || resJson.downloadUrl || blobUrl;
+        } catch (_) {
+          uploadedUrl = putRes.headers.get('Location') || blobUrl;
+        }
+        log(`[Step 2 OK] File berhasil terunggah ke Vercel Blob: ${uploadedUrl}`, 'success');
+
+        // STEP 3: Simpan metadata ke DB
+        log(`[Step 3] Menyimpan metadata ke tabel attachments database...`, 'info');
+        const saveRes = await fetch('/api/upload/save-metadata', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            bookingId: bookingId,
+            blobUrl: uploadedUrl,
+            blobKey: pathname,
+            fileName: selectedFile.name,
+            fileType: fileType,
+            mimeType: selectedFile.type,
+            fileSize: selectedFile.size,
+          })
+        });
+
+        const saveData = await saveRes.json();
+        if (!saveRes.ok) throw new Error(saveData.error || 'Gagal simpan metadata ke DB');
+        log(`[Step 3 OK] Metadata tersimpan di database Neon PostgreSQL!`, 'success');
+
+        // Tampilkan Hasil
+        document.getElementById('result-box').classList.add('show');
+        const resUrlEl = document.getElementById('res-url');
+        resUrlEl.href = uploadedUrl;
+        resUrlEl.textContent = uploadedUrl;
+
+        const previewContainer = document.getElementById('img-preview-container');
+        if (selectedFile.type.startsWith('image/')) {
+          previewContainer.innerHTML = `<img class="preview-img" src="${uploadedUrl}" alt="Preview Upload">`;
+        } else {
+          previewContainer.innerHTML = `<div style="margin-top:10px; font-size:0.85rem; color:var(--text-2);">📄 File dokumen (PDF) siap diakses via link di atas.</div>`;
+        }
+
+      } catch (err) {
+        log(`[ERROR] ${err.message}`, 'error');
+        alert(`Test Upload Gagal:\n${err.message}`);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '🚀 Jalankan Test Upload';
+      }
+    }
+
+    // Auto check status on load
+    checkStatus();
+  </script>
+</body>
+</html>
