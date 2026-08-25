@@ -38,9 +38,22 @@ const ALLOWED_MIME_TYPES = [
 ];
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
 
-// ── Cek apakah Vercel Blob dikonfigurasi ────────────────────────
+// ── Cek & ambil token Vercel Blob secara dinamis ────────────────
+function getBlobToken() {
+  if (process.env.BLOB_READ_WRITE_TOKEN) return process.env.BLOB_READ_WRITE_TOKEN;
+
+  // Auto-detect jika Vercel menyuntikkan dengan nama store khusus (misal: booking_READ_WRITE_TOKEN)
+  for (const [key, val] of Object.entries(process.env)) {
+    if (typeof val === 'string' && (key.endsWith('_READ_WRITE_TOKEN') || val.startsWith('vercel_blob_rw_'))) {
+      process.env.BLOB_READ_WRITE_TOKEN = val; // Set agar SDK resmi Vercel Blob otomatis mendeteksinya
+      return val;
+    }
+  }
+  return null;
+}
+
 function isBlobConfigured() {
-  return !!process.env.BLOB_READ_WRITE_TOKEN;
+  return !!getBlobToken();
 }
 
 /**
@@ -49,16 +62,18 @@ function isBlobConfigured() {
  * Cek status konfigurasi Vercel Blob di server
  */
 router.get('/status', (req, res) => {
-  const configured = isBlobConfigured();
+  const token = getBlobToken();
+  const configured = !!token;
   res.json({
     configured: configured,
     message: configured
       ? '✅ Vercel Blob Storage terkonfigurasi di server.'
-      : '⚠️ BLOB_READ_WRITE_TOKEN belum diset di file .env server.',
+      : '⚠️ Token Vercel Blob belum terdeteksi di Environment Variables.',
     allowedTypes: ALLOWED_MIME_TYPES,
     maxSizeMB: MAX_FILE_SIZE / (1024 * 1024),
   });
 });
+
 
 /**
  * POST /api/upload/token
