@@ -420,12 +420,12 @@
       uploadBtn.disabled = true;
     });
 
-    /* ── Upload Handler via @vercel/blob SDK ── */
+    /* ── Upload via @vercel/blob SDK ── */
     uploadBtn.addEventListener('click', async () => {
       if (!selectedFile || !bookingId) return;
 
-      const alertEl    = document.getElementById('upload-alert');
-      const progressEl = document.getElementById('upload-progress');
+      const alertEl     = document.getElementById('upload-alert');
+      const progressEl  = document.getElementById('upload-progress');
       const progressBar = document.getElementById('progress-bar');
       const progressLabel = document.getElementById('progress-label');
 
@@ -450,25 +450,48 @@
       }
 
       try {
-        setProgress(15, 'Menginisialisasi upload...');
+        setProgress(10, 'Mempersiapkan upload...');
 
         const safeFileName = selectedFile.name.replace(/[^a-zA-Z0-9._-]/g, '_');
         const pathname = `payment-proofs/booking-${bookingId}-${Date.now()}-${safeFileName}`;
 
-        // Menggunakan method upload resmi dari @vercel/blob/client
+        // STEP 1: Minta client token dari server
+        setProgress(20, 'Mendapatkan izin upload...');
+        const tokenRes = await fetch(
+          `/api/upload/token?bookingId=${encodeURIComponent(bookingId)}&fileType=payment_proof`,
+          {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({ pathname }),
+          }
+        );
+
+        if (!tokenRes.ok) {
+          const err = await tokenRes.json().catch(() => ({}));
+          if (tokenRes.status === 500) {
+            return setError('Fitur upload sementara tidak tersedia. Silakan hubungi admin untuk konfirmasi DP Anda.');
+          }
+          return setError(err.error || 'Gagal mendapatkan izin upload. Silakan coba lagi.');
+        }
+
+        const { clientToken } = await tokenRes.json();
+        if (!clientToken) return setError('Token upload tidak valid. Coba muat ulang halaman.');
+
+        // STEP 2: Upload langsung ke Vercel Blob menggunakan SDK resmi
+        // (SDK menangani CORS dengan benar via clientToken vercel_blob_client_...)
+        setProgress(30, 'Mengunggah file...');
         const blobResult = await upload(pathname, selectedFile, {
           access: 'public',
-          handleUploadUrl: `/api/upload/token?bookingId=${encodeURIComponent(bookingId)}&fileType=payment_proof`,
-          onUploadProgress: (progressEvent) => {
-            const pct = Math.round(progressEvent.percentage || (progressEvent.loaded / progressEvent.total) * 100);
-            setProgress(Math.max(15, pct), `Mengunggah ${pct}%...`);
+          token: clientToken,
+          onUploadProgress: ({ percentage }) => {
+            setProgress(Math.max(30, Math.round(percentage)), `Mengunggah ${Math.round(percentage)}%...`);
           },
         });
 
-        const blobUrl = blobResult.url || blobResult.downloadUrl;
+        const blobUrl = blobResult.url;
         if (!blobUrl) throw new Error('Upload selesai tetapi URL file tidak diperoleh.');
 
-        // Simpan metadata ke backend
+        // STEP 3: Simpan metadata ke DB
         setProgress(90, 'Menyimpan data...');
         const saveRes = await fetch(`/api/bookings/${bookingId}/upload-dp`, {
           method:  'POST',
@@ -484,7 +507,7 @@
 
         const saveData = await saveRes.json();
         if (!saveRes.ok) {
-          return setError(saveData.error || 'Gagal menyimpan metadata bukti transfer.');
+          return setError(saveData.error || 'Gagal menyimpan data. Silakan hubungi admin.');
         }
 
         setProgress(100, 'Selesai!');

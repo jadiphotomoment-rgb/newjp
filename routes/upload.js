@@ -3,11 +3,10 @@
 /**
  * /api/upload — Vercel Blob Upload Handler
  *
- * Menggunakan pola "client-side direct upload" dari Vercel Blob:
- *   1. Client minta token → POST /api/upload/token
- *   2. Vercel Blob SDK generate token, client upload langsung ke Blob
- *   3. Setelah upload, Blob memanggil callback onUploadCompleted
- *   4. Metadata tersimpan di tabel `attachments`
+ * Flow client-side direct upload:
+ *   1. Browser → POST /api/upload/token → server generate client token
+ *   2. Browser → SDK upload() mengirim file langsung ke Vercel Blob
+ *   3. Browser → POST /api/upload/save-metadata → simpan URL ke DB
  *
  * Referensi: https://vercel.com/docs/storage/vercel-blob/client-upload
  */
@@ -17,12 +16,12 @@ const router  = express.Router();
 const db      = require('../database');
 const auth    = require('../middleware/auth');
 
-// Require @vercel/blob and @vercel/blob/client
-let blobHandleUpload;
+// Require @vercel/blob
+let generateClientToken;
 let blobDel;
 try {
   const blobClient = require('@vercel/blob/client');
-  blobHandleUpload = blobClient.handleUpload;
+  generateClientToken = blobClient.generateClientTokenFromReadWriteToken;
   const blob = require('@vercel/blob');
   blobDel = blob.del;
 } catch (e) {
@@ -78,82 +77,62 @@ router.get('/status', (req, res) => {
 /**
  * POST /api/upload/token
  *
- * Endpoint yang dipanggil oleh client saat inisialisasi upload ke Vercel Blob.
+ * Dipanggil oleh @vercel/blob/client SDK `upload()` di browser.
+ * Menghasilkan client token (vercel_blob_client_...) yang memungkinkan
+ * browser upload langsung ke Vercel Blob dengan CORS yang benar.
  *
  * Query params:
  *   - bookingId  (optional) — ID booking yang terkait
  *   - fileType   (optional) — kategori file: payment_proof | reference | result | portfolio
  */
 router.post('/token', async (req, res) => {
-  if (!isBlobConfigured()) {
+  const token = getBlobToken();
+  if (!token) {
     return res.status(500).json({
       error: 'Vercel Blob belum dikonfigurasi.',
       hint: 'Tambahkan BLOB_READ_WRITE_TOKEN ke environment variables.'
     });
   }
 
-  if (!blobHandleUpload) {
+  if (!generateClientToken) {
     return res.status(500).json({ error: 'Package @vercel/blob/client tidak tersedia di server.' });
   }
 
   try {
-    const jsonBody = req.body && Object.keys(req.body).length > 0
-      ? req.body
-      : await new Promise((resolve, reject) => {
-          let data = '';
-          req.on('data', chunk => (data += chunk));
-          req.on('end', () => {
-            try { resolve(JSON.parse(data || '{}')); }
-            catch (e) { reject(new Error('Invalid JSON body')); }
-          });
-          req.on('error', reject);
-        });
+    // Ambil pathname dari body yang dikirim SDK
+    const body = req.body || {};
+    const pathname = body.pathname || body.payload?.pathname;
 
-    const response = await blobHandleUpload({
-      body:    jsonBody,
-      request: req,
-      onBeforeGenerateToken: async (pathname) => {
-        // Validasi ekstensi file
-        const ext = (pathname.split('.').pop() || '').toLowerCase();
-        const validExts = ['jpg', 'jpeg', 'png', 'webp', 'pdf'];
-        if (!validExts.includes(ext)) {
-          throw new Error(`Ekstensi file .${ext} tidak diizinkan. Gunakan: ${validExts.join(', ')}`);
-        }
+    if (!pathname) {
+      return res.status(400).json({ error: 'pathname wajib diisi' });
+    }
 
-        return {
-          allowedContentTypes: ALLOWED_MIME_TYPES,
-          maximumSizeInBytes:  MAX_FILE_SIZE,
-          tokenPayload:        JSON.stringify({
-            bookingId: req.query.bookingId || null,
-            fileType:  req.query.fileType  || 'payment_proof',
-          }),
-        };
+    // Validasi ekstensi file
+    const ext = (pathname.split('.').pop() || '').toLowerCase();
+    const validExts = ['jpg', 'jpeg', 'png', 'webp', 'pdf'];
+    if (!validExts.includes(ext)) {
+      return res.status(400).json({
+        error: `Ekstensi .${ext} tidak diizinkan. Gunakan: ${validExts.join(', ')}`
+      });
+    }
+
+    // Generate client token menggunakan SDK resmi — menghasilkan vercel_blob_client_...
+    const clientToken = await generateClientToken(token, {
+      pathname,
+      onUploadCompleted: {
+        callbackUrl: `${req.protocol}://${req.get('host')}/api/upload/save-metadata`,
+        tokenPayload: JSON.stringify({
+          bookingId: req.query.bookingId || null,
+          fileType:  req.query.fileType  || 'payment_proof',
+        }),
       },
-      onUploadCompleted: async ({ blob, tokenPayload }) => {
-        // Callback webhook dari Vercel setelah upload selesai
-        try {
-          const payload = JSON.parse(tokenPayload || '{}');
-          await db.query(
-            `INSERT INTO attachments (booking_id, file_url, blob_key, file_name, file_type, mime_type, file_size)
-             VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-            [
-              payload.bookingId  || null,
-              blob.url,
-              blob.pathname,
-              blob.pathname.split('/').pop(),
-              payload.fileType   || 'payment_proof',
-              blob.contentType   || null,
-              blob.size          || null,
-            ]
-          );
-          console.log('[upload] attachment saved via webhook:', blob.url);
-        } catch (dbErr) {
-          console.error('[upload] onUploadCompleted DB error:', dbErr.message);
-        }
-      },
+      allowedContentTypes: ALLOWED_MIME_TYPES,
+      maximumSizeInBytes:  MAX_FILE_SIZE,
+      addRandomSuffix: false,
     });
 
-    return res.json(response);
+    console.log('[upload] client token generated for:', pathname);
+    return res.json({ clientToken });
   } catch (err) {
     console.error('[upload] token error:', err.message);
     return res.status(400).json({ error: err.message });
