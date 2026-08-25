@@ -310,9 +310,14 @@ async function viewSelections(uuid) {
     const statusPanel = document.getElementById('modal-sel-status-panel');
     if (session.status === 'completed') {
       statusPanel.style.display = 'block';
+      currentViewingUuid = uuid;
       document.getElementById('update-edit-status').value = session.edit_status || 'received';
       document.getElementById('update-edit-note').value = session.edit_note || '';
+      document.getElementById('update-client-phone').value = session.active_phone || session.client_phone || '';
+      document.getElementById('update-result-drive-url').value = session.result_drive_url || session.folder_url || '';
       
+      toggleDoneFields();
+
       const btnUpdate = document.getElementById('btn-update-status');
       btnUpdate.onclick = () => updateEditStatus(uuid);
     } else {
@@ -326,6 +331,59 @@ async function viewSelections(uuid) {
 }
 window.viewSelections = viewSelections;
 
+let currentViewingUuid = null;
+
+function toggleDoneFields() {
+  const status = document.getElementById('update-edit-status').value;
+  const donePanel = document.getElementById('done-wa-panel');
+  const btnWaNow = document.getElementById('btn-send-wa-now');
+  if (status === 'done') {
+    donePanel.style.display = 'block';
+    btnWaNow.style.display = 'inline-flex';
+  } else {
+    donePanel.style.display = 'none';
+    btnWaNow.style.display = 'none';
+  }
+}
+window.toggleDoneFields = toggleDoneFields;
+
+// ── Kirim Ulang Notifikasi WA Saja ────────────────────────────────
+async function sendWaDoneOnly() {
+  if (!currentViewingUuid) return;
+  const clientPhone = document.getElementById('update-client-phone').value.trim();
+  const resultDriveUrl = document.getElementById('update-result-drive-url').value.trim();
+  const editNote = document.getElementById('update-edit-note').value.trim();
+
+  if (!clientPhone) {
+    showToast('Nomor WhatsApp klien wajib diisi untuk kirim notifikasi', 'error');
+    return;
+  }
+
+  if (!confirm(`Kirim notifikasi WhatsApp hasil foto ke nomor ${clientPhone}?`)) return;
+
+  const btn = document.getElementById('btn-send-wa-now');
+  btn.disabled = true;
+  btn.textContent = 'Mengirim...';
+
+  try {
+    const res = await apiFetch(`/api/sessions/${currentViewingUuid}/notify-done`, {
+      method: 'POST',
+      body: JSON.stringify({ clientPhone, resultDriveUrl, editNote })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+
+    showToast('Pesan WhatsApp dengan link Google Drive berhasil dikirim ke klien! 📲', 'success');
+    loadSessions();
+  } catch (err) {
+    showToast('Gagal kirim WA: ' + err.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '📲 Kirim WA';
+  }
+}
+window.sendWaDoneOnly = sendWaDoneOnly;
+
 // ── Update Edit Status ────────────────────────────────────────────
 async function updateEditStatus(uuid) {
   const btn = document.getElementById('btn-update-status');
@@ -333,6 +391,9 @@ async function updateEditStatus(uuid) {
   const spinner = document.getElementById('btn-update-status-spinner');
   const editStatus = document.getElementById('update-edit-status').value;
   const editNote = document.getElementById('update-edit-note').value.trim();
+  const clientPhone = document.getElementById('update-client-phone').value.trim();
+  const resultDriveUrl = document.getElementById('update-result-drive-url').value.trim();
+  const sendWa = document.getElementById('update-send-wa').checked;
 
   btn.disabled = true;
   txt.textContent = 'Menyimpan...';
@@ -341,11 +402,19 @@ async function updateEditStatus(uuid) {
   try {
     const res = await apiFetch(`/api/sessions/${uuid}/status`, {
       method: 'PATCH',
-      body: JSON.stringify({ editStatus, editNote }),
+      body: JSON.stringify({ editStatus, editNote, clientPhone, resultDriveUrl, sendWa }),
     });
-    if (!res.ok) throw new Error((await res.json()).error);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
     
-    showToast('Status pesanan berhasil diperbarui', 'success');
+    if (data.waSent) {
+      showToast('Status diperbarui & Notifikasi WhatsApp terkirim ke klien! 📸📲', 'success');
+    } else if (data.waMessage) {
+      showToast('Status disimpan. ' + data.waMessage, 'info');
+    } else {
+      showToast('Status pesanan berhasil diperbarui', 'success');
+    }
+
     closeModal('modal-selections');
     loadSessions();
   } catch (err) {
@@ -443,14 +512,15 @@ document.getElementById('form-new-session').addEventListener('submit', async (e)
   const btnText   = document.getElementById('btn-create-text');
   const spinner   = document.getElementById('btn-create-spinner');
 
-  const clientName = document.getElementById('client-name').value.trim();
-  const folderUrl  = document.getElementById('folder-url').value.trim();
-  const photoLimit = document.getElementById('photo-limit').value;
+  const clientName  = document.getElementById('client-name').value.trim();
+  const clientPhone = document.getElementById('client-phone').value.trim();
+  const folderUrl   = document.getElementById('folder-url').value.trim();
+  const photoLimit  = document.getElementById('photo-limit').value;
 
   alertEl.classList.add('hidden');
 
   if (!clientName || !folderUrl || !photoLimit) {
-    alertEl.textContent = 'Semua field wajib diisi';
+    alertEl.textContent = 'Nama Klien, Folder URL, dan Limit wajib diisi';
     alertEl.classList.remove('hidden');
     return;
   }
@@ -462,7 +532,7 @@ document.getElementById('form-new-session').addEventListener('submit', async (e)
   try {
     const res  = await apiFetch('/api/sessions', {
       method: 'POST',
-      body:   JSON.stringify({ clientName, folderUrl, photoLimit }),
+      body:   JSON.stringify({ clientName, clientPhone, folderUrl, photoLimit }),
     });
     const data = await res.json();
 
@@ -497,6 +567,7 @@ function openEditSessionModal(uuid) {
 
   document.getElementById('edit-session-uuid').value = session.uuid;
   document.getElementById('edit-client-name').value = session.client_name || '';
+  document.getElementById('edit-client-phone').value = session.active_phone || session.client_phone || '';
   document.getElementById('edit-folder-url').value = session.folder_url || '';
   document.getElementById('edit-photo-limit').value = session.photo_limit || 10;
   
@@ -513,15 +584,16 @@ document.getElementById('form-edit-session').addEventListener('submit', async (e
   const btnText   = document.getElementById('btn-update-session-text');
   const spinner   = document.getElementById('btn-update-session-spinner');
 
-  const uuid       = document.getElementById('edit-session-uuid').value;
-  const clientName = document.getElementById('edit-client-name').value.trim();
-  const folderUrl  = document.getElementById('edit-folder-url').value.trim();
-  const photoLimit = document.getElementById('edit-photo-limit').value;
+  const uuid        = document.getElementById('edit-session-uuid').value;
+  const clientName  = document.getElementById('edit-client-name').value.trim();
+  const clientPhone = document.getElementById('edit-client-phone').value.trim();
+  const folderUrl   = document.getElementById('edit-folder-url').value.trim();
+  const photoLimit  = document.getElementById('edit-photo-limit').value;
 
   alertEl.classList.add('hidden');
 
   if (!clientName || !folderUrl || !photoLimit) {
-    alertEl.textContent = 'Semua field wajib diisi';
+    alertEl.textContent = 'Nama Klien, Folder URL, dan Limit wajib diisi';
     alertEl.classList.remove('hidden');
     return;
   }
@@ -533,7 +605,7 @@ document.getElementById('form-edit-session').addEventListener('submit', async (e
   try {
     const res  = await apiFetch(`/api/sessions/${uuid}`, {
       method: 'PATCH',
-      body:   JSON.stringify({ clientName, folderUrl, photoLimit }),
+      body:   JSON.stringify({ clientName, clientPhone, folderUrl, photoLimit }),
     });
     const data = await res.json();
 

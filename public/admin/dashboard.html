@@ -200,11 +200,16 @@
       <div id="modal-alert" class="alert alert-error hidden" role="alert"></div>
       <form class="modal-body" id="form-new-session" novalidate>
         <div class="form-group">
-          <label for="client-name">Nama Klien / Folder</label>
+          <label for="client-name">Nama Klien / Folder *</label>
           <input type="text" id="client-name" placeholder="Contoh: Prewedding Budi & Ani" required maxlength="120">
         </div>
         <div class="form-group">
-          <label for="folder-url">Link Google Drive Folder</label>
+          <label for="client-phone">No. WhatsApp Klien (Opsional)</label>
+          <input type="tel" id="client-phone" placeholder="Contoh: 08123456789 atau 628123456789">
+          <small style="color:var(--text-3);font-size:0.75rem;">Digunakan untuk mengirim link Google Drive saat hasil edit selesai.</small>
+        </div>
+        <div class="form-group">
+          <label for="folder-url">Link Google Drive Folder *</label>
           <input type="url" id="folder-url" placeholder="https://drive.google.com/drive/folders/..." required>
           <small style="color:var(--text-3);font-size:0.75rem;">Pastikan folder diset "Siapa saja dengan link dapat melihat"</small>
         </div>
@@ -234,11 +239,15 @@
       <form class="modal-body" id="form-edit-session" novalidate>
         <input type="hidden" id="edit-session-uuid">
         <div class="form-group">
-          <label for="edit-client-name">Nama Klien / Folder</label>
+          <label for="edit-client-name">Nama Klien / Folder *</label>
           <input type="text" id="edit-client-name" required maxlength="120">
         </div>
         <div class="form-group">
-          <label for="edit-folder-url">Link Google Drive Folder</label>
+          <label for="edit-client-phone">No. WhatsApp Klien</label>
+          <input type="tel" id="edit-client-phone" placeholder="Contoh: 08123456789">
+        </div>
+        <div class="form-group">
+          <label for="edit-folder-url">Link Google Drive Folder *</label>
           <input type="url" id="edit-folder-url" required>
         </div>
         <div class="form-group">
@@ -293,23 +302,49 @@
       </div>
       <!-- Edit Status Updater -->
       <div id="modal-sel-status-panel" class="modal-body" style="border-top: 1px solid var(--border); background: var(--bg-1); display: none;">
-        <h4 style="margin: 0 0 12px; font-size: 0.95rem;">Update Status Pesanan</h4>
+        <h4 style="margin: 0 0 12px; font-size: 0.95rem;">Update Status Pesanan &amp; Notifikasi Klien</h4>
         <div class="form-group">
           <label for="update-edit-status">Status Edit</label>
-          <select id="update-edit-status" class="form-control">
+          <select id="update-edit-status" class="form-control" onchange="toggleDoneFields()">
             <option value="received">Pilihan Diterima</option>
             <option value="editing">Sedang Diedit</option>
-            <option value="done">Selesai & Siap Diunduh</option>
+            <option value="done">✅ Selesai &amp; Siap Diunduh</option>
           </select>
         </div>
-        <div class="form-group">
-          <label for="update-edit-note">Catatan untuk Klien (Opsional)</label>
-          <textarea id="update-edit-note" class="form-control" placeholder="Tulis pesan/link download untuk klien..." rows="3"></textarea>
+
+        <div id="done-wa-panel" style="display: none; background: rgba(124,109,250,0.06); border: 1px solid rgba(124,109,250,0.25); border-radius: var(--r); padding: var(--sp-4); margin-bottom: var(--sp-4);">
+          <div style="font-weight: 700; font-size: 0.85rem; color: var(--purple); margin-bottom: var(--sp-3); display: flex; align-items: center; gap: 6px;">
+            <span>💬 Notifikasi WhatsApp Klien</span>
+          </div>
+          <div class="form-group" style="margin-bottom: var(--sp-3);">
+            <label for="update-client-phone" style="font-size: 0.78rem;">Nomor WhatsApp Klien</label>
+            <input type="tel" id="update-client-phone" class="form-control" placeholder="Contoh: 08123456789 atau 628123456789">
+          </div>
+          <div class="form-group" style="margin-bottom: var(--sp-3);">
+            <label for="update-result-drive-url" style="font-size: 0.78rem;">Link Google Drive Hasil Edit</label>
+            <input type="url" id="update-result-drive-url" class="form-control" placeholder="https://drive.google.com/drive/folders/...">
+            <small style="color:var(--text-3);font-size:0.72rem;">Link ini yang akan dikirimkan ke WhatsApp klien.</small>
+          </div>
+          <label style="display: flex; align-items: center; gap: 8px; font-size: 0.82rem; cursor: pointer; color: var(--text-1);">
+            <input type="checkbox" id="update-send-wa" checked style="accent-color: var(--purple); width: 16px; height: 16px;">
+            <span>Kirim notifikasi pesan WhatsApp otomatis ke klien</span>
+          </label>
         </div>
-        <button id="btn-update-status" class="btn btn-primary" style="width: 100%;">
-          <span id="btn-update-status-text">Simpan Status</span>
-          <div id="btn-update-status-spinner" class="spinner hidden" aria-hidden="true"></div>
-        </button>
+
+        <div class="form-group">
+          <label for="update-edit-note">Catatan Tambahan untuk Klien (Opsional)</label>
+          <textarea id="update-edit-note" class="form-control" placeholder="Tulis pesan/catatan khusus untuk klien..." rows="2"></textarea>
+        </div>
+
+        <div style="display: flex; gap: var(--sp-2);">
+          <button id="btn-update-status" class="btn btn-primary" style="flex: 1;">
+            <span id="btn-update-status-text">Simpan Status</span>
+            <div id="btn-update-status-spinner" class="spinner hidden" aria-hidden="true"></div>
+          </button>
+          <button id="btn-send-wa-now" type="button" class="btn btn-outline" style="display:none; font-size:0.82rem;" title="Kirim Ulang WA Saja" onclick="sendWaDoneOnly()">
+            📲 Kirim WA
+          </button>
+        </div>
       </div>
     </div>
   </div>

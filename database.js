@@ -40,7 +40,9 @@ const db = {
           uuid         VARCHAR(255) UNIQUE NOT NULL,
           short_slug   VARCHAR(255) UNIQUE,
           client_name  VARCHAR(255) NOT NULL,
+          client_phone VARCHAR(50),
           folder_url   TEXT NOT NULL,
+          result_drive_url TEXT,
           folder_id    VARCHAR(255) NOT NULL,
           photo_limit  INTEGER NOT NULL DEFAULT 10,
           status       VARCHAR(50) NOT NULL DEFAULT 'active',
@@ -75,8 +77,11 @@ const db = {
       await pool.query(`
         DO $$
         BEGIN
-          IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='sessions' AND column_name='short_slug') THEN
-            ALTER TABLE sessions ADD COLUMN short_slug VARCHAR(255) UNIQUE;
+          IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='sessions' AND column_name='client_phone') THEN
+            ALTER TABLE sessions ADD COLUMN client_phone VARCHAR(50);
+          END IF;
+          IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='sessions' AND column_name='result_drive_url') THEN
+            ALTER TABLE sessions ADD COLUMN result_drive_url TEXT;
           END IF;
           IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='sessions' AND column_name='edit_status') THEN
             ALTER TABLE sessions ADD COLUMN edit_status VARCHAR(30) NOT NULL DEFAULT 'received';

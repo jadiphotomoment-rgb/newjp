@@ -2,9 +2,44 @@
 
 const express = require('express');
 const router  = express.Router();
+const https   = require('https');
 const { v4: uuidv4 } = require('uuid');
 const db   = require('../database');
 const auth = require('../middleware/auth');
+
+// ── Helper: WhatsApp sender via Fonnte ─────────────────────────
+function sendWhatsApp(target, message) {
+  return new Promise((resolve) => {
+    const token = process.env.FONNTE_TOKEN;
+    if (!token || !target) return resolve({ status: false, message: 'Token or target missing' });
+
+    const body = JSON.stringify({ target, message, countryCode: '62' });
+    const options = {
+      hostname: 'api.fonnte.com',
+      path:     '/send',
+      method:   'POST',
+      headers:  {
+        'Authorization':  token,
+        'Content-Type':   'application/json',
+        'Content-Length': Buffer.byteLength(body),
+      },
+    };
+
+    const req = https.request(options, (res) => {
+      const chunks = [];
+      res.on('data', c => chunks.push(c));
+      res.on('end', () => {
+        try { resolve(JSON.parse(Buffer.concat(chunks).toString('utf8'))); }
+        catch (_) { resolve({ status: res.statusCode >= 200 && res.statusCode < 300 }); }
+      });
+    });
+
+    req.setTimeout(10000, () => { req.destroy(); resolve({ status: false, message: 'Timeout' }); });
+    req.on('error', () => resolve({ status: false }));
+    req.write(body);
+    req.end();
+  });
+}
 
 // ── Helper: extract Google Drive folder ID from URL ───────────
 function extractFolderId(url) {
@@ -23,12 +58,12 @@ function extractFolderId(url) {
 function generateSlug(clientName) {
   const base = clientName
     .toLowerCase()
-    .replace(/[^a-z0-9\s-]/g, '')   // hapus karakter non-alfanumerik (kecuali spasi & strip)
+    .replace(/[^a-z0-9\s-]/g, '')
     .trim()
-    .replace(/\s+/g, '-')           // spasi → tanda hubung
-    .replace(/-+/g, '-')            // deduplicasi strip
-    .substring(0, 30);              // maks 30 karakter
-  const suffix = Math.random().toString(36).substring(2, 6); // 4 karakter acak
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .substring(0, 30);
+  const suffix = Math.random().toString(36).substring(2, 6);
   return `${base}-${suffix}`;
 }
 
@@ -37,11 +72,14 @@ router.get('/', auth, async (req, res) => {
   try {
     const { rows } = await db.query(`
       SELECT
-        s.id, s.uuid, s.short_slug, s.client_name, s.folder_url, s.folder_id,
+        s.id, s.uuid, s.short_slug, s.client_name, s.client_phone, s.folder_url, s.result_drive_url, s.folder_id,
         s.photo_limit, s.status, s.edit_status, s.edit_note,
         s.created_at, s.completed_at,
+        b.id AS booking_id,
+        COALESCE(s.client_phone, b.client_phone) AS active_phone,
         (SELECT COUNT(*) FROM selections WHERE session_id = s.id) AS photo_count
       FROM sessions s
+      LEFT JOIN bookings b ON b.session_id = s.id
       WHERE s.admin_id = $1
       ORDER BY s.created_at DESC
     `, [req.admin.adminId]);
@@ -81,7 +119,7 @@ router.get('/slug/:slug', async (req, res) => {
   try {
     const { rows } = await db.query(`
       SELECT id, uuid, short_slug, client_name, folder_id, photo_limit, status,
-             edit_status, edit_note, created_at, completed_at
+             edit_status, edit_note, result_drive_url, created_at, completed_at
       FROM sessions WHERE short_slug = $1
     `, [req.params.slug]);
 
@@ -94,13 +132,17 @@ router.get('/slug/:slug', async (req, res) => {
   }
 });
 
-// ── GET /api/sessions/:uuid — get one session (public for client) ─
+// ── GET /api/sessions/:uuid — get one session (public for client / admin) ─
 router.get('/:uuid', async (req, res) => {
   try {
     const { rows } = await db.query(`
-      SELECT id, uuid, short_slug, client_name, folder_id, photo_limit, status,
-             edit_status, edit_note, created_at, completed_at
-      FROM sessions WHERE uuid = $1
+      SELECT s.id, s.uuid, s.short_slug, s.client_name, s.client_phone, s.folder_url, s.result_drive_url,
+             s.folder_id, s.photo_limit, s.status, s.edit_status, s.edit_note, s.created_at, s.completed_at,
+             b.id AS booking_id,
+             COALESCE(s.client_phone, b.client_phone) AS active_phone
+      FROM sessions s
+      LEFT JOIN bookings b ON b.session_id = s.id
+      WHERE s.uuid = $1
     `, [req.params.uuid]);
 
     const session = rows[0];
@@ -135,7 +177,7 @@ router.get('/:uuid/selections', auth, async (req, res) => {
 
 // ── POST /api/sessions — create new session (admin) ──────────
 router.post('/', auth, async (req, res) => {
-  const { clientName, folderUrl, photoLimit } = req.body;
+  const { clientName, clientPhone, folderUrl, photoLimit } = req.body;
 
   if (!clientName || !folderUrl || !photoLimit) {
     return res.status(400).json({ error: 'clientName, folderUrl, dan photoLimit wajib diisi' });
@@ -153,7 +195,6 @@ router.post('/', auth, async (req, res) => {
 
   const uuid = uuidv4();
 
-  // Generate unique short slug (retry jika kebetulan sudah ada)
   let shortSlug;
   let attempt = 0;
   while (attempt < 5) {
@@ -162,13 +203,22 @@ router.post('/', auth, async (req, res) => {
     if (exists.rows.length === 0) { shortSlug = candidate; break; }
     attempt++;
   }
-  if (!shortSlug) shortSlug = uuid.substring(0, 8); // fallback ke 8 char uuid
+  if (!shortSlug) shortSlug = uuid.substring(0, 8);
 
   try {
     await db.query(`
-      INSERT INTO sessions (uuid, short_slug, client_name, folder_url, folder_id, photo_limit, admin_id)
-      VALUES ($1, $2, $3, $4, $5, $6, $7)
-    `, [uuid, shortSlug, clientName.trim(), folderUrl.trim(), folderId, limit, req.admin.adminId]);
+      INSERT INTO sessions (uuid, short_slug, client_name, client_phone, folder_url, folder_id, photo_limit, admin_id)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+    `, [
+      uuid,
+      shortSlug,
+      clientName.trim(),
+      clientPhone ? clientPhone.trim() : null,
+      folderUrl.trim(),
+      folderId,
+      limit,
+      req.admin.adminId
+    ]);
 
     const baseUrl = `${req.protocol}://${req.get('host')}`;
     res.status(201).json({
@@ -184,9 +234,9 @@ router.post('/', auth, async (req, res) => {
   }
 });
 
-// ── PATCH /api/sessions/:uuid/status — update edit status (admin) ─
+// ── PATCH /api/sessions/:uuid/status — update edit status & kirim notif WA (admin) ─
 router.patch('/:uuid/status', auth, async (req, res) => {
-  const { editStatus, editNote } = req.body;
+  const { editStatus, editNote, clientPhone, resultDriveUrl, sendWa } = req.body;
   const VALID_STATUSES = ['received', 'editing', 'done'];
 
   if (!editStatus || !VALID_STATUSES.includes(editStatus)) {
@@ -194,20 +244,126 @@ router.patch('/:uuid/status', auth, async (req, res) => {
   }
 
   try {
-    const sessionRes = await db.query(
-      'SELECT id FROM sessions WHERE uuid = $1 AND admin_id = $2',
-      [req.params.uuid, req.admin.adminId]
-    );
+    const sessionRes = await db.query(`
+      SELECT s.*, b.client_phone AS booking_phone
+      FROM sessions s
+      LEFT JOIN bookings b ON b.session_id = s.id
+      WHERE s.uuid = $1 AND s.admin_id = $2
+    `, [req.params.uuid, req.admin.adminId]);
+
     const session = sessionRes.rows[0];
     if (!session) return res.status(404).json({ error: 'Sesi tidak ditemukan' });
 
-    await db.query(
-      'UPDATE sessions SET edit_status = $1, edit_note = $2 WHERE id = $3',
-      [editStatus, editNote || null, session.id]
-    );
-    res.json({ message: 'Status berhasil diperbarui', editStatus, editNote: editNote || null });
+    const phoneToSave = clientPhone !== undefined ? (clientPhone ? clientPhone.trim() : null) : session.client_phone;
+    const driveUrlToSave = resultDriveUrl !== undefined ? (resultDriveUrl ? resultDriveUrl.trim() : null) : session.result_drive_url;
+
+    await db.query(`
+      UPDATE sessions
+      SET edit_status = $1,
+          edit_note = $2,
+          client_phone = COALESCE($3, client_phone),
+          result_drive_url = $4
+      WHERE id = $5
+    `, [editStatus, editNote || null, phoneToSave, driveUrlToSave, session.id]);
+
+    let waSent = false;
+    let waMessage = null;
+
+    // Kirim notifikasi WhatsApp jika status selesai (done) dan sendWa disetujui (default true jika nomor ada)
+    const targetPhone = clientPhone || session.client_phone || session.booking_phone;
+    const finalDriveUrl = driveUrlToSave || session.folder_url;
+
+    if (editStatus === 'done' && sendWa !== false && targetPhone) {
+      const noteSection = editNote && editNote.trim() ? `\n\n📝 *Catatan Fotografer:*\n${editNote.trim()}` : '';
+      const msg = [
+        `📸 *Hasil Foto Selesai Diedit — Jadiphoto.Moment*`,
+        ``,
+        `Halo *${session.client_name}*,`,
+        `Kabar gembira! Foto-foto pilihan Anda telah selesai diedit dan siap untuk diunduh. 🎉`,
+        ``,
+        `📁 *Link Google Drive:*`,
+        `${finalDriveUrl}`,
+        noteSection,
+        ``,
+        `Terima kasih telah mempercayai layanan fotografi Jadiphoto.Moment! Silakan beri tahu kami jika ada pertanyaan atau kendala unduhan. 📸✨`
+      ].filter(l => l !== undefined).join('\n');
+
+      const waRes = await sendWhatsApp(targetPhone, msg);
+      waSent = waRes.status === true || waRes.status === 'true';
+      waMessage = waSent ? 'Notifikasi WhatsApp berhasil dikirim ke klien' : 'Status tersimpan, tetapi notifikasi WhatsApp gagal terkirim';
+    }
+
+    res.json({
+      message: 'Status berhasil diperbarui',
+      editStatus,
+      editNote: editNote || null,
+      resultDriveUrl: driveUrlToSave,
+      waSent,
+      waMessage
+    });
   } catch (err) {
     console.error('[sessions] PATCH status error:', err);
+    res.status(500).json({ error: 'Database error' });
+  }
+});
+
+// ── POST /api/sessions/:uuid/notify-done — kirim manual notif WA hasil edit (admin) ─
+router.post('/:uuid/notify-done', auth, async (req, res) => {
+  const { clientPhone, resultDriveUrl, editNote } = req.body;
+
+  try {
+    const sessionRes = await db.query(`
+      SELECT s.*, b.client_phone AS booking_phone
+      FROM sessions s
+      LEFT JOIN bookings b ON b.session_id = s.id
+      WHERE s.uuid = $1 AND s.admin_id = $2
+    `, [req.params.uuid, req.admin.adminId]);
+
+    const session = sessionRes.rows[0];
+    if (!session) return res.status(404).json({ error: 'Sesi tidak ditemukan' });
+
+    const targetPhone = clientPhone || session.client_phone || session.booking_phone;
+    if (!targetPhone) {
+      return res.status(400).json({ error: 'Nomor WhatsApp klien belum diisi' });
+    }
+
+    const finalDriveUrl = resultDriveUrl || session.result_drive_url || session.folder_url;
+    const finalNote = editNote !== undefined ? editNote : session.edit_note;
+
+    // Update data terbaru ke database
+    await db.query(`
+      UPDATE sessions
+      SET edit_status = 'done',
+          client_phone = COALESCE($1, client_phone),
+          result_drive_url = $2,
+          edit_note = $3
+      WHERE id = $4
+    `, [targetPhone, finalDriveUrl, finalNote || null, session.id]);
+
+    const noteSection = finalNote && finalNote.trim() ? `\n\n📝 *Catatan Fotografer:*\n${finalNote.trim()}` : '';
+    const msg = [
+      `📸 *Hasil Foto Selesai Diedit — Jadiphoto.Moment*`,
+      ``,
+      `Halo *${session.client_name}*,`,
+      `Kabar gembira! Foto-foto pilihan Anda telah selesai diedit dan siap untuk diunduh. 🎉`,
+      ``,
+      `📁 *Link Google Drive:*`,
+      `${finalDriveUrl}`,
+      noteSection,
+      ``,
+      `Terima kasih telah mempercayai layanan fotografi Jadiphoto.Moment! Silakan beri tahu kami jika ada pertanyaan atau kendala unduhan. 📸✨`
+    ].filter(l => l !== undefined).join('\n');
+
+    const waRes = await sendWhatsApp(targetPhone, msg);
+    const waOk = waRes.status === true || waRes.status === 'true';
+
+    if (waOk) {
+      res.json({ success: true, message: 'Notifikasi WhatsApp hasil edit berhasil dikirim ke klien!' });
+    } else {
+      res.status(500).json({ error: 'Gagal mengirim WhatsApp. Periksa konfigurasi Fonnte Anda.' });
+    }
+  } catch (err) {
+    console.error('[sessions] notify-done error:', err);
     res.status(500).json({ error: 'Database error' });
   }
 });
@@ -262,7 +418,7 @@ router.patch('/:uuid/reopen', auth, async (req, res) => {
 
 // ── PATCH /api/sessions/:uuid — update session details (admin) ─────
 router.patch('/:uuid', auth, async (req, res) => {
-  const { clientName, folderUrl, photoLimit } = req.body;
+  const { clientName, clientPhone, folderUrl, photoLimit } = req.body;
 
   if (!clientName || !folderUrl || !photoLimit) {
     return res.status(400).json({ error: 'clientName, folderUrl, dan photoLimit wajib diisi' });
@@ -287,8 +443,8 @@ router.patch('/:uuid', auth, async (req, res) => {
     if (!session) return res.status(404).json({ error: 'Sesi tidak ditemukan' });
 
     await db.query(
-      'UPDATE sessions SET client_name = $1, folder_url = $2, folder_id = $3, photo_limit = $4 WHERE id = $5',
-      [clientName.trim(), folderUrl.trim(), folderId, limit, session.id]
+      'UPDATE sessions SET client_name = $1, client_phone = $2, folder_url = $3, folder_id = $4, photo_limit = $5 WHERE id = $6',
+      [clientName.trim(), clientPhone ? clientPhone.trim() : null, folderUrl.trim(), folderId, limit, session.id]
     );
     res.json({ message: 'Sesi berhasil diperbarui' });
   } catch (err) {
