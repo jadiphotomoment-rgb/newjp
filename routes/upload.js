@@ -119,13 +119,16 @@ router.post('/file', uploadMiddleware.single('file'), async (req, res) => {
 
     // Upload ke Vercel Blob (server-to-server, no CORS)
     const blob = await blobPut(pathname, req.file.buffer, {
-      access: 'public',
+      access: 'private',
       token: token,
       contentType: req.file.mimetype,
       addRandomSuffix: false,
     });
 
-    console.log('[upload] file uploaded to Vercel Blob:', blob.url);
+    console.log('[upload] file uploaded to Vercel Blob:', blob.pathname);
+
+    // Untuk private blob: gunakan downloadUrl (pre-signed) agar bisa diakses admin
+    const accessUrl = blob.downloadUrl || blob.url;
 
     // Otomatis simpan ke attachments jika bookingId diberikan
     const bookingId = req.body.bookingId || req.query.bookingId || null;
@@ -137,7 +140,7 @@ router.post('/file', uploadMiddleware.single('file'), async (req, res) => {
           `INSERT INTO attachments (booking_id, file_url, blob_key, file_name, file_type, mime_type, file_size)
            VALUES ($1, $2, $3, $4, $5, $6, $7)
            ON CONFLICT DO NOTHING`,
-          [bookingId, blob.url, blob.pathname, req.file.originalname, fileType, req.file.mimetype, req.file.size]
+          [bookingId, accessUrl, blob.pathname, req.file.originalname, fileType, req.file.mimetype, req.file.size]
         );
       } catch (dbErr) {
         console.warn('[upload] DB save warning:', dbErr.message);
@@ -145,7 +148,7 @@ router.post('/file', uploadMiddleware.single('file'), async (req, res) => {
     }
 
     return res.json({
-      url: blob.url,
+      url: accessUrl,
       downloadUrl: blob.downloadUrl,
       pathname: blob.pathname,
       contentType: blob.contentType,
