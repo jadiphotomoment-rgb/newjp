@@ -365,7 +365,6 @@
           headers: {
             'Authorization': `Bearer ${clientToken}`,
             'Content-Type': selectedFile.type,
-            'x-cache-control': 'public, max-age=31536000',
           },
           body: selectedFile,
         });

@@ -536,7 +536,6 @@
           xhr.timeout = 120000; // 2 menit
           xhr.setRequestHeader('Authorization', `Bearer ${clientToken}`);
           xhr.setRequestHeader('Content-Type', selectedFile.type);
-          xhr.setRequestHeader('x-cache-control', 'public, max-age=31536000');
           xhr.send(selectedFile);
         });
 
