@@ -244,7 +244,9 @@
     </div>
   </div>
 
-  <script>
+  <script type="module">
+    import { upload } from 'https://esm.sh/@vercel/blob@0.27.3/client';
+
     let selectedFile = null;
 
     function log(msg, type = 'info') {
@@ -273,15 +275,16 @@
           log('Koneksi server & konfigurasi Vercel Blob OK', 'success');
         } else {
           container.innerHTML = `<div class="status-badge status-err">❌ BLOB_READ_WRITE_TOKEN Belum Diset</div>`;
-          hint.innerHTML = `Silakan tambahkan <code>BLOB_READ_WRITE_TOKEN=vercel_blob_rw_...</code> ke file <code>.env</code> Anda di server lokal.`;
-          log('Token Vercel Blob belum diset di .env server', 'error');
+          hint.innerHTML = `Silakan tambahkan <code>BLOB_READ_WRITE_TOKEN=vercel_blob_rw_...</code> ke Environment Variables.`;
+          log('Token Vercel Blob belum diset di server', 'error');
         }
       } catch (e) {
         container.innerHTML = `<div class="status-badge status-err">❌ Gagal Terhubung ke Backend</div>`;
-        hint.textContent = 'Pastikan server Node.js sedang berjalan di port 3000.';
+        hint.textContent = 'Pastikan server backend sedang aktif.';
         log('Gagal menghubungi backend: ' + e.message, 'error');
       }
     }
+    window.checkStatus = checkStatus;
 
     // File selection
     const fileInput = document.getElementById('test-file');
@@ -316,6 +319,7 @@
       document.getElementById('btn-submit').disabled = true;
       document.getElementById('result-box').classList.remove('show');
     }
+    window.clearFile = clearFile;
 
     async function startTestUpload() {
       if (!selectedFile) return;
@@ -329,62 +333,26 @@
       const bookingId = document.getElementById('booking-id').value || null;
 
       try {
-        // STEP 1: Minta token ke backend
-        log(`[Step 1] Meminta upload token dari /api/upload/token...`, 'info');
+        log(`[Step 1] Menginisialisasi upload via @vercel/blob/client SDK...`, 'info');
         const safeName = selectedFile.name.replace(/[^a-zA-Z0-9._-]/g, '_');
         const pathname = `test-uploads/${Date.now()}-${safeName}`;
 
-        const tokenRes = await fetch(`/api/upload/token?fileType=${fileType}&bookingId=${bookingId || ''}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            type: 'blob.generate-client-token',
-            payload: {
-              pathname: pathname,
-              callbackUrl: `${location.origin}/api/upload/token`,
-            }
-          })
+        log(`[Step 2] Mengunggah file langsung ke Vercel Blob Storage...`, 'info');
+        const blobResult = await upload(pathname, selectedFile, {
+          access: 'public',
+          handleUploadUrl: `/api/upload/token?fileType=${encodeURIComponent(fileType)}&bookingId=${encodeURIComponent(bookingId || '')}`,
+          onUploadProgress: (progressEvent) => {
+            const pct = Math.round(progressEvent.percentage || (progressEvent.loaded / progressEvent.total) * 100);
+            log(`[Progress] ${pct}% terunggah...`, 'info');
+          }
         });
 
-        if (!tokenRes.ok) {
-          const err = await tokenRes.json().catch(() => ({}));
-          throw new Error(err.error || `Server HTTP ${tokenRes.status}`);
-        }
-
-        const tokenData = await tokenRes.json();
-        const clientToken = tokenData.clientToken;
-        if (!clientToken) throw new Error('Token yang diterima kosong.');
-        log(`[Step 1 OK] Token berhasil di-generate oleh Vercel SDK`, 'success');
-
-        // STEP 2: Upload langsung ke Vercel Blob
-        log(`[Step 2] Uploading langsung dari browser ke Blob Storage (PUT https://blob.vercel-storage.com/${pathname})...`, 'info');
-        const blobUrl = `https://blob.vercel-storage.com/${pathname}`;
-
-        const putRes = await fetch(blobUrl, {
-          method: 'PUT',
-          headers: {
-            'Authorization': `Bearer ${clientToken}`,
-            'Content-Type': selectedFile.type,
-          },
-          body: selectedFile,
-        });
-
-        if (!putRes.ok) {
-          const putErr = await putRes.text().catch(() => '');
-          throw new Error(`Blob Storage PUT error HTTP ${putRes.status}: ${putErr}`);
-        }
-
-        let uploadedUrl = blobUrl;
-        try {
-          const resJson = await putRes.json();
-          uploadedUrl = resJson.url || resJson.downloadUrl || blobUrl;
-        } catch (_) {
-          uploadedUrl = putRes.headers.get('Location') || blobUrl;
-        }
-        log(`[Step 2 OK] File berhasil terunggah ke Vercel Blob: ${uploadedUrl}`, 'success');
+        const uploadedUrl = blobResult.url || blobResult.downloadUrl;
+        if (!uploadedUrl) throw new Error('Upload selesai tetapi tidak ada URL kembalian.');
+        log(`[Step 2 OK] File berhasil terunggah: ${uploadedUrl}`, 'success');
 
         // STEP 3: Simpan metadata ke DB
-        log(`[Step 3] Menyimpan metadata ke tabel attachments database...`, 'info');
+        log(`[Step 3] Menyimpan metadata ke database...`, 'info');
         const saveRes = await fetch('/api/upload/save-metadata', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -424,6 +392,7 @@
         btn.textContent = '🚀 Jalankan Test Upload';
       }
     }
+    window.startTestUpload = startTestUpload;
 
     // Auto check status on load
     checkStatus();
