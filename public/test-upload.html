@@ -333,21 +333,41 @@
       const bookingId = document.getElementById('booking-id').value || null;
 
       try {
-        log(`[Step 1] Menginisialisasi upload via @vercel/blob/client SDK...`, 'info');
         const safeName = selectedFile.name.replace(/[^a-zA-Z0-9._-]/g, '_');
         const pathname = `test-uploads/${Date.now()}-${safeName}`;
 
-        log(`[Step 2] Mengunggah file langsung ke Vercel Blob Storage...`, 'info');
+        // STEP 1: Minta client token dari server (generateClientTokenFromReadWriteToken)
+        log(`[Step 1] Meminta client token dari /api/upload/token...`, 'info');
+        const tokenRes = await fetch(
+          `/api/upload/token?fileType=${encodeURIComponent(fileType)}&bookingId=${encodeURIComponent(bookingId || '')}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ pathname }),
+          }
+        );
+
+        if (!tokenRes.ok) {
+          const err = await tokenRes.json().catch(() => ({}));
+          throw new Error(err.error || `Token error HTTP ${tokenRes.status}`);
+        }
+
+        const { clientToken } = await tokenRes.json();
+        if (!clientToken) throw new Error('Server tidak mengembalikan clientToken.');
+        log(`[Step 1 OK] Token diterima: ${clientToken.slice(0, 30)}...`, 'success');
+
+        // STEP 2: Upload langsung ke Vercel Blob dengan token eksplisit
+        // (BUKAN handleUploadUrl — supaya tidak ada 2-phase protocol yang konflik CORS)
+        log(`[Step 2] Mengunggah file ke Vercel Blob Storage...`, 'info');
         const blobResult = await upload(pathname, selectedFile, {
           access: 'public',
-          handleUploadUrl: `/api/upload/token?fileType=${encodeURIComponent(fileType)}&bookingId=${encodeURIComponent(bookingId || '')}`,
-          onUploadProgress: (progressEvent) => {
-            const pct = Math.round(progressEvent.percentage || (progressEvent.loaded / progressEvent.total) * 100);
-            log(`[Progress] ${pct}% terunggah...`, 'info');
+          token: clientToken,
+          onUploadProgress: ({ percentage }) => {
+            log(`[Progress] ${Math.round(percentage)}% terunggah...`, 'info');
           }
         });
 
-        const uploadedUrl = blobResult.url || blobResult.downloadUrl;
+        const uploadedUrl = blobResult.url;
         if (!uploadedUrl) throw new Error('Upload selesai tetapi tidak ada URL kembalian.');
         log(`[Step 2 OK] File berhasil terunggah: ${uploadedUrl}`, 'success');
 
@@ -369,7 +389,7 @@
 
         const saveData = await saveRes.json();
         if (!saveRes.ok) throw new Error(saveData.error || 'Gagal simpan metadata ke DB');
-        log(`[Step 3 OK] Metadata tersimpan di database Neon PostgreSQL!`, 'success');
+        log(`[Step 3 OK] Metadata tersimpan di database!`, 'success');
 
         // Tampilkan Hasil
         document.getElementById('result-box').classList.add('show');
@@ -381,7 +401,7 @@
         if (selectedFile.type.startsWith('image/')) {
           previewContainer.innerHTML = `<img class="preview-img" src="${uploadedUrl}" alt="Preview Upload">`;
         } else {
-          previewContainer.innerHTML = `<div style="margin-top:10px; font-size:0.85rem; color:var(--text-2);">📄 File dokumen (PDF) siap diakses via link di atas.</div>`;
+          previewContainer.innerHTML = `<div style="margin-top:10px;font-size:0.85rem;color:var(--text-2);">📄 PDF siap diakses via link di atas.</div>`;
         }
 
       } catch (err) {
