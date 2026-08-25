@@ -18,14 +18,12 @@ app.use(express.urlencoded({ extended: true }));
 // Serve static files from public/
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Serve uploaded payment proofs
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-
 // ── API Routes ───────────────────────────────────────────────
 app.use('/api/auth',       require('./routes/auth'));
 app.use('/api/sessions',   require('./routes/sessions'));
 app.use('/api/drive',      require('./routes/drive'));
 app.use('/api/notify',     require('./routes/notify'));
+app.use('/api/upload',     require('./routes/upload'));
 
 // ── Scale-Up Routes ───────────────────────────────────────────
 app.use('/api/bookings',             require('./routes/bookings'));

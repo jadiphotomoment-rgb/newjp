@@ -109,6 +109,31 @@
     .dropzone-text { font-weight: 600; color: var(--text-1); margin-bottom: var(--sp-1); }
     .dropzone-hint { font-size: 0.78rem; color: var(--text-3); }
 
+    /* Upload progress */
+    .upload-progress {
+      display: none;
+      margin-top: var(--sp-4);
+    }
+    .upload-progress.show { display: block; }
+    .progress-bar-wrap {
+      background: var(--bg-2);
+      border-radius: 999px;
+      height: 6px;
+      overflow: hidden;
+      margin-bottom: var(--sp-2);
+    }
+    .progress-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--purple), var(--green));
+      border-radius: 999px;
+      transition: width 0.3s ease;
+    }
+    .progress-label {
+      font-size: 0.78rem;
+      color: var(--text-3);
+      text-align: center;
+    }
+
     /* Preview */
     .file-preview {
       display: none;
@@ -128,7 +153,7 @@
     .file-preview-info { flex: 1; min-width: 0; }
     .file-preview-name { font-size: 0.85rem; font-weight: 600; color: var(--text-0); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .file-preview-size { font-size: 0.75rem; color: var(--text-3); }
-    .file-preview-remove { background: none; border: none; color: var(--red); font-size: 1.1rem; flex-shrink: 0; }
+    .file-preview-remove { background: none; border: none; color: var(--red); font-size: 1.1rem; flex-shrink: 0; cursor: pointer; }
 
     /* Transfer info */
     .transfer-info {
@@ -239,7 +264,7 @@
         <div class="dropzone" id="dropzone">
           <input type="file" id="proof-file" accept="image/jpeg,image/png,image/webp,application/pdf" aria-label="Pilih file bukti transfer">
           <div class="dropzone-icon">📎</div>
-          <div class="dropzone-text">Klik atau drag & drop file di sini</div>
+          <div class="dropzone-text">Klik atau drag &amp; drop file di sini</div>
           <div class="dropzone-hint">JPG, PNG, WebP, PDF — Maks 5MB</div>
         </div>
 
@@ -250,6 +275,14 @@
             <div class="file-preview-size" id="preview-size">—</div>
           </div>
           <button class="file-preview-remove" id="btn-remove-file" aria-label="Hapus file">✕</button>
+        </div>
+
+        <!-- Upload progress indicator -->
+        <div class="upload-progress" id="upload-progress">
+          <div class="progress-bar-wrap">
+            <div class="progress-bar-fill" id="progress-bar" style="width: 0%"></div>
+          </div>
+          <div class="progress-label" id="progress-label">Mempersiapkan upload...</div>
         </div>
 
         <button class="btn btn-primary" style="width:100%; margin-top:var(--sp-5); padding:14px;" id="btn-upload" disabled>
@@ -307,7 +340,6 @@
           return;
         }
         if (booking.status === 'dp_review') {
-          // Sudah upload, tapi belum confirmed — tampilkan status menunggu
           document.getElementById('success-state').classList.remove('hidden');
           return;
         }
@@ -319,7 +351,7 @@
         document.getElementById('sum-name').textContent = booking.client_name;
         document.getElementById('sum-phone').textContent = booking.client_phone;
         document.getElementById('sum-date').textContent = new Date(booking.event_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
-        
+
         const pkgName = (booking.form_data && booking.form_data._package_name) || (booking.package_price ? 'Paket Custom' : 'Standard');
         const pkgPriceFmt = booking.package_price ? ` (Rp ${Number(booking.package_price).toLocaleString('id-ID')})` : '';
         document.getElementById('sum-location').textContent = pkgName + pkgPriceFmt;
@@ -386,44 +418,159 @@
       uploadBtn.disabled = true;
     });
 
-    /* ── Upload ── */
+    /* ─────────────────────────────────────────────────────────────────────
+     * Upload ke Vercel Blob — Client-Side Direct Upload
+     *
+     * Flow:
+     *   1. POST /api/upload/token  → server generate clientToken (handleUpload)
+     *   2. PUT ke Vercel Blob      → file langsung ke storage (tidak lewat server!)
+     *   3. POST /api/bookings/:id/upload-dp → simpan metadata (blobUrl) ke DB
+     * ─────────────────────────────────────────────────────────────────── */
     uploadBtn.addEventListener('click', async () => {
       if (!selectedFile || !bookingId) return;
 
-      const alert = document.getElementById('upload-alert');
-      alert.classList.add('hidden');
+      const alertEl    = document.getElementById('upload-alert');
+      const progressEl = document.getElementById('upload-progress');
+      const progressBar = document.getElementById('progress-bar');
+      const progressLabel = document.getElementById('progress-label');
+
+      alertEl.classList.add('hidden');
+      progressEl.classList.remove('show');
       uploadBtn.disabled = true;
       document.getElementById('btn-upload-spinner').classList.remove('hidden');
       document.getElementById('btn-upload-text').classList.add('hidden');
 
-      const formData = new FormData();
-      formData.append('proof', selectedFile, selectedFile.name);
-
-      try {
-        const res = await fetch(`/api/bookings/${bookingId}/upload-dp`, {
-          method: 'POST',
-          body:   formData
-        });
-        const data = await res.json();
-
-        if (!res.ok) {
-          alert.textContent = data.error || 'Gagal upload. Coba lagi.';
-          alert.classList.remove('hidden');
-          uploadBtn.disabled = false;
-          document.getElementById('btn-upload-spinner').classList.add('hidden');
-          document.getElementById('btn-upload-text').classList.remove('hidden');
-          return;
-        }
-
-        // Show success
-        document.getElementById('upload-main').classList.add('hidden');
-        document.getElementById('success-state').classList.remove('hidden');
-      } catch (err) {
-        alert.textContent = 'Terjadi kesalahan jaringan. Coba lagi.';
-        alert.classList.remove('hidden');
+      function setError(msg) {
+        alertEl.textContent = msg;
+        alertEl.classList.remove('hidden');
         uploadBtn.disabled = false;
         document.getElementById('btn-upload-spinner').classList.add('hidden');
         document.getElementById('btn-upload-text').classList.remove('hidden');
+        progressEl.classList.remove('show');
+      }
+
+      function setProgress(pct, label) {
+        progressEl.classList.add('show');
+        progressBar.style.width = pct + '%';
+        progressLabel.textContent = label;
+      }
+
+      try {
+        // ── STEP 1: Minta client upload token dari server ───────────
+        setProgress(10, 'Mempersiapkan upload...');
+
+        // Buat pathname yang aman untuk file di Vercel Blob
+        const safeFileName = selectedFile.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+        const pathname = `payment-proofs/booking-${bookingId}-${Date.now()}-${safeFileName}`;
+
+        const tokenRes = await fetch(
+          `/api/upload/token?bookingId=${encodeURIComponent(bookingId)}&fileType=payment_proof`,
+          {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              type: 'blob.generate-client-token',
+              payload: {
+                pathname:    pathname,
+                callbackUrl: `${location.origin}/api/upload/token`,
+              }
+            })
+          }
+        );
+
+        if (!tokenRes.ok) {
+          const err = await tokenRes.json().catch(() => ({}));
+          if (tokenRes.status === 500) {
+            // Blob belum dikonfigurasi di Vercel — tampilkan pesan yang ramah
+            return setError('Fitur upload sementara tidak tersedia. Silakan hubungi admin untuk konfirmasi DP Anda.');
+          }
+          return setError(err.error || 'Gagal mendapatkan izin upload. Silakan coba lagi.');
+        }
+
+        const { clientToken } = await tokenRes.json();
+        if (!clientToken) {
+          return setError('Token upload tidak valid. Coba muat ulang halaman.');
+        }
+
+        // ── STEP 2: Upload langsung dari browser ke Vercel Blob ─────
+        setProgress(30, 'Mengunggah file...');
+
+        // Gunakan XMLHttpRequest untuk dapat real progress
+        const blobUrl = await new Promise((resolve, reject) => {
+          const xhr = new XMLHttpRequest();
+          const uploadUrl = `https://blob.vercel-storage.com/${pathname}`;
+
+          xhr.upload.addEventListener('progress', (e) => {
+            if (e.lengthComputable) {
+              const pct = Math.round(30 + (e.loaded / e.total) * 50);
+              setProgress(pct, `Mengunggah ${Math.round((e.loaded / e.total) * 100)}%...`);
+            }
+          });
+
+          xhr.addEventListener('load', () => {
+            if (xhr.status >= 200 && xhr.status < 300) {
+              try {
+                const result = JSON.parse(xhr.responseText);
+                resolve(result.url || result.downloadUrl || uploadUrl);
+              } catch (_) {
+                // Response bukan JSON, coba ambil dari header
+                const loc = xhr.getResponseHeader('Location');
+                resolve(loc || uploadUrl);
+              }
+            } else {
+              console.error('[upload] Blob PUT error:', xhr.status, xhr.responseText);
+              if (xhr.status === 401 || xhr.status === 403) {
+                reject(new Error('Izin upload ditolak. Silakan muat ulang halaman dan coba lagi.'));
+              } else if (xhr.status === 413) {
+                reject(new Error('Ukuran file terlalu besar (maks 5MB).'));
+              } else {
+                reject(new Error('Gagal mengunggah file. Coba lagi atau gunakan jaringan yang lebih stabil.'));
+              }
+            }
+          });
+
+          xhr.addEventListener('error', () => reject(new Error('Koneksi gagal. Periksa koneksi internet Anda.')));
+          xhr.addEventListener('timeout', () => reject(new Error('Upload timeout. File mungkin terlalu besar atau koneksi lambat.')));
+
+          xhr.open('PUT', uploadUrl);
+          xhr.timeout = 120000; // 2 menit
+          xhr.setRequestHeader('Authorization', `Bearer ${clientToken}`);
+          xhr.setRequestHeader('Content-Type', selectedFile.type);
+          xhr.setRequestHeader('x-cache-control', 'public, max-age=31536000');
+          xhr.send(selectedFile);
+        });
+
+        // ── STEP 3: Simpan metadata ke backend DB ───────────────────
+        setProgress(90, 'Menyimpan data...');
+
+        const saveRes = await fetch(`/api/bookings/${bookingId}/upload-dp`, {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            blobUrl:  blobUrl,
+            blobKey:  pathname,
+            fileName: selectedFile.name,
+            mimeType: selectedFile.type,
+            fileSize: selectedFile.size,
+          }),
+        });
+
+        const saveData = await saveRes.json();
+
+        if (!saveRes.ok) {
+          return setError(saveData.error || 'Upload berhasil tetapi gagal menyimpan data. Silakan hubungi admin.');
+        }
+
+        // ── STEP 4: Sukses ───────────────────────────────────────────
+        setProgress(100, 'Selesai!');
+        setTimeout(() => {
+          document.getElementById('upload-main').classList.add('hidden');
+          document.getElementById('success-state').classList.remove('hidden');
+        }, 500);
+
+      } catch (err) {
+        console.error('[upload] error:', err);
+        setError(err.message || 'Terjadi kesalahan. Pastikan koneksi internet Anda stabil dan coba lagi.');
       }
     });
   </script>

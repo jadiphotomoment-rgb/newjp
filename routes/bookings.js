@@ -2,135 +2,10 @@
 
 const express  = require('express');
 const router   = express.Router();
-const path     = require('path');
-const fs       = require('fs');
 const db       = require('../database');
 const auth     = require('../middleware/auth');
 const https    = require('https');
-
-const { google } = require('googleapis');
-const stream   = require('stream');
 const { buildTemplateMsg } = require('../utils/template');
-
-// ── Upload directory (fallback lokal jika Drive error/belum diset) ─
-const UPLOAD_DIR = path.join(__dirname, '..', 'uploads', 'payments');
-if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
-
-async function uploadToGoogleDrive(fileBuf, filename, mimeType, folderId) {
-  const targetFolderId = folderId || process.env.GOOGLE_DRIVE_PAYMENT_FOLDER_ID;
-  if (!process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL || !process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY || !targetFolderId) {
-    throw new Error('Google Drive configuration is missing (service account or folder ID)');
-  }
-
-  // Use OAuth2 if Refresh Token is provided, otherwise fallback to Service Account
-  let authClient;
-  
-  if (process.env.GOOGLE_DRIVE_REFRESH_TOKEN && process.env.GOOGLE_DRIVE_CLIENT_ID && process.env.GOOGLE_DRIVE_CLIENT_SECRET) {
-    const oauth2Client = new google.auth.OAuth2(
-      process.env.GOOGLE_DRIVE_CLIENT_ID,
-      process.env.GOOGLE_DRIVE_CLIENT_SECRET,
-      'https://developers.google.com/oauthplayground' // Redirect URL
-    );
-    oauth2Client.setCredentials({ refresh_token: process.env.GOOGLE_DRIVE_REFRESH_TOKEN });
-    authClient = oauth2Client;
-  } else {
-    // Parse private key — strip surrounding quotes and unescape \n literals
-    let privateKey = process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY;
-    if ((privateKey.startsWith('"') && privateKey.endsWith('"')) ||
-        (privateKey.startsWith("'") && privateKey.endsWith("'"))) {
-      privateKey = privateKey.slice(1, -1);
-    }
-    privateKey = privateKey.replace(/\\n/g, '\n');
-
-    const auth = new google.auth.GoogleAuth({
-      credentials: {
-        client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
-        private_key: privateKey,
-      },
-      scopes: [
-        'https://www.googleapis.com/auth/drive',
-        'https://www.googleapis.com/auth/drive.file',
-      ],
-    });
-    authClient = await auth.getClient();
-  }
-
-  const drive = google.drive({ version: 'v3', auth: authClient });
-  const bufferStream = new stream.PassThrough();
-  bufferStream.end(fileBuf);
-
-  const res = await drive.files.create({
-    requestBody: {
-      name: filename,
-      parents: [targetFolderId]
-    },
-    media: {
-      mimeType: mimeType,
-      body: bufferStream
-    },
-    fields: 'id, webViewLink'
-  });
-
-  // Make it readable by anyone with the link
-  await drive.permissions.create({
-    fileId: res.data.id,
-    requestBody: { role: 'reader', type: 'anyone' }
-  });
-
-  return res.data;
-}
-
-// ── Simple multipart parser (no extra dep) ───────────────────────
-function parseMultipart(req) {
-  return new Promise((resolve, reject) => {
-    const chunks = [];
-    req.on('data', c => chunks.push(c));
-    req.on('end', () => {
-      const body = Buffer.concat(chunks);
-      const contentType = req.headers['content-type'] || '';
-      const boundaryMatch = contentType.match(/boundary=([^\s;]+)/);
-      if (!boundaryMatch) return reject(new Error('No boundary found'));
-
-      const boundary = '--' + boundaryMatch[1];
-      const parts = [];
-      let start = body.indexOf(boundary);
-
-      while (start !== -1) {
-        const end = body.indexOf(boundary, start + boundary.length);
-        if (end === -1) break;
-        const part = body.slice(start + boundary.length + 2, end - 2);
-        const headerEnd = part.indexOf('\r\n\r\n');
-        if (headerEnd === -1) { start = end; continue; }
-        const headerStr = part.slice(0, headerEnd).toString('utf8');
-        const data = part.slice(headerEnd + 4);
-        const nameMatch = headerStr.match(/name="([^"]+)"/);
-        const filenameMatch = headerStr.match(/filename="([^"]+)"/);
-        const ctMatch = headerStr.match(/Content-Type:\s*([^\r\n]+)/i);
-        if (nameMatch) {
-          parts.push({
-            name: nameMatch[1],
-            filename: filenameMatch ? filenameMatch[1] : null,
-            contentType: ctMatch ? ctMatch[1].trim() : null,
-            data
-          });
-        }
-        start = end;
-      }
-
-      const fields = {};
-      let file = null;
-      for (const p of parts) {
-        if (p.filename) {
-          file = p;
-        } else {
-          fields[p.name] = p.data.toString('utf8');
-        }
-      }
-      resolve({ fields, file });
-    });
-    req.on('error', reject);
-  });
-}
 
 // ── WhatsApp sender (reuse logic from notify.js) ─────────────────
 function sendWhatsApp(target, message) {
@@ -379,11 +254,20 @@ router.get('/:id', async (req, res) => {
 
     // Ambil payment terkait (jika ada)
     const payRes = await db.query(
-      `SELECT id, amount, payment_type, status, proof_url, created_at FROM payments
+      `SELECT id, amount, payment_type, status, proof_url, blob_key, proof_filename, created_at FROM payments
        WHERE booking_id = $1 ORDER BY created_at DESC`,
       [booking.id]
     );
     booking.payments = payRes.rows;
+
+    // Ambil attachments terkait (jika ada)
+    const attachRes = await db.query(
+      `SELECT id, file_url, blob_key, file_name, file_type, mime_type, file_size, created_at
+       FROM attachments
+       WHERE booking_id = $1 ORDER BY created_at DESC`,
+      [booking.id]
+    );
+    booking.attachments = attachRes.rows;
 
     res.json(booking);
   } catch (err) {
@@ -392,10 +276,29 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// POST /api/bookings/:id/upload-dp — upload bukti DP (publik)
+// POST /api/bookings/:id/upload-dp — konfirmasi metadata setelah client upload ke Vercel Blob
+// Body JSON: { blobUrl, blobKey, fileName, mimeType, fileSize }
 router.post('/:id/upload-dp', async (req, res) => {
   const bookingId = parseInt(req.params.id, 10);
   if (isNaN(bookingId)) return res.status(400).json({ error: 'ID booking tidak valid' });
+
+  const { blobUrl, blobKey, fileName, mimeType, fileSize } = req.body;
+
+  // Validasi input
+  if (!blobUrl || !fileName) {
+    return res.status(400).json({ error: 'blobUrl dan fileName wajib diisi' });
+  }
+
+  // Validasi URL berasal dari Vercel Blob
+  if (!blobUrl.includes('blob.vercel-storage.com')) {
+    return res.status(400).json({ error: 'URL file tidak valid. Harus berasal dari Vercel Blob Storage.' });
+  }
+
+  // Validasi tipe file
+  const allowedMimes = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
+  if (mimeType && !allowedMimes.includes(mimeType)) {
+    return res.status(400).json({ error: 'Tipe file tidak diizinkan' });
+  }
 
   try {
     const bookRes = await db.query(
@@ -413,83 +316,19 @@ router.post('/:id/upload-dp', async (req, res) => {
       return res.status(409).json({ error: `Booking sudah berstatus ${booking.status}` });
     }
 
-    // Parse multipart
-    let parsed;
-    try {
-      parsed = await parseMultipart(req);
-    } catch (e) {
-      return res.status(400).json({ error: 'Gagal membaca data upload' });
-    }
-
-    const { file } = parsed;
-    if (!file) return res.status(400).json({ error: 'File bukti transfer tidak ditemukan' });
-
-    // Validasi tipe file
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
-    if (!allowedTypes.includes(file.contentType)) {
-      return res.status(400).json({ error: 'Hanya file JPG, PNG, WebP, atau PDF yang diizinkan' });
-    }
-
-    // Validasi ukuran (maks 5MB)
-    if (file.data.length > 5 * 1024 * 1024) {
-      return res.status(400).json({ error: 'Ukuran file maksimal 5MB' });
-    }
-
-    // Simpan file
-    const ext = path.extname(file.filename || '.jpg').toLowerCase() || '.jpg';
-    const safeExt = ['.jpg', '.jpeg', '.png', '.webp', '.pdf'].includes(ext) ? ext : '.jpg';
-    const filename = `booking-${bookingId}-dp-${Date.now()}${safeExt}`;
-    
-    let proofUrl = '';
-    
-    // Tentukan folder Drive: prioritas kategori booking > app_settings > .env
-    let targetFolderId = null;
-    try {
-      // 1. Cek folder dari kategori booking
-      const catFolderRes = await db.query(
-        `SELECT bc.drive_folder_id FROM bookings b
-         JOIN booking_categories bc ON b.category_id = bc.id
-         WHERE b.id = $1`,
-        [bookingId]
-      );
-      if (catFolderRes.rows[0] && catFolderRes.rows[0].drive_folder_id) {
-        targetFolderId = catFolderRes.rows[0].drive_folder_id;
-        console.log(`[bookings] Using category drive folder: ${targetFolderId}`);
-      } else {
-        // 2. Fallback ke global app_settings
-        const settingsRes = await db.query(
-          `SELECT value FROM app_settings WHERE key = 'global_payment_folder_id'`
-        );
-        if (settingsRes.rows[0] && settingsRes.rows[0].value) {
-          targetFolderId = settingsRes.rows[0].value;
-          console.log(`[bookings] Using global drive folder from settings: ${targetFolderId}`);
-        }
-      }
-    } catch (dbErr) {
-      console.warn('[bookings] Could not read drive folder from DB, using .env fallback:', dbErr.message);
-    }
-    // 3. Fallback ke .env
-    if (!targetFolderId) targetFolderId = process.env.GOOGLE_DRIVE_PAYMENT_FOLDER_ID;
-
-    // Upload ke Google Drive (Wajib, tanpa fallback lokal)
-    if (!process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL) {
-      console.error('[bookings] Google Drive config missing');
-      return res.status(500).json({ error: 'Konfigurasi Google Drive belum diatur' });
-    }
-    
-    try {
-      const driveRes = await uploadToGoogleDrive(file.data, filename, file.contentType, targetFolderId);
-      proofUrl = driveRes.webViewLink;
-    } catch (gDriveErr) {
-      console.error('[bookings] Upload to Drive failed:', gDriveErr.message);
-      return res.status(500).json({ error: 'Gagal mengunggah bukti transfer ke Google Drive' });
-    }
-
     // Simpan ke tabel payments
     await db.query(
-      `INSERT INTO payments (booking_id, amount, payment_type, proof_url, proof_filename, status)
-       VALUES ($1, $2, 'dp', $3, $4, 'pending')`,
-      [bookingId, booking.dp_amount || null, proofUrl, file.filename]
+      `INSERT INTO payments (booking_id, amount, payment_type, proof_url, proof_filename, blob_key, status)
+       VALUES ($1, $2, 'dp', $3, $4, $5, 'pending')`,
+      [bookingId, booking.dp_amount || null, blobUrl, fileName, blobKey || null]
+    );
+
+    // Simpan ke tabel attachments (untuk tracking lengkap)
+    await db.query(
+      `INSERT INTO attachments (booking_id, file_url, blob_key, file_name, file_type, mime_type, file_size)
+       VALUES ($1, $2, $3, $4, 'payment_proof', $5, $6)
+       ON CONFLICT DO NOTHING`,
+      [bookingId, blobUrl, blobKey || null, fileName, mimeType || null, fileSize || null]
     );
 
     // Update status booking → dp_review
@@ -511,7 +350,7 @@ router.post('/:id/upload-dp', async (req, res) => {
     });
   } catch (err) {
     console.error('[bookings] upload-dp error:', err);
-    res.status(500).json({ error: 'Gagal upload bukti transfer' });
+    res.status(500).json({ error: 'Gagal menyimpan data bukti transfer' });
   }
 });
 
@@ -577,6 +416,14 @@ router.get('/admin/detail/:id', auth, async (req, res) => {
       [booking.id]
     );
     booking.payments = payRes.rows;
+
+    const attachRes = await db.query(
+      `SELECT id, file_url, blob_key, file_name, file_type, mime_type, file_size, created_at
+       FROM attachments
+       WHERE booking_id = $1 ORDER BY created_at DESC`,
+      [booking.id]
+    );
+    booking.attachments = attachRes.rows;
 
     res.json(booking);
   } catch (err) {

@@ -102,6 +102,9 @@ const db = {
           IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='booking_categories' AND column_name='drive_folder_name') THEN
             ALTER TABLE booking_categories ADD COLUMN drive_folder_name VARCHAR(255);
           END IF;
+          IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='payments' AND column_name='blob_key') THEN
+            ALTER TABLE payments ADD COLUMN blob_key TEXT;
+          END IF;
         END
         $$;
 
@@ -176,12 +179,27 @@ const db = {
           created_at    TIMESTAMP DEFAULT now()
         );
 
+        -- File attachments (Vercel Blob)
+        CREATE TABLE IF NOT EXISTS attachments (
+          id          SERIAL PRIMARY KEY,
+          booking_id  INT REFERENCES bookings(id) ON DELETE CASCADE NULL,
+          user_id     INT REFERENCES admins(id) NULL,
+          file_url    TEXT NOT NULL,
+          blob_key    TEXT,
+          file_name   TEXT NOT NULL,
+          file_type   VARCHAR(30) NOT NULL DEFAULT 'payment_proof',
+          mime_type   VARCHAR(100),
+          file_size   BIGINT,
+          created_at  TIMESTAMP DEFAULT now()
+        );
+
         -- Indexes
-        CREATE INDEX IF NOT EXISTS idx_bookings_category ON bookings(category_id);
-        CREATE INDEX IF NOT EXISTS idx_bookings_status   ON bookings(status);
-        CREATE INDEX IF NOT EXISTS idx_bookings_date     ON bookings(event_date);
-        CREATE INDEX IF NOT EXISTS idx_payments_booking  ON payments(booking_id);
-        CREATE INDEX IF NOT EXISTS idx_payments_status   ON payments(status);
+        CREATE INDEX IF NOT EXISTS idx_bookings_category  ON bookings(category_id);
+        CREATE INDEX IF NOT EXISTS idx_bookings_status    ON bookings(status);
+        CREATE INDEX IF NOT EXISTS idx_bookings_date      ON bookings(event_date);
+        CREATE INDEX IF NOT EXISTS idx_payments_booking   ON payments(booking_id);
+        CREATE INDEX IF NOT EXISTS idx_payments_status    ON payments(status);
+        CREATE INDEX IF NOT EXISTS idx_attachments_booking ON attachments(booking_id);
       `);
 
       // ── Seed default booking categories ──────────────────────────
