@@ -168,7 +168,7 @@
   <div class="test-container">
     <div class="header-box">
       <h1>🧪 Vercel Blob Upload Tester</h1>
-      <p>Halaman pengujian cepat koneksi & fungsi direct upload ke Vercel Blob Storage</p>
+      <p>Halaman pengujian cepat koneksi &amp; fungsi upload ke Vercel Blob Storage via server proxy</p>
     </div>
 
     <!-- Server Status Card -->
@@ -226,14 +226,14 @@
       <div style="margin-top:var(--sp-5);">
         <div style="font-size:0.75rem; font-weight:700; text-transform:uppercase; color:var(--text-3); margin-bottom:6px;">Live Execution Logs:</div>
         <div class="log-box" id="log-box">
-          <div class="log-item info">[Ready] Siap melakukan pengujian upload...</div>
+          <div class="log-item info">[Ready] Siap melakukan pengujian upload via server-side proxy...</div>
         </div>
       </div>
 
       <!-- Result View -->
       <div class="result-box" id="result-box">
         <div style="font-weight:700; font-size:0.95rem; color:var(--green); margin-bottom:var(--sp-3);">
-          🎉 Upload Berhasil Tersimpan di Vercel Blob & Database!
+          🎉 Upload Berhasil! File tersimpan di Vercel Blob &amp; Database!
         </div>
         <div style="font-size:0.82rem; margin-bottom:var(--sp-2);">
           <strong>Direct URL:</strong><br>
@@ -244,17 +244,15 @@
     </div>
   </div>
 
-  <script type="module">
-    import { put } from 'https://esm.sh/@vercel/blob@0.27.3/client';
-
+  <script>
     let selectedFile = null;
 
     function log(msg, type = 'info') {
       const box = document.getElementById('log-box');
       const item = document.createElement('div');
-      item.className = `log-item ${type}`;
+      item.className = 'log-item ' + type;
       const time = new Date().toLocaleTimeString('id-ID');
-      item.textContent = `[${time}] ${msg}`;
+      item.textContent = '[' + time + '] ' + msg;
       box.appendChild(item);
       box.scrollTop = box.scrollHeight;
     }
@@ -262,54 +260,47 @@
     async function checkStatus() {
       const container = document.getElementById('status-container');
       const hint = document.getElementById('status-hint');
-      container.innerHTML = `<div class="status-badge" style="background:var(--bg-2);">Memeriksa server...</div>`;
+      container.innerHTML = '<div class="status-badge" style="background:var(--bg-2);color:var(--text-3);">Memeriksa server...</div>';
       hint.textContent = '';
-
       try {
         const res = await fetch('/api/upload/status');
         const data = await res.json();
-
         if (data.configured) {
-          container.innerHTML = `<div class="status-badge status-ok">✅ BLOB_READ_WRITE_TOKEN Aktif & Siap</div>`;
-          hint.innerHTML = `Maksimal ukuran file: <strong>${data.maxSizeMB} MB</strong>. Tipe diizinkan: <code>${data.allowedTypes.join(', ')}</code>`;
-          log('Koneksi server & konfigurasi Vercel Blob OK', 'success');
+          container.innerHTML = '<div class="status-badge status-ok">✅ BLOB_READ_WRITE_TOKEN Aktif &amp; Siap</div>';
+          hint.innerHTML = 'Maksimal ukuran file: <strong>' + data.maxSizeMB + ' MB</strong>. Tipe: <code>' + data.allowedTypes.join(', ') + '</code>';
+          log('Status OK — server-side proxy upload siap digunakan', 'success');
         } else {
-          container.innerHTML = `<div class="status-badge status-err">❌ BLOB_READ_WRITE_TOKEN Belum Diset</div>`;
-          hint.innerHTML = `Silakan tambahkan <code>BLOB_READ_WRITE_TOKEN=vercel_blob_rw_...</code> ke Environment Variables.`;
-          log('Token Vercel Blob belum diset di server', 'error');
+          container.innerHTML = '<div class="status-badge status-err">❌ BLOB_READ_WRITE_TOKEN Belum Diset</div>';
+          hint.innerHTML = 'Silakan tambahkan <code>BLOB_READ_WRITE_TOKEN=vercel_blob_rw_...</code> ke Environment Variables Vercel.';
+          log('Token belum diset di server', 'error');
         }
       } catch (e) {
-        container.innerHTML = `<div class="status-badge status-err">❌ Gagal Terhubung ke Backend</div>`;
+        container.innerHTML = '<div class="status-badge status-err">❌ Gagal Terhubung ke Backend</div>';
         hint.textContent = 'Pastikan server backend sedang aktif.';
         log('Gagal menghubungi backend: ' + e.message, 'error');
       }
     }
-    window.checkStatus = checkStatus;
 
-    // File selection
     const fileInput = document.getElementById('test-file');
-    const dropzone = document.getElementById('dropzone');
+    const dropzone  = document.getElementById('dropzone');
 
-    fileInput.addEventListener('change', () => handleFile(fileInput.files[0]));
-    dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('drag-over'); });
-    dropzone.addEventListener('dragleave', () => dropzone.classList.remove('drag-over'));
-    dropzone.addEventListener('drop', e => {
+    fileInput.addEventListener('change', function() { handleFile(fileInput.files[0]); });
+    dropzone.addEventListener('dragover', function(e) { e.preventDefault(); dropzone.classList.add('drag-over'); });
+    dropzone.addEventListener('dragleave', function() { dropzone.classList.remove('drag-over'); });
+    dropzone.addEventListener('drop', function(e) {
       e.preventDefault(); dropzone.classList.remove('drag-over');
       if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
     });
 
     function handleFile(file) {
       if (!file) return;
-      if (file.size > 5 * 1024 * 1024) {
-        alert('File melebihi 5MB');
-        return;
-      }
+      if (file.size > 5 * 1024 * 1024) { alert('File melebihi 5MB'); return; }
       selectedFile = file;
       document.getElementById('file-name').textContent = file.name;
       document.getElementById('file-size').textContent = (file.size / 1024).toFixed(1) + ' KB';
       document.getElementById('file-info').classList.add('show');
       document.getElementById('btn-submit').disabled = false;
-      log(`File dipilih: ${file.name} (${(file.size/1024).toFixed(1)} KB)`, 'info');
+      log('File dipilih: ' + file.name + ' (' + (file.size/1024).toFixed(1) + ' KB)', 'info');
     }
 
     function clearFile() {
@@ -319,76 +310,65 @@
       document.getElementById('btn-submit').disabled = true;
       document.getElementById('result-box').classList.remove('show');
     }
-    window.clearFile = clearFile;
 
     async function startTestUpload() {
       if (!selectedFile) return;
-
       const btn = document.getElementById('btn-submit');
       btn.disabled = true;
       btn.textContent = '⏳ Mengunggah...';
       document.getElementById('result-box').classList.remove('show');
 
-      const fileType = document.getElementById('file-type').value;
-      const bookingId = document.getElementById('booking-id').value || null;
+      const fileType  = document.getElementById('file-type').value;
+      const bookingId = document.getElementById('booking-id').value || '';
 
       try {
         const safeName = selectedFile.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-        const pathname = `test-uploads/${Date.now()}-${safeName}`;
+        const pathname = 'test-uploads/' + Date.now() + '-' + safeName;
 
-        // STEP 1: Minta client token dari server (generateClientTokenFromReadWriteToken)
-        log(`[Step 1] Meminta client token dari /api/upload/token...`, 'info');
-        const tokenRes = await fetch(
-          `/api/upload/token?fileType=${encodeURIComponent(fileType)}&bookingId=${encodeURIComponent(bookingId || '')}`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ pathname }),
-          }
-        );
+        // Server-side proxy: browser → server → Vercel Blob (no CORS)
+        log('[Step 1] Mengunggah file ke /api/upload/file (server-side proxy)...', 'info');
 
-        if (!tokenRes.ok) {
-          const err = await tokenRes.json().catch(() => ({}));
-          throw new Error(err.error || `Token error HTTP ${tokenRes.status}`);
+        const formData = new FormData();
+        formData.append('file', selectedFile);
+        formData.append('pathname', pathname);
+        formData.append('fileType', fileType);
+        if (bookingId) formData.append('bookingId', bookingId);
+
+        const uploadRes = await fetch('/api/upload/file', {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (!uploadRes.ok) {
+          const errData = await uploadRes.json().catch(function() { return {}; });
+          throw new Error(errData.error || ('Upload gagal HTTP ' + uploadRes.status));
         }
 
-        const { clientToken } = await tokenRes.json();
-        if (!clientToken) throw new Error('Server tidak mengembalikan clientToken.');
-        log(`[Step 1 OK] Token diterima: ${clientToken.slice(0, 30)}...`, 'success');
+        const result = await uploadRes.json();
+        const uploadedUrl = result.url;
+        log('[Step 1 OK] Upload berhasil: ' + uploadedUrl, 'success');
 
-        // STEP 2: Upload langsung ke Vercel Blob dengan put() + token eksplisit
-        log(`[Step 2] Mengunggah file ke Vercel Blob Storage...`, 'info');
-        const blobResult = await put(pathname, selectedFile, {
-          access: 'public',
-          token: clientToken,
-          onUploadProgress: ({ percentage }) => {
-            log(`[Progress] ${Math.round(percentage)}% terunggah...`, 'info');
-          }
-        });
-
-        const uploadedUrl = blobResult.url;
-        if (!uploadedUrl) throw new Error('Upload selesai tetapi tidak ada URL kembalian.');
-        log(`[Step 2 OK] File berhasil terunggah: ${uploadedUrl}`, 'success');
-
-        // STEP 3: Simpan metadata ke DB
-        log(`[Step 3] Menyimpan metadata ke database...`, 'info');
-        const saveRes = await fetch('/api/upload/save-metadata', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            bookingId: bookingId,
-            blobUrl: uploadedUrl,
-            blobKey: pathname,
-            fileName: selectedFile.name,
-            fileType: fileType,
-            mimeType: selectedFile.type,
-            fileSize: selectedFile.size,
-          })
-        });
-
-        const saveData = await saveRes.json();
-        if (!saveRes.ok) throw new Error(saveData.error || 'Gagal simpan metadata ke DB');
-        log(`[Step 3 OK] Metadata tersimpan di database!`, 'success');
+        // Simpan metadata ke DB jika belum disimpan server
+        if (!bookingId) {
+          log('[Step 2] Menyimpan metadata ke database...', 'info');
+          const saveRes = await fetch('/api/upload/save-metadata', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              blobUrl:  uploadedUrl,
+              blobKey:  result.pathname,
+              fileName: selectedFile.name,
+              fileType: fileType,
+              mimeType: selectedFile.type,
+              fileSize: selectedFile.size,
+            })
+          });
+          const saveData = await saveRes.json();
+          if (!saveRes.ok) throw new Error(saveData.error || 'Gagal simpan metadata');
+          log('[Step 2 OK] Metadata tersimpan di database!', 'success');
+        } else {
+          log('[Step 2 OK] Metadata otomatis tersimpan oleh server (bookingId=' + bookingId + ')', 'success');
+        }
 
         // Tampilkan Hasil
         document.getElementById('result-box').classList.add('show');
@@ -398,22 +378,20 @@
 
         const previewContainer = document.getElementById('img-preview-container');
         if (selectedFile.type.startsWith('image/')) {
-          previewContainer.innerHTML = `<img class="preview-img" src="${uploadedUrl}" alt="Preview Upload">`;
+          previewContainer.innerHTML = '<img class="preview-img" src="' + uploadedUrl + '" alt="Preview">';
         } else {
-          previewContainer.innerHTML = `<div style="margin-top:10px;font-size:0.85rem;color:var(--text-2);">📄 PDF siap diakses via link di atas.</div>`;
+          previewContainer.innerHTML = '<div style="margin-top:10px;font-size:0.85rem;color:var(--text-2);">📄 File PDF siap diakses via link di atas.</div>';
         }
 
       } catch (err) {
-        log(`[ERROR] ${err.message}`, 'error');
-        alert(`Test Upload Gagal:\n${err.message}`);
+        log('[ERROR] ' + err.message, 'error');
+        alert('Test Upload Gagal:\n' + err.message);
       } finally {
         btn.disabled = false;
         btn.textContent = '🚀 Jalankan Test Upload';
       }
     }
-    window.startTestUpload = startTestUpload;
 
-    // Auto check status on load
     checkStatus();
   </script>
 </body>

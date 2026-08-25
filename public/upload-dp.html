@@ -74,7 +74,6 @@
     }
     .dp-banner .dp-note { font-size: 0.75rem; color: var(--text-3); margin-top: var(--sp-1); }
 
-    /* Upload dropzone */
     .upload-card {
       background: var(--bg-card);
       border: 1px solid var(--border);
@@ -109,7 +108,6 @@
     .dropzone-text { font-weight: 600; color: var(--text-1); margin-bottom: var(--sp-1); }
     .dropzone-hint { font-size: 0.78rem; color: var(--text-3); }
 
-    /* Upload progress */
     .upload-progress {
       display: none;
       margin-top: var(--sp-4);
@@ -134,7 +132,6 @@
       text-align: center;
     }
 
-    /* Preview */
     .file-preview {
       display: none;
       align-items: center; gap: var(--sp-4);
@@ -155,7 +152,6 @@
     .file-preview-size { font-size: 0.75rem; color: var(--text-3); }
     .file-preview-remove { background: none; border: none; color: var(--red); font-size: 1.1rem; flex-shrink: 0; cursor: pointer; }
 
-    /* Transfer info */
     .transfer-info {
       background: var(--bg-2);
       border: 1px solid var(--border);
@@ -172,7 +168,6 @@
       font-family: monospace;
     }
 
-    /* Success state */
     .success-state {
       text-align: center; padding: var(--sp-8);
       animation: fadeUp 0.4s ease;
@@ -306,21 +301,19 @@
 
   <div id="toast-container" role="status" aria-live="polite"></div>
 
-  <script type="module">
-    import { put } from 'https://esm.sh/@vercel/blob@0.27.3/client';
-
-    function toast(msg, type = 'info') {
-      const el = document.createElement('div');
-      el.className = `toast toast-${type}`;
+  <script>
+    function toast(msg, type) {
+      type = type || 'info';
+      var el = document.createElement('div');
+      el.className = 'toast toast-' + type;
       el.textContent = msg;
       document.getElementById('toast-container').appendChild(el);
-      requestAnimationFrame(() => { requestAnimationFrame(() => el.classList.add('show')); });
-      setTimeout(() => { el.classList.remove('show'); setTimeout(() => el.remove(), 300); }, 4000);
+      requestAnimationFrame(function() { requestAnimationFrame(function() { el.classList.add('show'); }); });
+      setTimeout(function() { el.classList.remove('show'); setTimeout(function() { el.remove(); }, 300); }, 4000);
     }
 
-    /* ── Get booking ID from URL ── */
-    const params = new URLSearchParams(location.search);
-    const bookingId = params.get('booking');
+    var params    = new URLSearchParams(location.search);
+    var bookingId = params.get('booking');
 
     if (!bookingId) {
       document.getElementById('loading-state').classList.add('hidden');
@@ -331,9 +324,9 @@
 
     async function loadBooking(id) {
       try {
-        const res = await fetch(`/api/bookings/${id}`);
+        var res = await fetch('/api/bookings/' + id);
         if (!res.ok) throw new Error();
-        const booking = await res.json();
+        var booking = await res.json();
 
         document.getElementById('loading-state').classList.add('hidden');
 
@@ -346,7 +339,6 @@
           return;
         }
 
-        // Populate summary
         document.getElementById('booking-id-display').textContent = booking.id;
         document.getElementById('cat-dot').style.background = booking.color || '#7c6dfa';
         document.getElementById('cat-label').textContent = booking.category_name || '—';
@@ -354,13 +346,13 @@
         document.getElementById('sum-phone').textContent = booking.client_phone;
         document.getElementById('sum-date').textContent = new Date(booking.event_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
 
-        const pkgName = (booking.form_data && booking.form_data._package_name) || (booking.package_price ? 'Paket Custom' : 'Standard');
-        const pkgPriceFmt = booking.package_price ? ` (Rp ${Number(booking.package_price).toLocaleString('id-ID')})` : '';
+        var pkgName = (booking.form_data && booking.form_data._package_name) || (booking.package_price ? 'Paket Custom' : 'Standard');
+        var pkgPriceFmt = booking.package_price ? ' (Rp ' + Number(booking.package_price).toLocaleString('id-ID') + ')' : '';
         document.getElementById('sum-location').textContent = pkgName + pkgPriceFmt;
 
         if (booking.dp_amount) {
           document.getElementById('dp-amount').textContent = 'Rp ' + Number(booking.dp_amount).toLocaleString('id-ID');
-          document.getElementById('dp-note').textContent = `Down Payment (${booking.dp_type === 'percent' ? booking.dp_value + '% dari harga paket' : 'Nominal tetap'}) untuk ${pkgName}`;
+          document.getElementById('dp-note').textContent = 'Down Payment (' + (booking.dp_type === 'percent' ? booking.dp_value + '% dari harga paket' : 'Nominal tetap') + ') untuk ' + pkgName;
         } else if (booking.calculated_dp) {
           document.getElementById('dp-amount').textContent = 'Rp ' + Number(booking.calculated_dp).toLocaleString('id-ID');
         }
@@ -372,26 +364,23 @@
       }
     }
 
-    /* ── File input handling ── */
-    let selectedFile = null;
+    var selectedFile = null;
+    var fileInput  = document.getElementById('proof-file');
+    var dropzone   = document.getElementById('dropzone');
+    var preview    = document.getElementById('file-preview');
+    var uploadBtn  = document.getElementById('btn-upload');
 
-    const fileInput = document.getElementById('proof-file');
-    const dropzone  = document.getElementById('dropzone');
-    const preview   = document.getElementById('file-preview');
-    const uploadBtn = document.getElementById('btn-upload');
-
-    fileInput.addEventListener('change', () => handleFile(fileInput.files[0]));
-
-    dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('drag-over'); });
-    dropzone.addEventListener('dragleave', () => dropzone.classList.remove('drag-over'));
-    dropzone.addEventListener('drop', e => {
+    fileInput.addEventListener('change', function() { handleFile(fileInput.files[0]); });
+    dropzone.addEventListener('dragover', function(e) { e.preventDefault(); dropzone.classList.add('drag-over'); });
+    dropzone.addEventListener('dragleave', function() { dropzone.classList.remove('drag-over'); });
+    dropzone.addEventListener('drop', function(e) {
       e.preventDefault(); dropzone.classList.remove('drag-over');
       if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
     });
 
     function handleFile(file) {
       if (!file) return;
-      const allowed = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
+      var allowed = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
       if (!allowed.includes(file.type)) { toast('Hanya JPG, PNG, WebP, atau PDF', 'error'); return; }
       if (file.size > 5 * 1024 * 1024) { toast('Ukuran file maks 5MB', 'error'); return; }
 
@@ -400,8 +389,8 @@
       document.getElementById('preview-size').textContent = (file.size / 1024).toFixed(0) + ' KB';
 
       if (file.type.startsWith('image/')) {
-        const reader = new FileReader();
-        reader.onload = e => document.getElementById('preview-thumb').src = e.target.result;
+        var reader = new FileReader();
+        reader.onload = function(e) { document.getElementById('preview-thumb').src = e.target.result; };
         reader.readAsDataURL(file);
         document.getElementById('preview-thumb').style.display = 'block';
       } else {
@@ -413,21 +402,20 @@
       uploadBtn.disabled = false;
     }
 
-    document.getElementById('btn-remove-file').addEventListener('click', () => {
+    document.getElementById('btn-remove-file').addEventListener('click', function() {
       selectedFile = null;
       fileInput.value = '';
       preview.classList.remove('show');
       uploadBtn.disabled = true;
     });
 
-    /* ── Upload via @vercel/blob SDK ── */
-    uploadBtn.addEventListener('click', async () => {
+    uploadBtn.addEventListener('click', async function() {
       if (!selectedFile || !bookingId) return;
 
-      const alertEl     = document.getElementById('upload-alert');
-      const progressEl  = document.getElementById('upload-progress');
-      const progressBar = document.getElementById('progress-bar');
-      const progressLabel = document.getElementById('progress-label');
+      var alertEl       = document.getElementById('upload-alert');
+      var progressEl    = document.getElementById('upload-progress');
+      var progressBar   = document.getElementById('progress-bar');
+      var progressLabel = document.getElementById('progress-label');
 
       alertEl.classList.add('hidden');
       progressEl.classList.add('show');
@@ -450,50 +438,40 @@
       }
 
       try {
-        setProgress(10, 'Mempersiapkan upload...');
+        setProgress(20, 'Mengunggah file...');
 
-        const safeFileName = selectedFile.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-        const pathname = `payment-proofs/booking-${bookingId}-${Date.now()}-${safeFileName}`;
+        var safeFileName = selectedFile.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+        var pathname = 'payment-proofs/booking-' + bookingId + '-' + Date.now() + '-' + safeFileName;
 
-        // STEP 1: Minta client token dari server
-        setProgress(20, 'Mendapatkan izin upload...');
-        const tokenRes = await fetch(
-          `/api/upload/token?bookingId=${encodeURIComponent(bookingId)}&fileType=payment_proof`,
-          {
-            method:  'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body:    JSON.stringify({ pathname }),
-          }
-        );
+        // Server-side proxy: browser → /api/upload/file → Vercel Blob (NO CORS)
+        var formData = new FormData();
+        formData.append('file', selectedFile);
+        formData.append('pathname', pathname);
+        formData.append('bookingId', bookingId);
+        formData.append('fileType', 'payment_proof');
 
-        if (!tokenRes.ok) {
-          const err = await tokenRes.json().catch(() => ({}));
-          if (tokenRes.status === 500) {
-            return setError('Fitur upload sementara tidak tersedia. Silakan hubungi admin untuk konfirmasi DP Anda.');
-          }
-          return setError(err.error || 'Gagal mendapatkan izin upload. Silakan coba lagi.');
-        }
-
-        const { clientToken } = await tokenRes.json();
-        if (!clientToken) return setError('Token upload tidak valid. Coba muat ulang halaman.');
-
-        // STEP 2: Upload langsung ke Vercel Blob menggunakan put() dengan client token
-        setProgress(30, 'Mengunggah file...');
-        const blobResult = await put(pathname, selectedFile, {
-          access: 'public',
-          token: clientToken,
-          onUploadProgress: ({ percentage }) => {
-            setProgress(Math.max(30, Math.round(percentage)), `Mengunggah ${Math.round(percentage)}%...`);
-          },
+        var uploadRes = await fetch('/api/upload/file', {
+          method: 'POST',
+          body: formData,
         });
 
-        const blobUrl = blobResult.url;
+        setProgress(70, 'Memproses...');
+
+        if (!uploadRes.ok) {
+          var errData = await uploadRes.json().catch(function() { return {}; });
+          if (uploadRes.status === 500) {
+            return setError('Fitur upload sementara tidak tersedia. Silakan hubungi admin untuk konfirmasi DP Anda.');
+          }
+          return setError(errData.error || 'Gagal mengunggah file. Silakan coba lagi.');
+        }
+
+        var result  = await uploadRes.json();
+        var blobUrl = result.url;
         if (!blobUrl) throw new Error('Upload selesai tetapi URL file tidak diperoleh.');
 
-        // STEP 3: Simpan metadata ke DB
         setProgress(90, 'Menyimpan data...');
-        const saveRes = await fetch(`/api/bookings/${bookingId}/upload-dp`, {
-          method:  'POST',
+        var saveRes = await fetch('/api/bookings/' + bookingId + '/upload-dp', {
+          method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             blobUrl:  blobUrl,
@@ -504,13 +482,13 @@
           }),
         });
 
-        const saveData = await saveRes.json();
+        var saveData = await saveRes.json();
         if (!saveRes.ok) {
           return setError(saveData.error || 'Gagal menyimpan data. Silakan hubungi admin.');
         }
 
         setProgress(100, 'Selesai!');
-        setTimeout(() => {
+        setTimeout(function() {
           document.getElementById('upload-main').classList.add('hidden');
           document.getElementById('success-state').classList.remove('hidden');
           toast('Bukti transfer berhasil dikirim! ✅', 'success');
