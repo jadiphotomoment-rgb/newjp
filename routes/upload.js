@@ -117,7 +117,8 @@ router.post('/token', async (req, res) => {
     }
 
     // Generate client token menggunakan SDK resmi — menghasilkan vercel_blob_client_...
-    const clientToken = await generateClientToken(token, {
+    const clientToken = await generateClientToken({
+      token: token,
       pathname,
       onUploadCompleted: {
         callbackUrl: `${req.protocol}://${req.get('host')}/api/upload/save-metadata`,
