@@ -717,16 +717,17 @@ td {
 
 /* Expand button */
 .photo-expand {
-  position: absolute; top: 8px; left: 8px;
-  width: 28px; height: 28px; border-radius: 50%;
+  position: absolute; top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 44px; height: 44px; border-radius: 50%;
   background: rgba(0,0,0,0.50); backdrop-filter: blur(4px);
   border: 1px solid rgba(255,255,255,0.20);
-  color: white; font-size: 0.85rem;
+  color: white; font-size: 1.2rem;
   display: flex; align-items: center; justify-content: center;
-  opacity: 0; transition: opacity 0.2s ease;
+  opacity: 0; transition: all 0.2s ease;
 }
 .photo-card:hover .photo-expand { opacity: 1; }
-.photo-expand:hover { background: rgba(124,109,250,0.70); }
+.photo-expand:hover { background: rgba(124,109,250,0.70); transform: translate(-50%, -50%) scale(1.1); }
 
 /* ── Gallery sticky footer ────────────────────────────────── */
 .gallery-footer {
@@ -1100,3 +1101,14 @@ td {
 .edit-status-editing  { background: rgba(251,146,60,0.15);  color: var(--orange); }
 .edit-status-done     { background: rgba(34,211,116,0.15);  color: var(--green); }
 
+/* ── Mobile Touch Fixes ────────────────────────────────────── */
+@media (hover: none) {
+  .photo-expand {
+    opacity: 1;
+    background: rgba(0,0,0,0.40);
+  }
+  .photo-fav-btn {
+    opacity: 1;
+    transform: scale(0.9);
+  }
+}

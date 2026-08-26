@@ -580,6 +580,12 @@ async function init() {
       document.getElementById('btn-filter-fav').classList.add('active');
       applyFilter();
     });
+
+    const btnDriveLink = document.getElementById('btn-drive-link');
+    if (btnDriveLink && sessionData.folder_url) {
+      btnDriveLink.href = sessionData.folder_url;
+      btnDriveLink.style.display = 'inline-flex';
+    }
   }
 
   // 3. Fetch Drive files
