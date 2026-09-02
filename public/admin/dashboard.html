@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="id">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,356 +8,616 @@
   <meta name="description" content="Dashboard admin untuk mengelola sesi foto Jadiphoto.Moment">
   <meta name="robots" content="noindex, nofollow">
 
-  <!-- Open Graph / Link Preview Tags -->
-  <meta property="og:type" content="website">
-  <meta property="og:site_name" content="Jadiphoto.Moment">
-  <meta property="og:title" content="Dashboard — Jadiphoto.Moment Admin">
-  <meta property="og:description" content="Dashboard admin untuk mengelola sesi foto Jadiphoto.Moment">
-  <meta property="og:image" content="/og-preview.png">
+  <!-- Tailwind & Config -->
+  <style>
+    @layer base {
 
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        overscroll-behavior: none;
+      }
+
+      main>:first-child {
+        margin-top: 0 !important;
+      }
+
+      main>:last-child {
+        margin-bottom: 0 !important;
+      }
+    }
+
+    ::-webkit-scrollbar {
+      display: none;
+    }
+
+    /* Custom hidden class for JS compatibility */
+    .hidden {
+      display: none !important;
+    }
+
+    /* Loading overlay styles (retained) */
+    .loading-overlay {
+      position: relative;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+    }
+
+    .spinner {
+      border: 3px solid rgba(0, 0, 0, 0.1);
+      border-left-color: var(--primary, #6366f1);
+      border-radius: 50%;
+      width: 24px;
+      height: 24px;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      0% {
+        transform: rotate(0deg);
+      }
+
+      100% {
+        transform: rotate(360deg);
+      }
+    }
+  </style>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script
+    id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { "colors": { "surface-container-high": "#dce9ff", "surface-variant": "#d3e4fe", "on-tertiary-fixed": "#191c1e", "primary-fixed": "#e1e0ff", "tertiary": "#595c5e", "primary-fixed-dim": "#c0c1ff", "inverse-primary": "#c0c1ff", "tertiary-container": "#727577", "primary": "#6366f1", "surface-container-highest": "#d3e4fe", "primary-container": "#6063ee", "on-primary-fixed": "#07006c", "secondary-fixed": "#dae2fd", "secondary": "#565e74", "background": "#f8f9ff", "surface": "#f8f9ff", "on-tertiary": "#ffffff", "on-secondary": "#ffffff", "on-tertiary-fixed-variant": "#444749", "on-error-container": "#93000a", "tertiary-fixed": "#e0e3e5", "inverse-surface": "#213145", "surface-container-low": "#eff4ff", "inverse-on-surface": "#eaf1ff", "outline-variant": "#c7c4d7", "on-secondary-container": "#5c647a", "error-container": "#ffdad6", "on-error": "#ffffff", "on-background": "#0b1c30", "tertiary-fixed-dim": "#c4c7c9", "outline": "#767586", "surface-tint": "#6366f1", "on-secondary-fixed": "#131b2e", "on-secondary-fixed-variant": "#3f465c", "on-surface-variant": "#464554", "secondary-container": "#dae2fd", "surface-container": "#e5eeff", "on-primary": "#ffffff", "surface-container-lowest": "#ffffff", "surface-dim": "#cbdbf5", "secondary-fixed-dim": "#bec6e0", "error": "#ba1a1a", "on-primary-container": "#fffbff", "on-tertiary-container": "#fbfdff", "surface-bright": "#f8f9ff", "on-primary-fixed-variant": "#2f2ebe", "on-surface": "#0b1c30" }, "borderRadius": { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" }, "spacing": { "margin-mobile": "16px", "xl": "40px", "gutter": "24px", "sm": "8px", "xs": "4px", "lg": "24px", "unit": "4px", "margin-desktop": "64px", "md": "16px" }, "fontFamily": { "headline-lg": ["Helvetica Neue", "Arial", "sans-serif"], "body-lg": ["Helvetica Neue", "Arial", "sans-serif"], "headline-lg-mobile": ["Helvetica Neue", "Arial", "sans-serif"], "label-md": ["Helvetica Neue", "Arial", "sans-serif"], "headline-xl": ["Helvetica Neue", "Arial", "sans-serif"], "body-md": ["Helvetica Neue", "Arial", "sans-serif"], "headline-md": ["Helvetica Neue", "Arial", "sans-serif"], "label-sm": ["Helvetica Neue", "Arial", "sans-serif"], "body-sm": ["Helvetica Neue", "Arial", "sans-serif"] }, "fontSize": { "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600" }], "body-lg": ["18px", { "lineHeight": "28px", "fontWeight": "400" }], "headline-lg-mobile": ["24px", { "lineHeight": "32px", "fontWeight": "600" }], "label-md": ["14px", { "lineHeight": "20px", "letterSpacing": "0.05em", "fontWeight": "600" }], "headline-xl": ["40px", { "lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "700" }], "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }], "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "600" }], "label-sm": ["12px", { "lineHeight": "16px", "fontWeight": "500" }], "body-sm": ["14px", { "lineHeight": "20px", "fontWeight": "400" }] } } } }</script>
+
+  <link
+    href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200"
+    rel="stylesheet" />
   <link rel="stylesheet" href="/css/style.css?v=3">
+  <link rel="stylesheet" href="/css/admin-theme.css?v=1">
   <script src="/js/theme.js?v=3"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    /* Reset some existing style.css conflicts */
+    html.light body {
+      background-color: #f8f9ff !important;
+      color: #0b1c30 !important;
+    }
+
+    .admin-layout,
+    .admin-main,
+    .admin-nav {
+      display: block;
+      all: unset;
+    }
+
+    /* Modal – display controlled via admin-theme.css (.modal-backdrop, .modal-backdrop.open) */
+    .modal {
+      background: var(--color-surface-container-lowest, #1a2030);
+      width: 100%;
+      max-width: 560px;
+      border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      max-height: 90vh;
+    }
+
+    .modal-header {
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--color-outline-variant, rgba(255, 255, 255, 0.10));
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--color-surface-container-low, #1e2538);
+    }
+
+    .modal-header h3 {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: var(--color-on-surface, #d4daf2);
+      margin: 0;
+    }
+
+    .modal-body {
+      padding: 24px;
+      overflow-y: auto;
+    }
+
+    .modal-footer {
+      padding: 16px 24px;
+      border-top: 1px solid var(--color-outline-variant, rgba(255, 255, 255, 0.10));
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+      background: var(--color-surface-container-low, #1e2538);
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      margin-bottom: 16px;
+    }
+
+    .form-group label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--color-on-surface-variant, #9ca4c0);
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+      border: 1px solid var(--color-outline-variant, rgba(255, 255, 255, 0.12));
+      border-radius: 8px;
+      padding: 10px 12px;
+      color: var(--color-on-surface, #d4daf2);
+      background: var(--color-surface-container-low, #1e2538);
+      font-size: 14px;
+      transition: border-color 0.15s;
+      outline: none;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus,
+    .form-group textarea:focus {
+      border-color: #818cf8;
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+    }
+
+    html.light .form-group input,
+    html.light .form-group select,
+    html.light .form-group textarea {
+      background: #fff;
+      border-color: #c7c4d7;
+      color: #0b1c30;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 9px 18px;
+      border-radius: 9px;
+      font-size: 14px;
+      font-weight: 600;
+      transition: all 0.15s;
+      cursor: pointer;
+      border: none;
+    }
+
+    .btn-sm {
+      padding: 6px 12px;
+      font-size: 12px;
+    }
+
+    .btn-primary {
+      background: #6366f1;
+      color: #fff;
+    }
+
+    .btn-primary:hover {
+      background: #4f46e5;
+    }
+
+    .btn-outline {
+      border: 1px solid var(--color-outline-variant, rgba(255, 255, 255, 0.15)) !important;
+      background: transparent;
+      color: var(--color-on-surface-variant, #9ca4c0);
+    }
+
+    .btn-outline:hover {
+      background: rgba(255, 255, 255, 0.07);
+      color: var(--color-on-surface, #d4daf2);
+    }
+
+    html.light .btn-outline {
+      border-color: #c7c4d7 !important;
+      color: #464554;
+    }
+
+    html.light .btn-outline:hover {
+      background: #eff4ff;
+      color: #0b1c30;
+    }
+
+    .btn-icon {
+      padding: 8px;
+      border-radius: 9999px;
+    }
+
+    .btn-danger {
+      background: #ef4444;
+      color: #fff;
+    }
+
+    .btn-danger:hover {
+      background: #dc2626;
+    }
+
+    /* Table Styling */
+    table {
+      width: 100%;
+      text-align: left;
+      border-collapse: collapse;
+    }
+
+    th {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--color-on-surface-variant, #9ca4c0);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--color-outline-variant, rgba(255, 255, 255, 0.08));
+      background: var(--color-surface-container-low, #1e2538);
+    }
+
+    td {
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--color-outline-variant, rgba(255, 255, 255, 0.06));
+      font-size: 13.5px;
+      vertical-align: middle;
+      color: var(--color-on-surface, #d4daf2);
+    }
+
+    tr:last-child td {
+      border: none;
+    }
+
+    tr:hover td {
+      background: rgba(129, 140, 248, 0.04);
+    }
+
+    html.light th {
+      background: #eff4ff;
+      color: #464554;
+      border-color: #c7c4d7;
+    }
+
+    html.light td {
+      border-color: rgba(0, 0, 0, 0.06);
+      color: #0b1c30;
+    }
+
+    html.light tr:hover td {
+      background: rgba(99, 102, 241, 0.04);
+    }
+  </style>
 </head>
-<body>
-  <div class="bg-mesh" aria-hidden="true"></div>
 
-  <div class="admin-layout">
+<body class="bg-background font-body-md text-on-background">
 
-    <!-- ── Top Navigation ──────────────────────────────────── -->
-    <nav class="admin-nav" role="navigation" aria-label="Navigasi admin">
-      <div class="admin-nav-inner">
-        <div class="nav-brand">
-          <div class="nav-brand-icon" aria-hidden="true">📷</div>
-          <span>Jadiphoto.Moment</span>
-        </div>
-        <div class="nav-actions">
-          <div class="user-chip">
-            <div class="user-dot"></div>
-            <span id="nav-username">Admin</span>
-          </div>
-          <a href="/admin/bookings.html" class="btn btn-outline btn-sm" aria-label="Manajemen Booking">
-            📅 Booking
-          </a>
-          <a href="/admin/finance.html" class="btn btn-outline btn-sm" aria-label="Dashboard Keuangan">
-            💰 Keuangan
-          </a>
-          <a href="/admin/categories.html" class="btn btn-outline btn-sm" aria-label="Kelola Kategori">
-            ⚙️ Kategori
-          </a>
-          <button class="btn btn-outline btn-sm" id="btn-change-pass" aria-label="Ganti password">
-            🔐 Password
-          </button>
-          <button class="btn btn-outline btn-sm" id="btn-cek-db" aria-label="Cek Database Neon">
-            ⚡ Cek DB Neon
-          </button>
-          <button class="btn btn-outline btn-sm" onclick="toggleTheme()" aria-label="Ganti tema">
-            <span class="theme-icon">☀️</span>
-          </button>
-          <button class="btn btn-outline btn-sm" id="btn-logout" aria-label="Logout">
-            ↩ Keluar
-          </button>
+  <!-- Sidebar -->
+  <aside
+    class="fixed left-0 top-0 h-full w-72 bg-surface-container-lowest border-r border-outline-variant/30 z-50 flex flex-col transition-transform duration-300 transform -translate-x-full md:translate-x-0"
+    id="sidebar">
+    <div class="p-lg flex items-center justify-between gap-sm mb-md border-b border-outline-variant/20 pb-4">
+      <div class="flex items-center gap-2">
+        <img src="/img/Logo warna.webp" alt="Jadiphoto.Moment" class="h-8 w-auto object-contain" />
+      </div>
+      <button class="md:hidden text-on-surface-variant"
+        onclick="document.getElementById('sidebar').classList.add('-translate-x-full')">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+
+    <div class="px-md mb-6">
+      <div class="bg-surface-container rounded-lg p-3 flex items-center gap-3">
+        <div class="w-8 h-8 rounded-full bg-primary/20 text-primary flex items-center justify-center font-bold">A</div>
+        <div class="flex flex-col">
+          <span class="font-label-sm text-xs text-on-surface-variant">Welcome back,</span>
+          <span class="font-label-md text-on-surface" id="nav-username">Admin</span>
         </div>
       </div>
+    </div>
+
+    <nav class="flex-1 px-md space-y-2">
+      <a href="/admin/dashboard.html"
+        class="flex items-center gap-3 px-4 py-3 rounded-lg transition-all bg-primary/10 text-primary font-semibold"
+        aria-current="page">
+        <span class="material-symbols-outlined">dashboard</span>
+        <span class="font-label-md">Dashboard</span>
+      </a>
+      <a href="/admin/bookings.html"
+        class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all">
+        <span class="material-symbols-outlined">calendar_today</span>
+        <span class="font-label-md">Booking</span>
+      </a>
+      <a href="/admin/sessions.html"
+        class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all">
+        <span class="material-symbols-outlined">add_a_photo</span>
+        <span class="font-label-md">Sesi Sortir</span>
+      </a>
+      <a href="/admin/finance.html"
+        class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all">
+        <span class="material-symbols-outlined">payments</span>
+        <span class="font-label-md">Keuangan</span>
+      </a>
+      <a href="/admin/categories.html"
+        class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all">
+        <span class="material-symbols-outlined">category</span>
+        <span class="font-label-md">Kategori</span>
+      </a>
     </nav>
 
-    <!-- ── Main Content ────────────────────────────────────── -->
-    <main class="admin-main" role="main">
+    <div class="p-lg border-t border-outline-variant/30 flex flex-col gap-2">
+      <button
+        class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container transition-all text-left"
+        id="btn-change-pass">
+        <span class="material-symbols-outlined">lock_reset</span>
+        <span class="font-label-md">Ganti Password</span>
+      </button>
+      <button
+        class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container transition-all text-left"
+        id="btn-cek-db">
+        <span class="material-symbols-outlined">database</span>
+        <span class="font-label-md">Cek Database</span>
+      </button>
+      <button
+        class="flex items-center gap-3 px-4 py-3 rounded-lg text-error hover:bg-error/10 transition-all text-left mt-2"
+        id="btn-logout">
+        <span class="material-symbols-outlined">logout</span>
+        <span class="font-label-md">Keluar</span>
+      </button>
+    </div>
+  </aside>
 
-      <!-- Page header -->
-      <div class="page-header">
-        <h1>📷 Dashboard Jadiphoto.Moment</h1>
-        <p>Kelola sesi foto &amp; sortir klien Anda &middot; <a href="/admin/bookings.html" style="color:var(--purple-2);">Lihat Booking &rarr;</a></p>
+  <!-- Main Content Wrapper -->
+  <div class="md:pl-72 flex flex-col min-h-screen">
+
+    <!-- Top Header -->
+    <header
+      class="sticky top-0 h-16 bg-surface-container-lowest/80 backdrop-blur-xl border-b border-outline-variant/20 z-40 flex items-center justify-between px-4 lg:px-8">
+      <div class="flex items-center gap-4">
+        <button class="md:hidden text-on-surface-variant flex items-center"
+          onclick="document.getElementById('sidebar').classList.remove('-translate-x-full')">
+          <span class="material-symbols-outlined">menu</span>
+        </button>
+        <h1 class="font-headline-md text-on-surface hidden sm:block">Overview</h1>
       </div>
-
-      <!-- Stats cards -->
-      <div class="stats-grid" aria-label="Statistik sesi">
-        <div class="stat-card">
-          <div class="stat-label">Total Sesi</div>
-          <div class="stat-value" id="stat-total">—</div>
-          <div class="stat-sub">Semua sesi</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-label">Aktif</div>
-          <div class="stat-value" id="stat-active">—</div>
-          <div class="stat-sub">Menunggu klien</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-label">Selesai</div>
-          <div class="stat-value" id="stat-completed">—</div>
-          <div class="stat-sub">Foto terpilih</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-label">Total Foto</div>
-          <div class="stat-value" id="stat-photos">—</div>
-          <div class="stat-sub">Dipilih klien</div>
-        </div>
-      </div>
-
-      <!-- Booking quick stats -->
-      <div class="stats-grid" aria-label="Statistik booking" style="margin-bottom:var(--sp-6);">
-        <div class="stat-card" style="cursor:pointer;" onclick="location.href='/admin/bookings.html'">
-          <div class="stat-label">📅 Total Booking</div>
-          <div class="stat-value" id="stat-bookings" style="color:var(--purple-2);">—</div>
-          <div class="stat-sub">Semua booking</div>
-        </div>
-        <div class="stat-card" style="cursor:pointer;" onclick="location.href='/admin/bookings.html'">
-          <div class="stat-label">⏳ Perlu Review DP</div>
-          <div class="stat-value" id="stat-dp-review" style="color:var(--orange);">—</div>
-          <div class="stat-sub">Menunggu verifikasi</div>
-        </div>
-        <div class="stat-card" style="cursor:pointer;" onclick="location.href='/admin/finance.html'">
-          <div class="stat-label">💰 Pemasukan Bulan Ini</div>
-          <div class="stat-value" id="stat-income" style="color:var(--green);font-size:1.1rem;">Rp —</div>
-          <div class="stat-sub">Approved payments</div>
-        </div>
-        <div class="stat-card" style="cursor:pointer;" onclick="location.href='/admin/bookings.html'">
-          <div class="stat-label">✅ Booking Confirmed</div>
-          <div class="stat-value" id="stat-confirmed" style="color:var(--green);">—</div>
-          <div class="stat-sub">Terkunci di kalender</div>
+      <div class="flex items-center gap-4">
+        <button class="btn btn-icon text-on-surface-variant hover:bg-surface-container transition-all"
+          onclick="toggleTheme()" aria-label="Ganti tema">
+          <span class="material-symbols-outlined" data-theme-icon>light_mode</span>
+        </button>
+        <div class="w-8 h-8 rounded-full border border-outline-variant overflow-hidden">
+          <img src="https://ui-avatars.com/api/?name=Admin&background=random" alt="Admin Avatar">
         </div>
       </div>
+    </header>
 
-      <!-- Drive Config Panel -->
-      <div class="booking-summary" id="drive-config-panel" style="max-width:100%; margin-bottom:var(--sp-6); background:var(--bg-card); border:1px solid var(--border); border-radius:var(--r-xl); padding:var(--sp-6);">
-        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:var(--sp-4);">
-          <div style="display:flex; align-items:center; gap:var(--sp-3);">
-            <div style="font-size:1.5rem;">📁</div>
+    <main class="flex-1 p-4 lg:p-8 flex flex-col gap-6" role="main">
+
+      <!-- Top 4 Stats Cards -->
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div
+          class="bg-surface-container-lowest rounded-xl p-6 border border-outline-variant/30 flex flex-col justify-between shadow-md shadow-black/5 hover:shadow-lg hover:shadow-primary/10 transition-all duration-300">
+          <div class="flex items-start justify-between mb-4">
             <div>
-              <div style="font-weight:700; font-size:0.95rem;">Google Drive — Folder Bukti Transfer (Global)</div>
-              <div style="font-size:0.78rem; color:var(--text-3);">Folder fallback jika kategori tidak punya folder sendiri</div>
+              <span class="font-label-md text-on-surface-variant block mb-2">Total Bookings</span>
+              <span class="font-headline-xl text-on-surface" id="stat-bookings">—</span>
+            </div>
+            <div class="bg-primary/10 p-2 rounded-lg text-primary flex items-center justify-center">
+              <span class="material-symbols-outlined text-[20px]">calendar_month</span>
             </div>
           </div>
-          <div id="drive-config-status" style="font-size:0.75rem; padding:4px 12px; border-radius:20px; font-weight:600; background:rgba(251,146,60,0.12); color:var(--orange); border:1px solid rgba(251,146,60,0.3);">Belum dikonfigurasi</div>
-        </div>
-        <div style="display:flex; gap:var(--sp-3); align-items:flex-end;">
-          <div class="form-group" style="flex:1; margin:0;">
-            <label for="global-drive-url" style="font-size:0.78rem;">URL Folder Google Drive Global</label>
-            <input type="text" id="global-drive-url" placeholder="https://drive.google.com/drive/folders/..." style="font-size:0.82rem;">
+          <div class="flex items-center gap-2 text-label-sm">
+            <span class="text-emerald-600 flex items-center"><span
+                class="material-symbols-outlined text-[14px]">arrow_upward</span> 12%</span>
+            <span class="text-on-surface-variant">vs last month</span>
           </div>
-          <button class="btn btn-primary btn-sm" id="btn-save-drive" onclick="saveGlobalDrive()" style="white-space:nowrap; padding:10px 16px;">💾 Simpan</button>
-          <button class="btn btn-outline btn-sm" id="btn-clear-drive" onclick="clearGlobalDrive()" style="white-space:nowrap; padding:10px 16px;">✕ Hapus</button>
         </div>
-        <div id="drive-folder-display" style="display:none; margin-top:var(--sp-3); padding:var(--sp-3) var(--sp-4); background:rgba(34,211,116,0.05); border:1px solid rgba(34,211,116,0.25); border-radius:var(--r); font-size:0.82rem;">
-          <span style="color:var(--green); font-weight:600;">📂</span> <span id="drive-folder-display-name" style="font-weight:600;"></span>
-          <div style="font-size:0.72rem; color:var(--text-3); margin-top:2px;">ID: <span id="drive-folder-display-id" style="font-family:monospace;"></span></div>
+        <div
+          class="bg-surface-container-lowest rounded-xl p-6 border border-outline-variant/30 flex flex-col justify-between shadow-md shadow-black/5 hover:shadow-lg hover:shadow-primary/10 transition-all duration-300">
+          <div class="flex items-start justify-between mb-4">
+            <div>
+              <span class="font-label-md text-on-surface-variant block mb-2">Active Projects</span>
+              <span class="font-headline-xl text-on-surface" id="stat-active">—</span>
+            </div>
+            <div class="bg-secondary/10 p-2 rounded-lg text-secondary flex items-center justify-center">
+              <span class="material-symbols-outlined text-[20px]">work</span>
+            </div>
+          </div>
+          <div class="flex items-center gap-2 text-label-sm">
+            <span class="text-emerald-600 flex items-center"><span
+                class="material-symbols-outlined text-[14px]">arrow_upward</span> 4%</span>
+            <span class="text-on-surface-variant">vs last month</span>
+          </div>
+        </div>
+        <div
+          class="bg-surface-container-lowest rounded-xl p-6 border border-outline-variant/30 flex flex-col justify-between shadow-md shadow-black/5 hover:shadow-lg hover:shadow-primary/10 transition-all duration-300">
+          <div class="flex items-start justify-between mb-4">
+            <div>
+              <span class="font-label-md text-on-surface-variant block mb-2">Monthly Revenue</span>
+              <span class="font-headline-xl text-on-surface truncate max-w-[150px]" id="stat-income">—</span>
+            </div>
+            <div class="bg-tertiary/10 p-2 rounded-lg text-tertiary flex items-center justify-center">
+              <span class="material-symbols-outlined text-[20px]">payments</span>
+            </div>
+          </div>
+          <div class="flex items-center gap-2 text-label-sm">
+            <span class="text-error flex items-center"><span
+                class="material-symbols-outlined text-[14px]">arrow_downward</span> 2%</span>
+            <span class="text-on-surface-variant">vs last month</span>
+          </div>
+        </div>
+        <div
+          class="bg-surface-container-lowest rounded-xl p-6 border border-outline-variant/30 flex flex-col justify-between shadow-md shadow-black/5 hover:shadow-lg hover:shadow-primary/10 transition-all duration-300">
+          <div class="flex items-start justify-between mb-4">
+            <div>
+              <span class="font-label-md text-on-surface-variant block mb-2">Client Satisfaction</span>
+              <span class="font-headline-xl text-on-surface">4.9</span>
+            </div>
+            <div class="bg-primary/10 p-2 rounded-lg text-primary flex items-center justify-center">
+              <span class="material-symbols-outlined text-[20px]">star</span>
+            </div>
+          </div>
+          <div class="flex items-center gap-2 text-label-sm">
+            <span class="text-emerald-600 flex items-center"><span
+                class="material-symbols-outlined text-[14px]">arrow_upward</span> 0.1</span>
+            <span class="text-on-surface-variant">vs last month</span>
+          </div>
         </div>
       </div>
 
-      <!-- Session list header -->
-      <div class="section-header">
-        <h2>Sesi Sortir</h2>
-        <button id="btn-new-session" class="btn btn-primary" aria-haspopup="dialog">
-          ＋ Sesi Baru
-        </button>
+      <!-- Main Layout: Recent Activities & Quick Actions -->
+      <div class="flex flex-col lg:flex-row gap-6">
+
+        <!-- Recent Activities (Left, Flex-2) -->
+        <div
+          class="flex-[2] bg-surface-container-lowest rounded-xl border border-outline-variant/30 overflow-hidden flex flex-col shadow-md shadow-black/5 hover:shadow-lg hover:shadow-primary/10 transition-all duration-300">
+          <div class="p-6 border-b border-outline-variant/30 flex justify-between items-center bg-surface-bright">
+            <h2 class="font-headline-md text-on-surface">Recent Activities</h2>
+            <button class="font-label-md text-primary hover:text-primary-container transition-colors">View All</button>
+          </div>
+          <div class="divide-y divide-outline-variant/20 flex-1">
+            <div class="p-4 hover:bg-surface-container-low transition-colors flex items-center justify-between">
+              <div class="flex items-center gap-4">
+                <div class="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center">
+                  <span class="material-symbols-outlined">check_circle</span>
+                </div>
+                <div>
+                  <p class="font-body-md text-on-surface font-medium">Wedding Gallery Delivered</p>
+                  <p class="font-body-sm text-on-surface-variant">Smith & Jones Wedding</p>
+                </div>
+              </div>
+              <span class="font-label-sm text-on-surface-variant">2 hours ago</span>
+            </div>
+            <div class="p-4 hover:bg-surface-container-low transition-colors flex items-center justify-between">
+              <div class="flex items-center gap-4">
+                <div class="w-10 h-10 rounded-full bg-secondary/10 text-secondary flex items-center justify-center">
+                  <span class="material-symbols-outlined">payments</span>
+                </div>
+                <div>
+                  <p class="font-body-md text-on-surface font-medium">Payment Received</p>
+                  <p class="font-body-sm text-on-surface-variant">$1,500 from Emma Davis</p>
+                </div>
+              </div>
+              <span class="font-label-sm text-on-surface-variant">5 hours ago</span>
+            </div>
+            <div class="p-4 hover:bg-surface-container-low transition-colors flex items-center justify-between">
+              <div class="flex items-center gap-4">
+                <div class="w-10 h-10 rounded-full bg-tertiary/10 text-tertiary flex items-center justify-center">
+                  <span class="material-symbols-outlined">event</span>
+                </div>
+                <div>
+                  <p class="font-body-md text-on-surface font-medium">New Booking Confirmed</p>
+                  <p class="font-body-sm text-on-surface-variant">Corporate Portrait Session</p>
+                </div>
+              </div>
+              <span class="font-label-sm text-on-surface-variant">1 day ago</span>
+            </div>
+            <div class="p-4 hover:bg-surface-container-low transition-colors flex items-center justify-between">
+              <div class="flex items-center gap-4">
+                <div class="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center">
+                  <span class="material-symbols-outlined">forum</span>
+                </div>
+                <div>
+                  <p class="font-body-md text-on-surface font-medium">Client Feedback</p>
+                  <p class="font-body-sm text-on-surface-variant">5 stars from Michael Brown</p>
+                </div>
+              </div>
+              <span class="font-label-sm text-on-surface-variant">2 days ago</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Quick Actions & Banner (Right, Flex-1) -->
+        <div class="flex-[1] flex flex-col gap-6">
+          <div
+            class="bg-surface-container-lowest rounded-xl border border-outline-variant/30 p-6 shadow-md shadow-black/5 hover:shadow-lg hover:shadow-primary/10 transition-all duration-300">
+            <h2 class="font-headline-md text-on-surface mb-4">Quick Actions</h2>
+            <div class="grid grid-cols-2 gap-4">
+              <button onclick="location.href='/admin/sessions.html'"
+                class="flex flex-col items-center justify-center p-4 bg-surface-container-low hover:bg-surface-container rounded-lg transition-colors border border-outline-variant/20 gap-2">
+                <span class="material-symbols-outlined text-primary text-[28px]">add_a_photo</span>
+                <span class="font-label-sm text-on-surface">New Session</span>
+              </button>
+              <button onclick="location.href='/admin/finance.html'"
+                class="flex flex-col items-center justify-center p-4 bg-surface-container-low hover:bg-surface-container rounded-lg transition-colors border border-outline-variant/20 gap-2">
+                <span class="material-symbols-outlined text-secondary text-[28px]">receipt_long</span>
+                <span class="font-label-sm text-on-surface">Finance</span>
+              </button>
+              <button onclick="location.href='/admin/sessions.html'"
+                class="flex flex-col items-center justify-center p-4 bg-surface-container-low hover:bg-surface-container rounded-lg transition-colors border border-outline-variant/20 gap-2">
+                <span class="material-symbols-outlined text-tertiary text-[28px]">share</span>
+                <span class="font-label-sm text-on-surface">Share Gallery</span>
+              </button>
+              <button onclick="location.href='/admin/bookings.html'"
+                class="flex flex-col items-center justify-center p-4 bg-surface-container-low hover:bg-surface-container rounded-lg transition-colors border border-outline-variant/20 gap-2">
+                <span class="material-symbols-outlined text-on-surface-variant text-[28px]">group</span>
+                <span class="font-label-sm text-on-surface">Clients</span>
+              </button>
+            </div>
+          </div>
+
+          <div
+            class="bg-primary-container rounded-xl p-6 relative overflow-hidden text-on-primary-container shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/40 transition-all duration-300 hover:-translate-y-1">
+            <div class="absolute -right-12 -bottom-12 w-48 h-48 bg-primary opacity-20 rounded-full blur-2xl"></div>
+            <div class="relative z-10">
+              <h3 class="font-headline-md mb-2">Storage Upgrade</h3>
+              <p class="font-body-sm mb-4 opacity-90">You're using 85% of your 1TB plan. Upgrade now for unlimited
+                high-res uploads.</p>
+              <button
+                class="bg-on-primary-container text-primary font-label-md px-6 py-2 rounded-full hover:bg-surface-container-lowest transition-colors shadow-sm">
+                Upgrade Plan
+              </button>
+            </div>
+          </div>
+        </div>
+
       </div>
 
-      <!-- Loading state -->
-      <div id="sessions-loading" class="loading-overlay" style="min-height:200px;" aria-live="polite">
-        <div class="spinner" aria-label="Memuat..."></div>
-        <p>Memuat sesi...</p>
+      <!-- Lead Sources Analytics Row -->
+      <div
+        class="mt-2 bg-surface-container-lowest rounded-xl border border-outline-variant/30 flex flex-col shadow-md shadow-black/5 hover:shadow-lg hover:shadow-primary/10 transition-all duration-300">
+        <div class="p-6 border-b border-outline-variant/30 flex items-center justify-between bg-surface-bright">
+          <div class="flex items-center gap-3">
+            <span class="material-symbols-outlined text-primary text-[28px]">pie_chart</span>
+            <h2 class="font-headline-md text-on-surface font-bold tracking-tight">Statistik Sumber Kontak Client</h2>
+          </div>
+        </div>
+        <div class="p-6 flex-1 flex flex-col md:flex-row items-center justify-center gap-8 min-h-[320px]">
+          <div class="w-full md:w-1/2 relative flex justify-center" style="max-height: 280px;">
+            <canvas id="leadSourceChart"></canvas>
+            <div id="leadSourceEmpty"
+              class="hidden text-center font-label-md text-on-surface-variant font-bold absolute top-1/2 -translate-y-1/2">
+              Belum ada data analitik.
+            </div>
+          </div>
+          <div class="w-full md:w-1/2" id="leadSourceLegend">
+            <!-- Custom Legend Injection -->
+          </div>
+        </div>
       </div>
-
-      <!-- Empty state -->
-      <div id="sessions-empty" class="empty-state hidden" aria-live="polite">
-        <span class="empty-icon" aria-hidden="true">📭</span>
-        <h3>Belum ada sesi</h3>
-        <p>Klik "Sesi Baru" untuk membuat sesi sortir foto pertama Anda.</p>
-        <button id="btn-new-session-empty" class="btn btn-primary">＋ Buat Sesi Pertama</button>
-      </div>
-
-      <!-- Desktop: Table -->
-      <div class="table-wrap hidden" id="sessions-table-wrap" aria-label="Tabel sesi sortir">
-        <table>
-          <thead>
-            <tr>
-              <th scope="col">Klien / Folder</th>
-              <th scope="col">Limit</th>
-              <th scope="col">Terpilih</th>
-              <th scope="col">Status</th>
-              <th scope="col">Tanggal</th>
-              <th scope="col">Aksi</th>
-            </tr>
-          </thead>
-          <tbody id="sessions-tbody"></tbody>
-        </table>
-      </div>
-
-      <!-- Mobile: Cards -->
-      <div class="session-cards hidden" id="sessions-cards" aria-label="Daftar sesi sortir"></div>
 
     </main>
   </div>
 
-  <!-- ── Modal: Create New Session ─────────────────────────── -->
-  <div class="modal-backdrop" id="modal-new-session" role="dialog" aria-modal="true" aria-labelledby="modal-title">
-    <div class="modal">
-      <div class="modal-header">
-        <h3 id="modal-title">Buat Sesi Baru</h3>
-        <button class="btn btn-icon btn-outline modal-close" aria-label="Tutup modal">✕</button>
-      </div>
-      <div id="modal-alert" class="alert alert-error hidden" role="alert"></div>
-      <form class="modal-body" id="form-new-session" novalidate>
-        <div class="form-group">
-          <label for="client-name">Nama Klien / Folder *</label>
-          <input type="text" id="client-name" placeholder="Contoh: Prewedding Budi & Ani" required maxlength="120">
-        </div>
-        <div class="form-group">
-          <label for="client-phone">No. WhatsApp Klien (Opsional)</label>
-          <input type="tel" id="client-phone" placeholder="Contoh: 08123456789 atau 628123456789">
-          <small style="color:var(--text-3);font-size:0.75rem;">Digunakan untuk mengirim link Google Drive saat hasil edit selesai.</small>
-        </div>
-        <div class="form-group">
-          <label for="folder-url">Link Google Drive Folder *</label>
-          <input type="url" id="folder-url" placeholder="https://drive.google.com/drive/folders/..." required>
-          <small style="color:var(--text-3);font-size:0.75rem;">Pastikan folder diset "Siapa saja dengan link dapat melihat"</small>
-        </div>
-        <div class="form-group">
-          <label for="photo-limit">Batas Maksimal Foto</label>
-          <input type="number" id="photo-limit" value="10" min="1" max="500" required>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-outline modal-close">Batal</button>
-          <button type="submit" id="btn-create" class="btn btn-primary">
-            <span id="btn-create-text">Buat Sesi</span>
-            <div id="btn-create-spinner" class="spinner hidden" aria-hidden="true"></div>
-          </button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <!-- ── Modal: Edit Session ─────────────────────────── -->
-  <div class="modal-backdrop" id="modal-edit-session" role="dialog" aria-modal="true" aria-labelledby="modal-edit-title">
-    <div class="modal">
-      <div class="modal-header">
-        <h3 id="modal-edit-title">Edit Sesi</h3>
-        <button class="btn btn-icon btn-outline modal-close" aria-label="Tutup modal">✕</button>
-      </div>
-      <div id="modal-edit-alert" class="alert alert-error hidden" role="alert"></div>
-      <form class="modal-body" id="form-edit-session" novalidate>
-        <input type="hidden" id="edit-session-uuid">
-        <div class="form-group">
-          <label for="edit-client-name">Nama Klien / Folder *</label>
-          <input type="text" id="edit-client-name" required maxlength="120">
-        </div>
-        <div class="form-group">
-          <label for="edit-client-phone">No. WhatsApp Klien</label>
-          <input type="tel" id="edit-client-phone" placeholder="Contoh: 08123456789">
-        </div>
-        <div class="form-group">
-          <label for="edit-folder-url">Link Google Drive Folder *</label>
-          <input type="url" id="edit-folder-url" required>
-        </div>
-        <div class="form-group">
-          <label for="edit-photo-limit">Batas Maksimal Foto</label>
-          <input type="number" id="edit-photo-limit" min="1" max="500" required>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-outline modal-close">Batal</button>
-          <button type="submit" id="btn-update-session" class="btn btn-primary">
-            <span id="btn-update-session-text">Simpan Perubahan</span>
-            <div id="btn-update-session-spinner" class="spinner hidden" aria-hidden="true"></div>
-          </button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <!-- ── Modal: Session Created (Share Link) ───────────────── -->
-  <div class="modal-backdrop" id="modal-created" role="dialog" aria-modal="true" aria-labelledby="modal-created-title">
-    <div class="modal">
-      <div class="modal-header">
-        <h3 id="modal-created-title">✅ Sesi Berhasil Dibuat!</h3>
-        <button class="btn btn-icon btn-outline" id="modal-created-close" aria-label="Tutup">✕</button>
-      </div>
-      <div class="modal-body">
-        <p style="color:var(--text-2);">Bagikan link berikut ke klien agar mereka dapat memilih foto:</p>
-        <div class="link-box">
-          <input type="text" id="gallery-link-input" readonly aria-label="Link galeri klien">
-          <button id="btn-copy-link" class="btn btn-primary btn-sm" aria-label="Salin link">Salin</button>
-        </div>
-        <div style="display:flex; gap:12px; flex-wrap:wrap;">
-          <a id="btn-open-gallery" href="#" target="_blank" rel="noopener" class="btn btn-outline" style="flex:1;">
-            🔗 Buka Galeri
-          </a>
-          <button id="btn-created-done" class="btn btn-primary" style="flex:1;">Selesai</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ── Modal: View Selections ────────────────────────────── -->
-  <div class="modal-backdrop" id="modal-selections" role="dialog" aria-modal="true" aria-labelledby="modal-sel-title">
-    <div class="modal" style="max-width:560px;">
-      <div class="modal-header">
-        <h3 id="modal-sel-title">Foto Terpilih</h3>
-        <button class="btn btn-icon btn-outline" id="modal-sel-close" aria-label="Tutup">✕</button>
-      </div>
-      <div id="modal-sel-content" class="modal-body" style="max-height: 40vh; overflow-y: auto;">
-        <div class="loading-overlay" style="min-height:120px;">
-          <div class="spinner"></div>
-        </div>
-      </div>
-      <!-- Edit Status Updater -->
-      <div id="modal-sel-status-panel" class="modal-body" style="border-top: 1px solid var(--border); background: var(--bg-1); display: none;">
-        <h4 style="margin: 0 0 12px; font-size: 0.95rem;">Update Status Pesanan &amp; Notifikasi Klien</h4>
-        <div class="form-group">
-          <label for="update-edit-status">Status Edit</label>
-          <select id="update-edit-status" class="form-control" onchange="toggleDoneFields()">
-            <option value="received">Pilihan Diterima</option>
-            <option value="editing">Sedang Diedit</option>
-            <option value="done">✅ Selesai &amp; Siap Diunduh</option>
-          </select>
-        </div>
-
-        <div id="done-wa-panel" style="display: none; background: rgba(124,109,250,0.06); border: 1px solid rgba(124,109,250,0.25); border-radius: var(--r); padding: var(--sp-4); margin-bottom: var(--sp-4);">
-          <div style="font-weight: 700; font-size: 0.85rem; color: var(--purple); margin-bottom: var(--sp-3); display: flex; align-items: center; gap: 6px;">
-            <span>💬 Notifikasi WhatsApp Klien</span>
-          </div>
-          <div class="form-group" style="margin-bottom: var(--sp-3);">
-            <label for="update-client-phone" style="font-size: 0.78rem;">Nomor WhatsApp Klien</label>
-            <input type="tel" id="update-client-phone" class="form-control" placeholder="Contoh: 08123456789 atau 628123456789">
-          </div>
-          <div class="form-group" style="margin-bottom: var(--sp-3);">
-            <label for="update-result-drive-url" style="font-size: 0.78rem;">Link Google Drive Hasil Edit</label>
-            <input type="url" id="update-result-drive-url" class="form-control" placeholder="https://drive.google.com/drive/folders/...">
-            <small style="color:var(--text-3);font-size:0.72rem;">Link ini yang akan dikirimkan ke WhatsApp klien.</small>
-          </div>
-          <label style="display: flex; align-items: center; gap: 8px; font-size: 0.82rem; cursor: pointer; color: var(--text-1);">
-            <input type="checkbox" id="update-send-wa" checked style="accent-color: var(--purple); width: 16px; height: 16px;">
-            <span>Kirim notifikasi pesan WhatsApp otomatis ke klien</span>
-          </label>
-        </div>
-
-        <div class="form-group">
-          <label for="update-edit-note">Catatan Tambahan untuk Klien (Opsional)</label>
-          <textarea id="update-edit-note" class="form-control" placeholder="Tulis pesan/catatan khusus untuk klien..." rows="2"></textarea>
-        </div>
-
-        <div style="display: flex; gap: var(--sp-2);">
-          <button id="btn-update-status" class="btn btn-primary" style="flex: 1;">
-            <span id="btn-update-status-text">Simpan Status</span>
-            <div id="btn-update-status-spinner" class="spinner hidden" aria-hidden="true"></div>
-          </button>
-          <button id="btn-send-wa-now" type="button" class="btn btn-outline" style="display:none; font-size:0.82rem;" title="Kirim Ulang WA Saja" onclick="sendWaDoneOnly()">
-            📲 Kirim WA
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
-
   <!-- ── Modal: Change Password ────────────────────────────── -->
-  <div class="modal-backdrop" id="modal-change-pass" role="dialog" aria-modal="true" aria-labelledby="modal-pass-title">
-    <div class="modal">
+  <div class="modal-backdrop" id="modal-change-pass" role="dialog" aria-modal="true">
+    <div class="modal max-w-sm">
       <div class="modal-header">
-        <h3 id="modal-pass-title">🔐 Ganti Password</h3>
-        <button class="btn btn-icon btn-outline" id="modal-pass-close" aria-label="Tutup">✕</button>
+        <h3>Ganti Password</h3>
+        <button class="btn btn-icon btn-outline border-none hover:bg-surface-container" id="modal-pass-close"
+          aria-label="Tutup">
+          <span class="material-symbols-outlined">close</span>
+        </button>
       </div>
-      <div id="modal-pass-alert" class="alert hidden" role="alert"></div>
+      <div id="modal-pass-alert"
+        class="alert hidden mx-6 mt-4 p-3 rounded-lg text-sm bg-error-container text-on-error-container" role="alert">
+      </div>
       <form class="modal-body" id="form-change-pass" novalidate>
         <div class="form-group">
           <label for="pass-current">Password Saat Ini</label>
@@ -364,165 +625,29 @@
         </div>
         <div class="form-group">
           <label for="pass-new">Password Baru</label>
-          <input type="password" id="pass-new" required minlength="6" autocomplete="new-password" placeholder="Minimal 6 karakter">
+          <input type="password" id="pass-new" required minlength="6" autocomplete="new-password"
+            placeholder="Min. 6 karakter">
         </div>
         <div class="form-group">
           <label for="pass-confirm">Konfirmasi Password Baru</label>
           <input type="password" id="pass-confirm" required autocomplete="new-password">
         </div>
-        <div class="modal-footer">
+        <div class="modal-footer mt-4 -mx-6 -mb-6 bg-surface-container-low px-6 py-4">
           <button type="button" class="btn btn-outline" id="modal-pass-close2">Batal</button>
           <button type="submit" id="btn-save-pass" class="btn btn-primary">
-            <span>Simpan Password</span>
-            <div id="btn-pass-spinner" class="spinner hidden" aria-hidden="true"></div>
+            <span>Simpan</span>
+            <div id="btn-pass-spinner" class="spinner hidden w-4 h-4 border-2 border-white/30 border-l-white"
+              aria-hidden="true"></div>
           </button>
         </div>
       </form>
     </div>
   </div>
 
-  <!-- ── Modal: Confirm Delete ─────────────────────────────── -->
-  <div class="modal-backdrop" id="modal-confirm-delete" role="dialog" aria-modal="true" aria-labelledby="modal-del-title">
-    <div class="modal" style="max-width:400px;">
-      <div class="modal-header">
-        <h3 id="modal-del-title" style="color:var(--red);">⚠️ Hapus Sesi?</h3>
-        <button class="btn btn-icon btn-outline" id="modal-del-close" aria-label="Tutup">✕</button>
-      </div>
-      <div class="modal-body">
-        <p id="modal-del-desc" style="color:var(--text-1);">
-          Tindakan ini akan menghapus sesi dan semua data seleksi foto secara permanen.
-        </p>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-outline" id="modal-del-cancel">Batal</button>
-          <button type="button" id="btn-confirm-delete" class="btn btn-danger">
-            <span>Hapus Permanen</span>
-            <div id="btn-del-spinner" class="spinner hidden" aria-hidden="true"></div>
-          </button>
-        </div>
-      </div>
-    </div>
+  <div id="toast-container" role="status" aria-live="polite" class="fixed bottom-4 right-4 z-[200] flex flex-col gap-2">
   </div>
 
-  <div id="toast-container" role="status" aria-live="polite"></div>
-
-  <script>
-    const _dashTok = localStorage.getItem('sf_token');
-    const _dashH   = { 'Authorization': `Bearer ${_dashTok}`, 'Content-Type': 'application/json' };
-
-    // Load booking & finance quick stats for dashboard
-    (async () => {
-      if (!_dashTok) return;
-      try {
-        const [bRes, fRes] = await Promise.all([
-          fetch('/api/bookings/admin/list', { headers: _dashH }),
-          fetch('/api/finance/summary', { headers: _dashH })
-        ]);
-        if (bRes.ok) {
-          const bookings = await bRes.json();
-          document.getElementById('stat-bookings').textContent = bookings.length;
-          document.getElementById('stat-dp-review').textContent = bookings.filter(b => b.status === 'dp_review').length;
-          document.getElementById('stat-confirmed').textContent = bookings.filter(b => b.status === 'confirmed').length;
-        }
-        if (fRes.ok) {
-          const fin = await fRes.json();
-          const income = Number(fin.thisMonthIncome || 0);
-          document.getElementById('stat-income').textContent = income >= 1000000
-            ? 'Rp ' + (income / 1000000).toFixed(1) + 'jt'
-            : 'Rp ' + income.toLocaleString('id-ID');
-        }
-      } catch (e) { /* non-critical, fail silently */ }
-    })();
-
-    /* ── Drive Global Config ── */
-    function extractDriveFolderId(input) {
-      if (!input) return null;
-      const urlMatch = input.match(/\/folders\/([a-zA-Z0-9_-]{10,})/);
-      if (urlMatch) return urlMatch[1];
-      if (/^[a-zA-Z0-9_-]{10,80}$/.test(input.trim())) return input.trim();
-      return null;
-    }
-
-    function driveToast(msg, type = 'info') {
-      const el = document.createElement('div');
-      el.className = `toast toast-${type}`; el.textContent = msg;
-      document.getElementById('toast-container').appendChild(el);
-      requestAnimationFrame(() => requestAnimationFrame(() => el.classList.add('show')));
-      setTimeout(() => { el.classList.remove('show'); setTimeout(() => el.remove(), 300); }, 4000);
-    }
-
-    async function loadGlobalDriveSettings() {
-      if (!_dashTok) return;
-      try {
-        const res = await fetch('/api/admin/categories/settings/all', { headers: _dashH });
-        if (!res.ok) return;
-        const data = await res.json();
-        const folderId = data.global_payment_folder_id?.value;
-        const statusEl = document.getElementById('drive-config-status');
-        const displayEl = document.getElementById('drive-folder-display');
-        const inputEl   = document.getElementById('global-drive-url');
-        if (folderId) {
-          if (statusEl) {
-            statusEl.textContent = '✅ Terkonfigurasi';
-            statusEl.style.background = 'rgba(34,211,116,0.12)';
-            statusEl.style.color = 'var(--green)';
-            statusEl.style.borderColor = 'rgba(34,211,116,0.3)';
-          }
-          if (inputEl) inputEl.value = 'https://drive.google.com/drive/folders/' + folderId;
-          if (displayEl) {
-            displayEl.style.display = 'block';
-            document.getElementById('drive-folder-display-name').textContent = data.global_payment_folder_name?.value || 'Folder Global Drive';
-            document.getElementById('drive-folder-display-id').textContent = folderId;
-          }
-        }
-      } catch (e) { /* non-critical */ }
-    }
-
-    async function saveGlobalDrive() {
-      const input = document.getElementById('global-drive-url');
-      if (!input || !input.value.trim()) { driveToast('Masukkan URL folder Drive terlebih dahulu', 'error'); return; }
-      const folderId = extractDriveFolderId(input.value.trim());
-      if (!folderId) { driveToast('URL folder Google Drive tidak valid', 'error'); return; }
-
-      try {
-        const res = await fetch('/api/admin/categories/settings/all', {
-          method: 'PUT', headers: _dashH,
-          body: JSON.stringify({ settings: {
-            global_payment_folder_id: folderId,
-            global_payment_folder_name: 'Folder Bukti Transfer Global'
-          }})
-        });
-        if (!res.ok) throw new Error();
-        driveToast('✅ Folder Drive global berhasil disimpan!', 'success');
-        loadGlobalDriveSettings();
-      } catch (e) { driveToast('Gagal menyimpan. Coba lagi.', 'error'); }
-    }
-
-    async function clearGlobalDrive() {
-      try {
-        const res = await fetch('/api/admin/categories/settings/all', {
-          method: 'PUT', headers: _dashH,
-          body: JSON.stringify({ settings: {
-            global_payment_folder_id: null,
-            global_payment_folder_name: null
-          }})
-        });
-        if (!res.ok) throw new Error();
-        document.getElementById('global-drive-url').value = '';
-        document.getElementById('drive-folder-display').style.display = 'none';
-        const statusEl = document.getElementById('drive-config-status');
-        if (statusEl) {
-          statusEl.textContent = 'Belum dikonfigurasi';
-          statusEl.style.background = 'rgba(251,146,60,0.12)';
-          statusEl.style.color = 'var(--orange)';
-          statusEl.style.borderColor = 'rgba(251,146,60,0.3)';
-        }
-        driveToast('Folder Drive global dihapus', 'info');
-      } catch (e) { driveToast('Gagal menghapus. Coba lagi.', 'error'); }
-    }
-
-    // Load Drive settings on page ready
-    loadGlobalDriveSettings();
-  </script>
-  <script src="/js/admin-dashboard.js?v=5" defer></script>
+  <script src="/js/admin-dashboard.js?v=6" defer></script>
 </body>
+
 </html>

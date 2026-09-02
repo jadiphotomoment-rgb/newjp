@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="id">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,308 +8,874 @@
   <meta name="description" content="Dashboard admin untuk mengelola booking klien Jadiphoto.Moment">
   <meta name="robots" content="noindex, nofollow">
 
-  <!-- Open Graph / Link Preview Tags -->
-  <meta property="og:type" content="website">
-  <meta property="og:site_name" content="Jadiphoto.Moment">
-  <meta property="og:title" content="Manajemen Booking — Jadiphoto.Moment Admin">
-  <meta property="og:description" content="Dashboard admin untuk mengelola booking klien Jadiphoto.Moment">
-  <meta property="og:image" content="/og-preview.png">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <!-- Tailwind & Config -->
+  <style>
+    @layer base {
+
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        overscroll-behavior: none;
+      }
+
+      main>:first-child {
+        margin-top: 0 !important;
+      }
+
+      main>:last-child {
+        margin-bottom: 0 !important;
+      }
+    }
+
+    ::-webkit-scrollbar {
+      display: none;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    .loading-overlay {
+      position: relative;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+    }
+
+    .spinner {
+      border: 3px solid rgba(0, 0, 0, 0.1);
+      border-left-color: #818cf8;
+      border-radius: 50%;
+      width: 24px;
+      height: 24px;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      0% {
+        transform: rotate(0deg);
+      }
+
+      100% {
+        transform: rotate(360deg);
+      }
+    }
+
+    /* ── Tabs ── */
+    .tab-bar {
+      display: flex;
+      gap: 0;
+      border-bottom: 2px solid var(--color-outline-variant, rgba(255, 255, 255, 0.10));
+      background: var(--color-surface-container-lowest, #1a2030);
+    }
+
+    .tab-btn {
+      padding: 12px 20px;
+      font-size: 14px;
+      font-weight: 600;
+      background: transparent;
+      color: var(--color-on-surface-variant, #9ca4c0);
+      cursor: pointer;
+      position: relative;
+      white-space: nowrap;
+      transition: color 0.15s;
+      border: none;
+    }
+
+    .tab-btn.active {
+      color: #818cf8;
+    }
+
+    .tab-btn.active::after {
+      content: '';
+      position: absolute;
+      bottom: -2px;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: #818cf8;
+      border-radius: 2px;
+    }
+
+    html.light .tab-btn {
+      color: #464554;
+    }
+
+    html.light .tab-btn.active {
+      color: #6366f1;
+    }
+
+    html.light .tab-btn.active::after {
+      background: #6366f1;
+    }
+
+    .tab-panel {
+      display: none;
+    }
+
+    .tab-panel.active {
+      display: block;
+    }
+
+    /* ── Table ── */
+    table {
+      width: 100%;
+      text-align: left;
+      border-collapse: collapse;
+    }
+
+    th {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--color-on-surface-variant, #9ca4c0);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--color-outline-variant, rgba(255, 255, 255, 0.08));
+      background: var(--color-surface-container-low, #1e2538);
+    }
+
+    td {
+      padding: 13px 16px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      font-size: 13.5px;
+      vertical-align: middle;
+      color: var(--color-on-surface, #d4daf2);
+    }
+
+    tr:last-child td {
+      border: none;
+    }
+
+    tr:hover td {
+      background: rgba(129, 140, 248, 0.04);
+    }
+
+    html.light th {
+      background: #eff4ff;
+      color: #464554;
+      border-color: #c7c4d7;
+    }
+
+    html.light td {
+      border-color: rgba(0, 0, 0, 0.06);
+      color: #0b1c30;
+    }
+
+    html.light tr:hover td {
+      background: rgba(99, 102, 241, 0.04);
+    }
+
+    /* ── Badges ── */
+    .badge {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 9999px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .badge-pending_dp {
+      background: rgba(251, 146, 60, 0.15);
+      color: #fb923c;
+      border: 1px solid rgba(251, 146, 60, 0.3);
+    }
+
+    .badge-dp_review {
+      background: rgba(96, 165, 250, 0.15);
+      color: #60a5fa;
+      border: 1px solid rgba(96, 165, 250, 0.3);
+    }
+
+    .badge-confirmed {
+      background: rgba(34, 197, 94, 0.15);
+      color: #4ade80;
+      border: 1px solid rgba(34, 197, 94, 0.3);
+    }
+
+    .badge-completed {
+      background: rgba(167, 139, 250, 0.15);
+      color: #a78bfa;
+      border: 1px solid rgba(167, 139, 250, 0.3);
+    }
+
+    .badge-cancelled {
+      background: rgba(248, 113, 113, 0.15);
+      color: #f87171;
+      border: 1px solid rgba(248, 113, 113, 0.3);
+    }
+
+    html.light .badge-pending_dp {
+      background: #fff7ed;
+      color: #ea580c;
+      border-color: rgba(234, 88, 12, 0.3);
+    }
+
+    html.light .badge-dp_review {
+      background: #eff6ff;
+      color: #2563eb;
+      border-color: rgba(37, 99, 235, 0.3);
+    }
+
+    html.light .badge-confirmed {
+      background: #f0fdf4;
+      color: #16a34a;
+      border-color: rgba(22, 163, 74, 0.3);
+    }
+
+    html.light .badge-completed {
+      background: #f5f3ff;
+      color: #7c3aed;
+      border-color: rgba(124, 58, 237, 0.3);
+    }
+
+    html.light .badge-cancelled {
+      background: #fff1f2;
+      color: #dc2626;
+      border-color: rgba(220, 38, 38, 0.3);
+    }
+
+    /* ── Detail side panel ── */
+    .detail-panel {
+      position: fixed;
+      top: 0;
+      right: -100%;
+      width: 100%;
+      max-width: 480px;
+      height: 100vh;
+      background: var(--color-surface-container-lowest, #1a2030);
+      border-left: 1px solid var(--color-outline-variant, rgba(255, 255, 255, 0.10));
+      z-index: 500;
+      overflow-y: auto;
+      transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: -8px 0 40px rgba(0, 0, 0, 0.35);
+    }
+
+    .detail-panel.open {
+      right: 0;
+    }
+
+    .detail-panel-header {
+      padding: 20px;
+      border-bottom: 1px solid var(--color-outline-variant, rgba(255, 255, 255, 0.08));
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      position: sticky;
+      top: 0;
+      background: var(--color-surface-container-low, #1e2538);
+      z-index: 10;
+    }
+
+    html.light .detail-panel-header {
+      background: #eff4ff;
+      border-color: #c7c4d7;
+    }
+
+    .detail-panel-body {
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .detail-section-title {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: var(--color-on-surface-variant, #9ca4c0);
+      margin-bottom: 12px;
+    }
+
+    .detail-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      font-size: 14px;
+      padding: 4px 0;
+    }
+
+    .detail-row .dk {
+      color: var(--color-on-surface-variant, #9ca4c0);
+    }
+
+    .detail-row .dv {
+      font-weight: 600;
+      color: var(--color-on-surface, #d4daf2);
+      text-align: right;
+    }
+
+    html.light .detail-row .dk {
+      color: #464554;
+    }
+
+    html.light .detail-row .dv {
+      color: #0b1c30;
+    }
+
+    .panel-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 499;
+      background: rgba(0, 0, 0, 0.45);
+      backdrop-filter: blur(4px);
+    }
+
+    .panel-backdrop.open {
+      display: block;
+    }
+
+    /* Edit form (inside detail panel) */
+    .edit-form {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .edit-form .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .edit-form label {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--color-on-surface-variant, #9ca4c0);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .edit-form input,
+    .edit-form select {
+      width: 100%;
+      padding: 9px 12px;
+      border: 1px solid var(--color-outline-variant, rgba(255, 255, 255, 0.12));
+      border-radius: 8px;
+      background: var(--color-surface-container-low, #1e2538);
+      color: var(--color-on-surface, #d4daf2);
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+
+    .edit-form input:focus,
+    .edit-form select:focus {
+      border-color: #818cf8;
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+    }
+
+    html.light .edit-form input,
+    html.light .edit-form select {
+      background: #fff;
+      border-color: #c7c4d7;
+      color: #0b1c30;
+    }
+
+    .edit-actions {
+      display: flex;
+      gap: 12px;
+      margin-top: 8px;
+    }
+
+    .edit-actions button {
+      flex: 1;
+    }
+
+    /* Calendar — further theming in admin-theme.css */
+    #calendar-container {
+      background: var(--color-surface-container-lowest, #1a2030);
+      border: 1px solid var(--color-outline-variant, rgba(255, 255, 255, 0.08));
+      border-radius: 16px;
+      padding: 24px;
+    }
+
+    html.light #calendar-container {
+      background: #fff;
+      border-color: #c7c4d7;
+    }
+
+    /* Btn classes */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 8px 16px;
+      border-radius: 9px;
+      font-size: 14px;
+      font-weight: 600;
+      transition: all 0.15s;
+      cursor: pointer;
+      border: none;
+    }
+
+    .btn-sm {
+      padding: 5px 10px;
+      font-size: 12px;
+    }
+
+    .btn-primary {
+      background: #6366f1;
+      color: #fff;
+    }
+
+    .btn-primary:hover {
+      background: #4f46e5;
+    }
+
+    .btn-outline {
+      border: 1px solid var(--color-outline-variant, rgba(255, 255, 255, 0.15)) !important;
+      background: transparent;
+      color: var(--color-on-surface-variant, #9ca4c0);
+    }
+
+    .btn-outline:hover {
+      background: rgba(255, 255, 255, 0.07);
+      color: var(--color-on-surface, #d4daf2);
+    }
+
+    html.light .btn-outline {
+      border-color: #c7c4d7 !important;
+      color: #464554;
+    }
+
+    html.light .btn-outline:hover {
+      background: #eff4ff;
+      color: #0b1c30;
+    }
+
+    .btn-danger {
+      background: #ef4444;
+      color: #fff;
+    }
+
+    .btn-danger:hover {
+      background: #dc2626;
+    }
+
+    .btn-icon {
+      padding: 8px;
+      border-radius: 9999px;
+    }
+  </style>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script
+    id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { "colors": { "surface-container-high": "#dce9ff", "surface-variant": "#d3e4fe", "on-tertiary-fixed": "#191c1e", "primary-fixed": "#e1e0ff", "tertiary": "#595c5e", "primary-fixed-dim": "#c0c1ff", "inverse-primary": "#c0c1ff", "tertiary-container": "#727577", "primary": "#6366f1", "surface-container-highest": "#d3e4fe", "primary-container": "#6063ee", "on-primary-fixed": "#07006c", "secondary-fixed": "#dae2fd", "secondary": "#565e74", "background": "#f8f9ff", "surface": "#f8f9ff", "on-tertiary": "#ffffff", "on-secondary": "#ffffff", "on-tertiary-fixed-variant": "#444749", "on-error-container": "#93000a", "tertiary-fixed": "#e0e3e5", "inverse-surface": "#213145", "surface-container-low": "#eff4ff", "inverse-on-surface": "#eaf1ff", "outline-variant": "#c7c4d7", "on-secondary-container": "#5c647a", "error-container": "#ffdad6", "on-error": "#ffffff", "on-background": "#0b1c30", "tertiary-fixed-dim": "#c4c7c9", "outline": "#767586", "surface-tint": "#6366f1", "on-secondary-fixed": "#131b2e", "on-secondary-fixed-variant": "#3f465c", "on-surface-variant": "#464554", "secondary-container": "#dae2fd", "surface-container": "#e5eeff", "on-primary": "#ffffff", "surface-container-lowest": "#ffffff", "surface-dim": "#cbdbf5", "secondary-fixed-dim": "#bec6e0", "error": "#ba1a1a", "on-primary-container": "#fffbff", "on-tertiary-container": "#fbfdff", "surface-bright": "#f8f9ff", "on-primary-fixed-variant": "#2f2ebe", "on-surface": "#0b1c30" }, "borderRadius": { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" }, "spacing": { "margin-mobile": "16px", "xl": "40px", "gutter": "24px", "sm": "8px", "xs": "4px", "lg": "24px", "unit": "4px", "margin-desktop": "64px", "md": "16px" }, "fontFamily": { "headline-lg": ["Helvetica Neue", "Arial", "sans-serif"], "body-lg": ["Helvetica Neue", "Arial", "sans-serif"], "headline-lg-mobile": ["Helvetica Neue", "Arial", "sans-serif"], "label-md": ["Helvetica Neue", "Arial", "sans-serif"], "headline-xl": ["Helvetica Neue", "Arial", "sans-serif"], "body-md": ["Helvetica Neue", "Arial", "sans-serif"], "headline-md": ["Helvetica Neue", "Arial", "sans-serif"], "label-sm": ["Helvetica Neue", "Arial", "sans-serif"], "body-sm": ["Helvetica Neue", "Arial", "sans-serif"] }, "fontSize": { "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600" }], "body-lg": ["18px", { "lineHeight": "28px", "fontWeight": "400" }], "headline-lg-mobile": ["24px", { "lineHeight": "32px", "fontWeight": "600" }], "label-md": ["14px", { "lineHeight": "20px", "letterSpacing": "0.05em", "fontWeight": "600" }], "headline-xl": ["40px", { "lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "700" }], "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }], "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "600" }], "label-sm": ["12px", { "lineHeight": "16px", "fontWeight": "500" }], "body-sm": ["14px", { "lineHeight": "20px", "fontWeight": "400" }] } } } }</script>
+
+  <link
+    href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200"
+    rel="stylesheet" />
   <!-- FullCalendar -->
   <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.css" rel="stylesheet">
   <link rel="stylesheet" href="/css/style.css?v=3">
+  <link rel="stylesheet" href="/css/admin-theme.css?v=1">
   <script src="/js/theme.js?v=3"></script>
+
   <style>
-    /* Booking status badges */
-    .badge-pending_dp   { background: rgba(251,146,60,0.15); color: #fb923c; }
-    .badge-dp_review    { background: rgba(96,165,250,0.15); color: #60a5fa; }
-    .badge-confirmed    { background: rgba(34,211,116,0.15); color: #22d374; }
-    .badge-completed    { background: rgba(124,109,250,0.15); color: #9b8fff; }
-    .badge-cancelled    { background: rgba(248,113,113,0.15); color: #f87171; }
-
-    /* Tabs */
-    .tab-bar {
-      display: flex; gap: 0; border-bottom: 2px solid var(--border);
-      margin-bottom: var(--sp-6);
-    }
-    .tab-btn {
-      padding: 10px 20px; font-size: 0.88rem; font-weight: 600;
-      border: none; background: none; color: var(--text-2);
-      cursor: pointer; position: relative; transition: color var(--t);
-      white-space: nowrap;
-    }
-    .tab-btn.active { color: var(--purple-2); }
-    .tab-btn.active::after {
-      content: ''; position: absolute; bottom: -2px; left: 0; right: 0;
-      height: 2px; background: var(--purple);
-    }
-    .tab-panel { display: none; }
-    .tab-panel.active { display: block; }
-
-    /* Filter bar */
-    .filter-bar {
-      display: flex; gap: var(--sp-3); flex-wrap: wrap;
-      margin-bottom: var(--sp-5);
-    }
-    .filter-bar select, .filter-bar input[type=month] {
-      width: auto; min-width: 140px; padding: 8px 12px; font-size: 0.85rem;
+    /* Reset some style.css configs */
+    html.light body {
+      background-color: #f8f9ff !important;
+      color: #0b1c30 !important;
     }
 
-    /* Calendar container */
-    #calendar-container {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: var(--r-xl);
-      padding: var(--sp-6);
-      margin-bottom: var(--sp-6);
-    }
-    .fc { font-family: 'Inter', sans-serif; }
-    .fc .fc-toolbar-title { font-family: 'Outfit', sans-serif; font-weight: 800; color: var(--text-0); font-size: 1.1rem; }
-    .fc .fc-button-primary { background: var(--purple); border-color: var(--purple); }
-    .fc .fc-button-primary:hover { background: var(--purple-dark); border-color: var(--purple-dark); }
-    .fc .fc-button-primary:not(:disabled).fc-button-active { background: var(--purple-dark); }
-    .fc-theme-standard td, .fc-theme-standard th { border-color: var(--border); }
-    .fc-theme-standard .fc-scrollgrid { border-color: var(--border); }
-    .fc .fc-daygrid-day-bg .fc-highlight { background: rgba(124,109,250,0.08); }
-    .fc .fc-col-header-cell { background: var(--bg-2); }
-    .fc .fc-col-header-cell-cushion { color: var(--text-2); font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; }
-    .fc .fc-daygrid-day-number { color: var(--text-1); }
-    .fc .fc-daygrid-day.fc-day-today { background: rgba(124,109,250,0.06); }
-    .fc .fc-event { border: none; padding: 2px 6px; font-size: 0.75rem; font-weight: 600; cursor: pointer; }
-    html.light .fc-theme-standard td, html.light .fc-theme-standard th { border-color: var(--border); }
-
-    /* Booking detail panel */
-    .detail-panel {
-      position: fixed; top: 0; right: -480px; height: 100vh; width: 480px;
-      background: var(--bg-card); border-left: 1px solid var(--border);
-      z-index: 500; overflow-y: auto; transition: right 0.3s ease;
-      box-shadow: -4px 0 24px rgba(0,0,0,0.25);
-    }
-    .detail-panel.open { right: 0; }
-    .detail-panel-header {
-      padding: var(--sp-5) var(--sp-6);
-      border-bottom: 1px solid var(--border);
-      display: flex; align-items: center; gap: var(--sp-3);
-      position: sticky; top: 0; background: var(--bg-card); z-index: 1;
-    }
-    .detail-panel-body { padding: var(--sp-6); display: flex; flex-direction: column; gap: var(--sp-5); }
-    .detail-section-title {
-      font-size: 0.72rem; font-weight: 700; text-transform: uppercase;
-      letter-spacing: 0.07em; color: var(--text-3); margin-bottom: var(--sp-3);
-    }
-    .detail-row { display: flex; justify-content: space-between; gap: var(--sp-3); font-size: 0.88rem; padding: 4px 0; }
-    .detail-row .dk { color: var(--text-2); }
-    .detail-row .dv { font-weight: 600; color: var(--text-0); text-align: right; }
-
-    /* Proof image */
-    .proof-preview {
-      border-radius: var(--r-lg); overflow: hidden;
-      border: 1px solid var(--border);
-    }
-    .proof-preview img { width: 100%; display: block; }
-    .proof-preview .proof-link {
-      display: block; padding: var(--sp-3) var(--sp-4); background: var(--bg-2);
-      font-size: 0.82rem; font-weight: 600; color: var(--purple-2);
-      text-align: center;
-    }
-
-    /* Price setter */
-    .price-setter {
-      display: flex; gap: var(--sp-2);
-    }
-    .price-setter input { flex: 1; }
-
-    /* Edit booking form */
-    .edit-form { display: flex; flex-direction: column; gap: var(--sp-4); }
-    .edit-form .form-group { display: flex; flex-direction: column; gap: 6px; }
-    .edit-form label { font-size: 0.75rem; font-weight: 700; color: var(--text-2); text-transform: uppercase; letter-spacing: 0.05em; }
-    .edit-form input, .edit-form textarea, .edit-form select {
-      width: 100%; box-sizing: border-box;
-      padding: 8px 12px; border-radius: var(--r);
-      background: var(--bg-1); border: 1px solid var(--border);
-      color: var(--text-0); font-size: 0.88rem;
-    }
-    .edit-form .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-3); }
-    .edit-form .form-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: var(--sp-3); }
-    .edit-actions { display: flex; gap: var(--sp-3); margin-top: var(--sp-2); }
-    .edit-actions button { flex: 1; }
-    .edit-badge { display:inline-flex; align-items:center; gap:4px; padding:2px 8px; border-radius:20px; font-size:0.72rem; font-weight:700; }
-
-    /* Calendar event popup */
-    .cal-popup {
-      position: fixed; z-index: 9999;
-      min-width: 220px; max-width: 280px;
-      background: var(--bg-2); border: 1px solid var(--border);
-      border-radius: var(--r-lg); padding: var(--sp-4);
-      box-shadow: 0 12px 40px rgba(0,0,0,0.35);
-      font-size: 0.82rem;
-    }
-    .cal-popup-title { font-weight: 800; font-size: 0.9rem; margin-bottom: var(--sp-2); }
-    .cal-popup-row { display:flex; gap:6px; margin-bottom:4px; color:var(--text-2); }
-    .cal-popup-row strong { color: var(--text-0); min-width: 60px; }
-    .cal-popup-actions { display:flex; gap:var(--sp-2); margin-top:var(--sp-3); }
-
-    /* Overlay backdrop */
-    .panel-backdrop {
-      display: none; position: fixed; inset: 0; z-index: 499;
-      background: rgba(0,0,0,0.45); backdrop-filter: blur(2px);
-    }
-    .panel-backdrop.open { display: block; }
-
-    @media (max-width: 520px) {
-      .detail-panel { width: 100%; right: -100%; }
-      .edit-form .form-row, .edit-form .form-row-3 { grid-template-columns: 1fr; }
+    .admin-layout,
+    .admin-main,
+    .admin-nav {
+      display: block;
+      all: unset;
     }
   </style>
 </head>
-<body>
-  <div class="bg-mesh" aria-hidden="true"></div>
 
-  <div class="admin-layout">
+<body class="bg-background font-body-md text-on-background">
 
-    <!-- Nav -->
-    <nav class="admin-nav" role="navigation" aria-label="Navigasi admin">
-      <div class="admin-nav-inner">
-        <div class="nav-brand">
-          <div class="nav-brand-icon" aria-hidden="true">📷</div>
-          <span>Jadiphoto.Moment</span>
-        </div>
-        <div class="nav-actions">
-          <div class="user-chip"><div class="user-dot"></div><span id="nav-username">Admin</span></div>
-          <a href="/admin/dashboard.html" class="btn btn-outline btn-sm">📷 Sortir</a>
-          <a href="/admin/finance.html" class="btn btn-outline btn-sm">💰 Keuangan</a>
-          <a href="/admin/categories.html" class="btn btn-outline btn-sm">⚙️ Kategori</a>
-          <button class="btn btn-outline btn-sm" onclick="toggleTheme()"><span class="theme-icon">☀️</span></button>
-          <button class="btn btn-outline btn-sm" id="btn-logout">↩ Keluar</button>
+  <!-- Sidebar -->
+  <aside
+    class="fixed left-0 top-0 h-full w-72 bg-surface-container-lowest border-r border-outline-variant/30 z-50 flex flex-col transition-transform duration-300 transform -translate-x-full md:translate-x-0"
+    id="sidebar">
+    <div class="p-lg flex items-center justify-between gap-sm mb-md border-b border-outline-variant/20 pb-4">
+      <div class="flex items-center gap-2">
+
+        <img src="/img/Logo warna.webp" alt="Jadiphoto.Moment" class="h-8 w-auto object-contain" />
+      </div>
+      <button class="md:hidden text-on-surface-variant"
+        onclick="document.getElementById('sidebar').classList.add('-translate-x-full')">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+
+    <div class="px-md mb-6">
+      <div class="bg-surface-container rounded-lg p-3 flex items-center gap-3">
+        <div class="w-8 h-8 rounded-full bg-primary/20 text-primary flex items-center justify-center font-bold">A</div>
+        <div class="flex flex-col">
+          <span class="font-label-sm text-xs text-on-surface-variant">Welcome back,</span>
+          <span class="font-label-md text-on-surface" id="nav-username">Admin</span>
         </div>
       </div>
+    </div>
+
+    <nav class="flex-1 px-md space-y-2">
+      <a href="/admin/dashboard.html"
+        class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all">
+        <span class="material-symbols-outlined">dashboard</span>
+        <span class="font-label-md">Dashboard</span>
+      </a>
+      <a href="/admin/bookings.html"
+        class="flex items-center gap-3 px-4 py-3 rounded-lg transition-all bg-primary/10 text-primary font-semibold"
+        aria-current="page">
+        <span class="material-symbols-outlined">calendar_today</span>
+        <span class="font-label-md">Booking</span>
+      </a>
+      <a href="/admin/sessions.html"
+        class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all">
+        <span class="material-symbols-outlined">add_a_photo</span>
+        <span class="font-label-md">Sesi Sortir</span>
+      </a>
+      <a href="/admin/finance.html"
+        class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all">
+        <span class="material-symbols-outlined">payments</span>
+        <span class="font-label-md">Keuangan</span>
+      </a>
+      <a href="/admin/categories.html"
+        class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all">
+        <span class="material-symbols-outlined">category</span>
+        <span class="font-label-md">Kategori</span>
+      </a>
     </nav>
 
-    <main class="admin-main" role="main">
-      <div class="page-header">
-        <h1>📅 Manajemen Booking</h1>
-        <p>Kelola booking klien, verifikasi pembayaran DP, dan pantau jadwal Jadiphoto.Moment</p>
+    <div class="p-lg border-t border-outline-variant/30 flex flex-col gap-2">
+      <button
+        class="flex items-center gap-3 px-4 py-3 rounded-lg text-error hover:bg-error/10 transition-all text-left mt-2"
+        id="btn-logout">
+        <span class="material-symbols-outlined">logout</span>
+        <span class="font-label-md">Keluar</span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- Main Content -->
+  <div class="md:pl-72 flex flex-col min-h-screen">
+
+    <header
+      class="sticky top-0 h-16 bg-surface-container-lowest/80 backdrop-blur-xl border-b border-outline-variant/20 z-40 flex items-center justify-between px-4 lg:px-8">
+      <div class="flex items-center gap-4">
+        <button class="md:hidden text-on-surface-variant flex items-center"
+          onclick="document.getElementById('sidebar').classList.remove('-translate-x-full')">
+          <span class="material-symbols-outlined">menu</span>
+        </button>
+        <h1 class="font-headline-md text-on-surface hidden sm:block">Manajemen Booking</h1>
       </div>
+      <div class="flex items-center gap-4">
+        <button class="btn btn-icon text-on-surface-variant hover:bg-surface-container transition-all"
+          onclick="toggleTheme()" aria-label="Ganti tema">
+          <span class="material-symbols-outlined" data-theme-icon>light_mode</span>
+        </button>
+      </div>
+    </header>
+
+    <main class="flex-1 p-4 lg:p-8 flex flex-col gap-6" role="main">
 
       <!-- Stats -->
-      <div class="stats-grid" style="margin-bottom: var(--sp-6);" id="booking-stats">
-        <div class="stat-card"><div class="stat-label">Total Booking</div><div class="stat-value" id="stat-total">—</div><div class="stat-sub">Semua</div></div>
-        <div class="stat-card"><div class="stat-label">Menunggu DP</div><div class="stat-value" style="color:var(--orange);" id="stat-pending">—</div><div class="stat-sub">Perlu upload</div></div>
-        <div class="stat-card"><div class="stat-label">Review DP</div><div class="stat-value" style="color:var(--blue);" id="stat-review">—</div><div class="stat-sub">Perlu verifikasi</div></div>
-        <div class="stat-card"><div class="stat-label">Dikonfirmasi</div><div class="stat-value" style="color:var(--green);" id="stat-confirmed">—</div><div class="stat-sub">Terkunci di kalender</div></div>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4" id="booking-stats">
+        <div
+          class="bg-surface-container-lowest rounded-xl p-5 border border-outline-variant/30 flex flex-col justify-between hover:shadow-md transition-shadow">
+          <div class="text-[11px] text-on-surface-variant font-semibold uppercase mb-1">Total Booking</div>
+          <div class="text-2xl font-bold text-on-surface" id="stat-total">—</div>
+        </div>
+        <div
+          class="bg-surface-container-lowest rounded-xl p-5 border border-outline-variant/30 flex flex-col justify-between hover:shadow-md transition-shadow">
+          <div class="text-[11px] text-on-surface-variant font-semibold uppercase mb-1">Menunggu DP</div>
+          <div class="text-2xl font-bold text-orange-500" id="stat-pending">—</div>
+        </div>
+        <div
+          class="bg-surface-container-lowest rounded-xl p-5 border border-outline-variant/30 flex flex-col justify-between hover:shadow-md transition-shadow">
+          <div class="text-[11px] text-on-surface-variant font-semibold uppercase mb-1">Review DP</div>
+          <div class="text-2xl font-bold text-blue-500" id="stat-review">—</div>
+        </div>
+        <div
+          class="bg-surface-container-lowest rounded-xl p-5 border border-outline-variant/30 flex flex-col justify-between hover:shadow-md transition-shadow">
+          <div class="text-[11px] text-on-surface-variant font-semibold uppercase mb-1">Dikonfirmasi</div>
+          <div class="text-2xl font-bold text-emerald-500" id="stat-confirmed">—</div>
+        </div>
       </div>
 
       <!-- Share booking link -->
-      <div class="card" style="margin-bottom:var(--sp-6);">
-        <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:var(--sp-4);">
+      <div
+        class="bg-primary/5 rounded-xl p-5 border border-primary/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-full bg-primary/20 text-primary flex items-center justify-center">
+            <span class="material-symbols-outlined">link</span>
+          </div>
           <div>
-            <div style="font-weight:700; margin-bottom:3px;">🔗 Link Booking Klien</div>
-            <div style="font-size:0.82rem; color:var(--text-2);">Bagikan link ini kepada klien untuk booking online</div>
-          </div>
-          <div style="display:flex; gap:var(--sp-2); flex-wrap:wrap;">
-            <a id="booking-link" href="/booking.html" target="_blank" class="btn btn-outline btn-sm">Buka Form Booking</a>
-            <button class="btn btn-primary btn-sm" id="btn-copy-booking-link">📋 Salin Link</button>
+            <div class="font-label-md text-primary mb-1">Link Booking Klien</div>
+            <div class="text-xs text-on-surface-variant">Bagikan link ini kepada klien untuk melakukan booking jadwal
+              online</div>
           </div>
         </div>
-      </div>
-
-      <!-- Tabs -->
-      <div class="tab-bar" role="tablist">
-        <button class="tab-btn active" id="tab-list" role="tab" onclick="switchTab('list')">📋 Daftar Booking</button>
-        <button class="tab-btn" id="tab-calendar" role="tab" onclick="switchTab('calendar')">🗓 Kalender</button>
-      </div>
-
-      <!-- Tab: List -->
-      <div class="tab-panel active" id="panel-list">
-        <div class="filter-bar">
-          <select id="filter-category" aria-label="Filter kategori">
-            <option value="">Semua Kategori</option>
-          </select>
-          <select id="filter-status" aria-label="Filter status">
-            <option value="">Semua Status</option>
-            <option value="pending_dp">Menunggu DP</option>
-            <option value="dp_review">Review DP</option>
-            <option value="confirmed">Dikonfirmasi</option>
-            <option value="completed">Selesai</option>
-            <option value="cancelled">Dibatalkan</option>
-          </select>
-          <input type="month" id="filter-month" aria-label="Filter bulan">
-          <button class="btn btn-outline btn-sm" id="btn-filter">🔍 Filter</button>
-          <button class="btn btn-outline btn-sm" id="btn-reset-filter">✕ Reset</button>
-        </div>
-
-        <div id="bookings-loading" class="loading-overlay" style="min-height:200px;">
-          <div class="spinner"></div><p>Memuat booking...</p>
-        </div>
-        <div id="bookings-empty" class="empty-state hidden">
-          <span class="empty-icon">📭</span>
-          <h3>Belum ada booking</h3>
-          <p>Booking dari klien akan muncul di sini.</p>
-        </div>
-        <div class="table-wrap hidden" id="bookings-table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th scope="col">Klien</th>
-                <th scope="col">Kategori</th>
-                <th scope="col">Tanggal Acara</th>
-                <th scope="col">Status</th>
-                <th scope="col">Harga / DP</th>
-                <th scope="col">Aksi</th>
-              </tr>
-            </thead>
-            <tbody id="bookings-tbody"></tbody>
-          </table>
-        </div>
-        <div class="session-cards hidden" id="bookings-cards"></div>
-      </div>
-
-      <!-- Tab: Calendar -->
-      <div class="tab-panel" id="panel-calendar">
-        <div id="calendar-container">
-          <div id="fc-calendar"></div>
+        <div class="flex gap-2">
+          <a id="booking-link" href="/booking.html" target="_blank"
+            class="btn btn-outline border-primary/30 text-primary bg-surface-container-lowest">Buka Form</a>
+          <button class="btn btn-primary" id="btn-copy-booking-link">
+            <span class="material-symbols-outlined text-[18px]">content_copy</span> Salin Link
+          </button>
         </div>
       </div>
 
+      <!-- Tabs and Main Area -->
+      <div
+        class="bg-surface-container-lowest rounded-xl border border-outline-variant/30 flex flex-col flex-1 overflow-hidden">
+
+        <div class="tab-bar px-2" role="tablist">
+          <button class="tab-btn active" id="tab-list" role="tab" onclick="switchTab('list')">📋 Daftar Booking</button>
+          <button class="tab-btn" id="tab-calendar" role="tab" onclick="switchTab('calendar')">🗓 Kalender
+            Jadwal</button>
+        </div>
+
+        <!-- Tab: List -->
+        <div class="tab-panel active" id="panel-list">
+
+          <div class="px-5 pb-5 flex flex-wrap gap-3 border-b border-outline-variant/20">
+            <select id="filter-category" aria-label="Filter kategori"
+              class="border border-outline-variant rounded-lg px-3 py-1.5 text-sm bg-surface-container-low text-on-surface focus:ring-1 focus:ring-primary focus:outline-none">
+              <option value="">Semua Kategori</option>
+            </select>
+            <select id="filter-status" aria-label="Filter status"
+              class="border border-outline-variant rounded-lg px-3 py-1.5 text-sm bg-surface-container-low text-on-surface focus:ring-1 focus:ring-primary focus:outline-none">
+              <option value="">Semua Status</option>
+              <option value="pending_dp">Menunggu DP</option>
+              <option value="dp_review">Review DP</option>
+              <option value="confirmed">Dikonfirmasi</option>
+              <option value="completed">Selesai</option>
+              <option value="cancelled">Dibatalkan</option>
+            </select>
+            <input type="month" id="filter-month" aria-label="Filter bulan"
+              class="border border-outline-variant rounded-lg px-3 py-1.5 text-sm bg-surface-container-low text-on-surface focus:ring-1 focus:ring-primary focus:outline-none">
+            <button class="btn btn-primary btn-sm px-4" id="btn-filter">Filter</button>
+            <button class="btn btn-outline btn-sm px-4" id="btn-reset-filter">Reset</button>
+          </div>
+
+          <div id="bookings-loading" class="loading-overlay h-64">
+            <div class="spinner border-primary"></div>
+            <p class="mt-4 text-sm text-on-surface-variant">Memuat booking...</p>
+          </div>
+
+          <div id="bookings-empty" class="hidden flex flex-col items-center justify-center p-12 text-center h-64">
+            <div class="w-16 h-16 bg-surface-container rounded-full flex items-center justify-center mb-4">
+              <span class="material-symbols-outlined text-on-surface-variant text-[32px]">event_busy</span>
+            </div>
+            <h3 class="font-headline-sm text-on-surface mb-2">Belum ada booking</h3>
+            <p class="text-on-surface-variant text-sm">Booking dari klien akan muncul di sini.</p>
+          </div>
+
+          <div class="hidden overflow-x-auto" id="bookings-table-wrap">
+            <table class="w-full">
+              <thead>
+                <tr>
+                  <th>Klien</th>
+                  <th>Kategori</th>
+                  <th>Tanggal Acara</th>
+                  <th>Status</th>
+                  <th>Harga / DP</th>
+                  <th class="text-right">Aksi</th>
+                </tr>
+              </thead>
+              <tbody id="bookings-tbody"></tbody>
+            </table>
+          </div>
+
+          <div class="hidden flex flex-col p-4 gap-4 sm:hidden" id="bookings-cards"></div>
+        </div>
+
+        <!-- Tab: Calendar -->
+        <div class="tab-panel bg-surface" id="panel-calendar">
+
+          <div class="px-6 pb-12 mx-auto w-full flex flex-col gap-12">
+            <div class="flex flex-col gap-2 pt-12">
+              <h1 class="font-headline-xl text-on-surface">Schedule & Planning</h1>
+              <p class="font-body-lg text-on-surface-variant max-w-2xl">Manage your upcoming shoots, view booking
+                statistics, and track your availability across all active projects.</p>
+            </div>
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+              <div class="lg:col-span-8 flex flex-col gap-6">
+                <div
+                  class="bg-surface-container-lowest rounded-2xl p-6 shadow-md shadow-black/5 hover:shadow-lg hover:shadow-primary/10 transition-all duration-300">
+                  <div class="flex items-center justify-between mb-6">
+                    <div class="flex items-center gap-4">
+                      <button
+                        class="w-10 h-10 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container-low transition-colors"
+                        id="btn-cal-prev"><span class="material-symbols-outlined">chevron_left</span></button>
+                      <h2 class="font-headline-md text-on-surface" id="calendar-month-title">October 2023</h2>
+                      <button
+                        class="w-10 h-10 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container-low transition-colors"
+                        id="btn-cal-next"><span class="material-symbols-outlined">chevron_right</span></button>
+                    </div>
+                    <div class="flex items-center gap-2 bg-surface-container-low rounded-xl p-1">
+                      <button
+                        class="px-4 py-2 rounded-lg bg-surface-container-lowest text-on-surface shadow-sm font-label-md ">Month</button>
+                    </div>
+                  </div>
+                  <div class="grid grid-cols-7 gap-2 mb-2 text-center">
+                    <span class="font-label-sm text-on-surface-variant uppercase tracking-widest">Sun</span>
+                    <span class="font-label-sm text-on-surface-variant uppercase tracking-widest">Mon</span>
+                    <span class="font-label-sm text-on-surface-variant uppercase tracking-widest">Tue</span>
+                    <span class="font-label-sm text-on-surface-variant uppercase tracking-widest">Wed</span>
+                    <span class="font-label-sm text-on-surface-variant uppercase tracking-widest">Thu</span>
+                    <span class="font-label-sm text-on-surface-variant uppercase tracking-widest">Fri</span>
+                    <span class="font-label-sm text-on-surface-variant uppercase tracking-widest">Sat</span>
+                  </div>
+                  <div class="grid grid-cols-7 gap-2" id="calendar-grid">
+                    <!-- JS will inject days here -->
+                  </div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div
+                    class="bg-surface-container-lowest p-6 rounded-2xl shadow-md shadow-black/5 hover:shadow-lg hover:shadow-primary/10 transition-all duration-300 flex flex-col gap-2">
+                    <div class="flex items-center justify-between">
+                      <span class="material-symbols-outlined text-tertiary-container">book_online</span>
+                      <svg class="w-16 h-6 text-tertiary-container/30" preserveaspectratio="none" viewbox="0 0 100 20">
+                        <path d="M0 20 Q 10 5, 20 15 T 40 10 T 60 15 T 80 5 T 100 10 L 100 20 L 0 20 Z"
+                          fill="currentColor"></path>
+                        <path d="M0 20 Q 10 5, 20 15 T 40 10 T 60 15 T 80 5 T 100 10" fill="none" stroke="currentColor"
+                          stroke-width="2"></path>
+                      </svg>
+                    </div>
+                    <p class="font-label-sm text-on-surface-variant uppercase tracking-widest mt-2">Monthly Bookings</p>
+                    <p class="font-headline-lg text-on-surface" id="stat-stitch-bookings">0</p>
+                  </div>
+                  <div
+                    class="bg-surface-container-lowest p-6 rounded-2xl shadow-md shadow-black/5 hover:shadow-lg hover:shadow-primary/10 transition-all duration-300 flex flex-col gap-2">
+                    <div class="flex items-center justify-between">
+                      <span class="material-symbols-outlined text-primary">payments</span>
+                      <svg class="w-16 h-6 text-primary/30" preserveaspectratio="none" viewbox="0 0 100 20">
+                        <path d="M0 15 Q 20 20, 40 5 T 80 15 T 100 5 L 100 20 L 0 20 Z" fill="currentColor"></path>
+                        <path d="M0 15 Q 20 20, 40 5 T 80 15 T 100 5" fill="none" stroke="currentColor"
+                          stroke-width="2"></path>
+                      </svg>
+                    </div>
+                    <p class="font-label-sm text-on-surface-variant uppercase tracking-widest mt-2">Revenue</p>
+                    <p class="font-headline-lg text-on-surface" id="stat-stitch-revenue">Rp 0</p>
+                  </div>
+                  <div
+                    class="bg-surface-container-lowest p-6 rounded-2xl shadow-md shadow-black/5 hover:shadow-lg hover:shadow-primary/10 transition-all duration-300 flex flex-col gap-2">
+                    <div class="flex items-center justify-between">
+                      <span class="material-symbols-outlined text-secondary">assignment</span>
+                      <svg class="w-16 h-6 text-secondary/30" preserveaspectratio="none" viewbox="0 0 100 20">
+                        <path d="M0 10 Q 25 15, 50 10 T 100 10 L 100 20 L 0 20 Z" fill="currentColor"></path>
+                        <path d="M0 10 Q 25 15, 50 10 T 100 10" fill="none" stroke="currentColor" stroke-width="2">
+                        </path>
+                      </svg>
+                    </div>
+                    <p class="font-label-sm text-on-surface-variant uppercase tracking-widest mt-2">Active Projects</p>
+                    <p class="font-headline-lg text-on-surface" id="stat-stitch-active">0</p>
+                  </div>
+                </div>
+              </div>
+              <div class="lg:col-span-4 flex flex-col gap-6">
+                <div
+                  class="bg-surface-container-lowest rounded-2xl p-6 shadow-md shadow-black/5 hover:shadow-lg hover:shadow-primary/10 transition-all duration-300 flex flex-col gap-4">
+                  <div class="flex items-center justify-between">
+                    <h3 class="font-headline-md text-on-surface">Upcoming</h3>
+                  </div>
+                  <div class="flex flex-col gap-2" id="upcoming-events-list">
+                    <!-- Injected by JS -->
+                  </div>
+                </div>
+                <div
+                  class="bg-surface-container-lowest rounded-2xl p-6 shadow-md shadow-black/5 hover:shadow-lg hover:shadow-primary/10 transition-all duration-300 flex flex-col gap-4">
+                  <h3 class="font-headline-md text-on-surface mb-1">Quick Tasks</h3>
+                  <label class="flex items-center gap-4 group cursor-pointer task-checkbox">
+                    <div
+                      class="w-5 h-5 rounded border border-outline-variant flex items-center justify-center group-hover:border-primary transition-colors">
+                      <span class="material-symbols-outlined text-[16px] text-transparent">check</span>
+                    </div>
+                    <span class="font-body-sm text-on-surface flex-1">Confirm venue for weekend shoot</span>
+                  </label>
+                  <label class="flex items-center gap-4 group cursor-pointer task-checkbox">
+                    <div
+                      class="w-5 h-5 rounded border border-outline-variant flex items-center justify-center group-hover:border-primary transition-colors">
+                      <span class="material-symbols-outlined text-[16px] text-transparent">check</span>
+                    </div>
+                    <span class="font-body-sm text-on-surface flex-1">Send invoice to Delta Corp</span>
+                  </label>
+                  <label class="flex items-center gap-4 group cursor-pointer task-checkbox opacity-50 line-through">
+                    <div class="w-5 h-5 rounded bg-primary flex items-center justify-center transition-colors">
+                      <span class="material-symbols-outlined text-[16px] text-on-primary">check</span>
+                    </div>
+                    <span class="font-body-sm text-on-surface flex-1">Backup SD cards</span>
+                  </label>
+                </div>
+                <div
+                  class="bg-inverse-surface text-inverse-on-surface p-6 rounded-2xl shadow-lg shadow-primary/20 hover:shadow-xl hover:shadow-primary/30 transition-all duration-300 hover:-translate-y-1 mt-auto relative overflow-hidden">
+                  <div
+                    class="absolute -right-8 -top-8 w-32 h-32 bg-primary rounded-full blur-3xl opacity-20 pointer-events-none">
+                  </div>
+                  <h4 class="font-headline-sm font-semibold mb-2 relative z-10">Pro Tip</h4>
+                  <p class="font-body-sm text-inverse-on-surface/80 relative z-10 mb-4">Sync your Google Calendar to
+                    automatically block out personal time slots.</p>
+                  <button
+                    class="px-4 py-2 bg-primary/20 text-primary rounded-lg font-label-sm hover:bg-primary/30 transition-colors relative z-10 font-bold">Connect
+                    Calendar</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
     </main>
   </div>
 
   <!-- Detail panel -->
   <div class="panel-backdrop" id="panel-backdrop" onclick="closePanel()"></div>
-  <aside class="detail-panel" id="detail-panel" role="complementary" aria-label="Detail booking">
+  <aside class="detail-panel" id="detail-panel" role="complementary">
     <div class="detail-panel-header">
-      <button class="btn btn-icon btn-outline" onclick="closePanel()" aria-label="Tutup">✕</button>
-      <h3 style="font-size:1rem; font-weight:700; flex:1;">Detail Booking</h3>
+      <button class="btn btn-icon btn-outline border-none hover:bg-surface-container" onclick="closePanel()"
+        aria-label="Tutup">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+      <h3 class="font-headline-sm text-on-surface flex-1 m-0">Detail Booking</h3>
       <span class="badge" id="panel-status-badge">—</span>
     </div>
     <div class="detail-panel-body" id="panel-body">
-      <div class="loading-overlay" style="min-height:200px;"><div class="spinner"></div></div>
+      <div class="loading-overlay h-64">
+        <div class="spinner border-primary"></div>
+      </div>
     </div>
   </aside>
 
-  <div id="toast-container" role="status" aria-live="polite"></div>
+  <div id="toast-container" role="status" aria-live="polite" class="fixed bottom-4 right-4 z-[999] flex flex-col gap-2">
+  </div>
 
+  <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js"></script>
   <script>
     const TOKEN = localStorage.getItem('sf_token');
     if (!TOKEN) location.href = '/admin/login.html';
-
-    /* ── Auth headers ── */
     const H = { 'Authorization': `Bearer ${TOKEN}`, 'Content-Type': 'application/json' };
 
-    /* ── Toast ── */
     function toast(msg, type = 'info') {
       const el = document.createElement('div');
-      el.className = `toast toast-${type}`;
+      const bg = type === 'success' ? 'bg-emerald-500' : type === 'error' ? 'bg-red-500' : 'bg-blue-500';
+      el.className = `px-4 py-3 rounded-lg shadow-lg text-white text-sm font-medium transition-all transform translate-y-2 opacity-0 ${bg}`;
       el.textContent = msg;
       document.getElementById('toast-container').appendChild(el);
-      requestAnimationFrame(() => { requestAnimationFrame(() => el.classList.add('show')); });
-      setTimeout(() => { el.classList.remove('show'); setTimeout(() => el.remove(), 300); }, 4000);
+      requestAnimationFrame(() => { requestAnimationFrame(() => el.classList.remove('translate-y-2', 'opacity-0')); });
+      setTimeout(() => { el.classList.add('opacity-0', 'scale-95'); setTimeout(() => el.remove(), 300); }, 4000);
     }
 
-    /* ── Format helpers ── */
     function fmtDate(d) { return d ? new Date(d).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'; }
     function fmtMoney(n) { return n ? 'Rp ' + Number(n).toLocaleString('id-ID') : '—'; }
     const STATUS_LABELS = {
@@ -316,18 +883,15 @@
       confirmed: 'Dikonfirmasi', completed: 'Selesai', cancelled: 'Dibatalkan'
     };
 
-    /* ── Logout ── */
     document.getElementById('btn-logout').addEventListener('click', () => {
       localStorage.clear(); location.href = '/admin/login.html';
     });
 
-    /* ── Copy booking link ── */
     document.getElementById('btn-copy-booking-link').addEventListener('click', () => {
       const url = `${location.origin}/booking.html`;
       navigator.clipboard.writeText(url).then(() => toast('Link disalin!', 'success'));
     });
 
-    /* ── Tab switching ── */
     function switchTab(tab) {
       ['list', 'calendar'].forEach(t => {
         document.getElementById(`tab-${t}`).classList.toggle('active', t === tab);
@@ -336,7 +900,6 @@
       if (tab === 'calendar' && !calendarInitialized) initCalendar();
     }
 
-    /* ── Load categories for filter ── */
     async function loadCategories() {
       try {
         const res = await fetch('/api/bookings/categories');
@@ -346,18 +909,17 @@
           const opt = document.createElement('option'); opt.value = c.slug; opt.textContent = c.name;
           sel.appendChild(opt);
         });
-      } catch (e) {}
+      } catch (e) { }
     }
 
-    /* ── Load bookings ── */
     let bookings = [];
     async function loadBookings() {
       const category = document.getElementById('filter-category').value;
-      const status   = document.getElementById('filter-status').value;
-      const month    = document.getElementById('filter-month').value;
+      const status = document.getElementById('filter-status').value;
+      const month = document.getElementById('filter-month').value;
       const qs = new URLSearchParams({ ...(category && { category }), ...(status && { status }), ...(month && { month }) });
 
-      document.getElementById('bookings-loading').style.display = 'flex';
+      document.getElementById('bookings-loading').classList.remove('hidden');
       document.getElementById('bookings-empty').classList.add('hidden');
       document.getElementById('bookings-table-wrap').classList.add('hidden');
       document.getElementById('bookings-cards').classList.add('hidden');
@@ -371,7 +933,7 @@
       } catch (e) {
         toast('Gagal memuat booking', 'error');
       } finally {
-        document.getElementById('bookings-loading').style.display = 'none';
+        document.getElementById('bookings-loading').classList.add('hidden');
       }
     }
 
@@ -391,43 +953,53 @@
       const tbody = document.getElementById('bookings-tbody');
       tbody.innerHTML = list.map(b => `
         <tr>
-          <td class="td-name">${b.client_name}<span>${b.client_phone}</span></td>
+          <td>
+            <div class="font-semibold text-on-surface">${b.client_name}</div>
+            <div class="text-xs text-on-surface-variant">${b.client_phone}</div>
+          </td>
           <td><span class="badge" style="background:color-mix(in srgb,${b.color} 15%,transparent);color:${b.color};">${b.category_name}</span></td>
-          <td>${fmtDate(b.event_date)}<br><small style="color:var(--text-3);">${b.location || ''}</small></td>
+          <td>
+            <div class="font-medium text-on-surface">${fmtDate(b.event_date)}</div>
+            <div class="text-xs text-on-surface-variant max-w-[150px] truncate">${b.location || '-'}</div>
+          </td>
           <td><span class="badge badge-${b.status}">${STATUS_LABELS[b.status] || b.status}</span></td>
-          <td>${fmtMoney(b.package_price)}<br><small style="color:var(--text-3);">DP: ${fmtMoney(b.dp_amount)}</small></td>
-          <td class="td-actions">
-            <button class="btn btn-outline btn-sm" onclick="openPanel(${b.id})">👁 Detail</button>
-            ${b.status === 'dp_review' ? `
-              <button class="btn btn-primary btn-sm" onclick="approveDP(${b.id})">✓ Approve</button>
-              <button class="btn btn-danger btn-sm" onclick="rejectDP(${b.id})">✕ Reject</button>
-            ` : ''}
+          <td>
+            <div class="font-semibold text-on-surface">${fmtMoney(b.package_price)}</div>
+            <div class="text-xs text-on-surface-variant">DP: ${fmtMoney(b.dp_amount)}</div>
+          </td>
+          <td class="text-right">
+            <div class="flex justify-end gap-2">
+              <button class="btn btn-outline btn-sm bg-surface-container-lowest" onclick="openPanel(${b.id})">👁 Detail</button>
+              ${b.status === 'dp_review' ? `
+                <button class="btn btn-primary btn-sm" onclick="approveDP(${b.id})">Approve</button>
+              ` : ''}
+            </div>
           </td>
         </tr>
       `).join('');
 
       const cards = document.getElementById('bookings-cards');
       cards.innerHTML = list.map(b => `
-        <div class="session-card">
-          <div class="session-card-header">
+        <div class="bg-surface-container-lowest rounded-xl border border-outline-variant/30 p-4">
+          <div class="flex justify-between items-start mb-3">
             <div>
-              <div class="session-card-name">${b.client_name}</div>
-              <div class="session-card-meta">${b.client_phone} · ${b.category_name}</div>
+              <div class="font-bold text-on-surface">${b.client_name}</div>
+              <div class="text-xs text-on-surface-variant">${b.client_phone} · ${b.category_name}</div>
             </div>
             <span class="badge badge-${b.status}">${STATUS_LABELS[b.status] || b.status}</span>
           </div>
-          <div class="session-card-body">
-            <span>📅 ${fmtDate(b.event_date)}</span>
-            ${b.location ? `<span>📍 ${b.location}</span>` : ''}
+          <div class="text-sm flex flex-col gap-1 mb-3 bg-surface-container-low p-2 rounded">
+            <div class="flex gap-2"><span class="material-symbols-outlined text-[16px] text-on-surface-variant">event</span> ${fmtDate(b.event_date)}</div>
+            ${b.location ? `<div class="flex gap-2"><span class="material-symbols-outlined text-[16px] text-on-surface-variant">location_on</span> ${b.location}</div>` : ''}
           </div>
-          <div style="font-size:0.82rem; color:var(--text-2); margin-bottom:var(--sp-3);">
-            Harga: ${fmtMoney(b.package_price)} · DP: ${fmtMoney(b.dp_amount)}
+          <div class="text-sm font-semibold mb-3 flex justify-between">
+            <span>Harga: ${fmtMoney(b.package_price)}</span>
+            <span class="text-on-surface-variant">DP: ${fmtMoney(b.dp_amount)}</span>
           </div>
-          <div class="session-card-footer">
-            <button class="btn btn-outline btn-sm" onclick="openPanel(${b.id})">👁 Detail</button>
+          <div class="flex gap-2">
+            <button class="btn btn-outline btn-sm flex-1" onclick="openPanel(${b.id})">Detail</button>
             ${b.status === 'dp_review' ? `
-              <button class="btn btn-primary btn-sm" onclick="approveDP(${b.id})">✓ Approve DP</button>
-              <button class="btn btn-danger btn-sm" onclick="rejectDP(${b.id})">✕ Reject</button>
+              <button class="btn btn-primary btn-sm flex-1" onclick="approveDP(${b.id})">Approve</button>
             ` : ''}
           </div>
         </div>
@@ -437,11 +1009,12 @@
       document.getElementById('bookings-cards').classList.remove('hidden');
     }
 
-    /* ── Open detail panel ── */
+    let currentBookingData = null;
+
     async function openPanel(id) {
       document.getElementById('detail-panel').classList.add('open');
       document.getElementById('panel-backdrop').classList.add('open');
-      document.getElementById('panel-body').innerHTML = '<div class="loading-overlay" style="min-height:200px;"><div class="spinner"></div></div>';
+      document.getElementById('panel-body').innerHTML = '<div class="loading-overlay h-64"><div class="spinner border-primary"></div></div>';
 
       try {
         const res = await fetch(`/api/bookings/admin/detail/${id}`, { headers: H });
@@ -449,7 +1022,7 @@
         currentBookingData = b;
         renderPanel(b);
       } catch (e) {
-        document.getElementById('panel-body').innerHTML = '<p style="padding:1rem;color:var(--red);">Gagal memuat detail</p>';
+        document.getElementById('panel-body').innerHTML = '<p class="text-error p-4">Gagal memuat detail</p>';
       }
     }
 
@@ -469,71 +1042,90 @@
       ).join('');
 
       const paymentsHtml = (b.payments || []).length ? b.payments.map(p => `
-        <div style="background:var(--bg-2);border:1px solid var(--border);border-radius:var(--r);padding:var(--sp-4);margin-bottom:var(--sp-3);">
-          <div style="display:flex;justify-content:space-between;margin-bottom:var(--sp-2);">
-            <span style="font-weight:600;">${fmtMoney(p.amount)}</span>
-            <span class="badge badge-${p.status === 'approved' ? 'completed' : p.status === 'rejected' ? 'cancelled' : 'active'}" style="font-size:0.7rem;">${p.status}</span>
+        <div class="bg-surface-container-low border border-outline-variant/30 rounded-lg p-4 mb-3">
+          <div class="flex justify-between items-center mb-3">
+            <span class="font-bold text-on-surface">${fmtMoney(p.amount)}</span>
+            <span class="badge badge-${p.status === 'approved' ? 'completed' : p.status === 'rejected' ? 'cancelled' : 'pending_dp'}">${p.status}</span>
           </div>
           ${p.proof_url ? `
-            <div class="proof-preview">
+            <div class="rounded-lg overflow-hidden border border-outline-variant/30 bg-black/5 flex flex-col">
               ${p.proof_url.endsWith('.pdf')
-                ? `<a href="${p.proof_url}" target="_blank" class="proof-link">📄 Buka Bukti PDF</a>`
-                : `<img src="${p.proof_url}" alt="Bukti transfer" style="max-height:200px;object-fit:contain;background:#000;">
-                   <a href="${p.proof_url}" target="_blank" class="proof-link">🔍 Lihat Full Size</a>`}
+            ? `<a href="${p.proof_url}" target="_blank" class="p-3 text-center text-primary font-semibold text-sm hover:bg-black/5">📄 Buka Bukti PDF</a>`
+            : `<img src="${p.proof_url}" alt="Bukti" class="w-full max-h-[200px] object-contain bg-black/10">
+                   <a href="${p.proof_url}" target="_blank" class="p-2 text-center text-primary font-semibold text-xs border-t border-outline-variant/30 hover:bg-black/5">🔍 Lihat Full Size</a>`}
             </div>` : ''}
-          ${p.reject_reason ? `<div style="margin-top:var(--sp-2);font-size:0.78rem;color:var(--red);">Alasan: ${p.reject_reason}</div>` : ''}
+          ${p.reject_reason ? `<div class="mt-2 text-xs text-error font-medium bg-error/10 p-2 rounded">Alasan: ${p.reject_reason}</div>` : ''}
         </div>
-      `).join('') : '<p style="font-size:0.85rem;color:var(--text-3);">Belum ada pembayaran</p>';
+      `).join('') : '<p class="text-sm text-on-surface-variant">Belum ada pembayaran</p>';
 
       document.getElementById('panel-body').innerHTML = `
-        <div style="display:flex; justify-content:flex-end; margin-bottom:var(--sp-4);">
-          <button class="btn btn-outline btn-sm" onclick="enterEditMode(${b.id})">✏️ Edit Booking</button>
+        <div class="flex justify-end mb-2">
+          <button class="btn btn-outline btn-sm" onclick="enterEditMode(${b.id})">
+            <span class="material-symbols-outlined text-[16px]">edit</span> Edit Booking
+          </button>
         </div>
-        <div>
+        
+        <div class="bg-surface-container-lowest border border-outline-variant/30 p-4 rounded-lg">
           <div class="detail-section-title">Data Klien</div>
           <div class="detail-row"><span class="dk">Nama</span><span class="dv">${b.client_name}</span></div>
           <div class="detail-row"><span class="dk">WhatsApp</span><span class="dv">${b.client_phone}</span></div>
           <div class="detail-row"><span class="dk">Kategori</span><span class="dv">${b.category_name}</span></div>
           <div class="detail-row"><span class="dk">Tanggal</span><span class="dv">${fmtDate(b.event_date)}</span></div>
-          <div class="detail-row"><span class="dk">Jam</span><span class="dv">${b.event_time ? b.event_time.slice(0,5) : '—'}</span></div>
+          <div class="detail-row"><span class="dk">Jam</span><span class="dv">${b.event_time ? b.event_time.slice(0, 5) : '—'}</span></div>
           <div class="detail-row"><span class="dk">Lokasi</span><span class="dv">${b.location || '—'}</span></div>
         </div>
-        ${formDataRows ? `<div><div class="detail-section-title">Detail ${b.category_name}</div>${formDataRows}</div>` : ''}
-        <div>
+        
+        ${formDataRows ? `<div class="bg-surface-container-lowest border border-outline-variant/30 p-4 rounded-lg"><div class="detail-section-title">Detail ${b.category_name}</div>${formDataRows}</div>` : ''}
+        
+        <div class="bg-surface-container-lowest border border-outline-variant/30 p-4 rounded-lg">
           <div class="detail-section-title">Harga & Pembayaran</div>
           <div class="detail-row"><span class="dk">Harga Paket</span><span class="dv">${fmtMoney(b.package_price)}</span></div>
           <div class="detail-row"><span class="dk">DP Wajib</span><span class="dv">${fmtMoney(b.dp_amount)}</span></div>
-          <div class="price-setter" style="margin-top:var(--sp-3);">
-            <input type="number" id="price-input" placeholder="Set harga paket (Rp)" value="${b.package_price || ''}">
-            <button class="btn btn-primary btn-sm" onclick="setPrice(${b.id})">Simpan</button>
+          
+          <div class="flex gap-2 mt-4">
+            <input type="number" id="price-input" placeholder="Set harga paket (Rp)" value="${b.package_price || ''}" class="flex-1 px-3 py-2 border border-outline-variant rounded-lg text-sm bg-surface-container focus:outline-none focus:border-primary">
+            <button class="btn btn-primary px-4 py-2" onclick="setPrice(${b.id})">Set Harga</button>
           </div>
         </div>
+        
         <div>
-          <div class="detail-section-title">Bukti Pembayaran</div>
+          <div class="detail-section-title mt-2">Riwayat Pembayaran</div>
           ${paymentsHtml}
         </div>
-        <div style="display:flex;flex-direction:column;gap:var(--sp-3);">
+        
+        <div class="flex flex-col gap-3 mt-4">
           ${b.status === 'dp_review' ? `
-            <button class="btn btn-primary" onclick="approveDP(${b.id}, true)" style="width:100%;">✅ Approve DP & Konfirmasi Booking</button>
-            <button class="btn btn-danger" onclick="rejectDP(${b.id}, true)" style="width:100%;">❌ Reject — Minta Upload Ulang</button>
+            <button class="btn btn-primary justify-center w-full" onclick="approveDP(${b.id}, true)">
+              <span class="material-symbols-outlined text-[18px]">check_circle</span> Approve DP & Konfirmasi
+            </button>
+            <button class="btn btn-danger justify-center w-full" onclick="rejectDP(${b.id}, true)">
+              <span class="material-symbols-outlined text-[18px]">cancel</span> Reject & Minta Upload Ulang
+            </button>
           ` : ''}
           ${b.status === 'confirmed' && !b.session_id ? `
-            <button class="btn btn-outline" onclick="linkSession(${b.id})" style="width:100%;">📷 Hubungkan ke Sesi Sortir Foto</button>
+            <button class="btn btn-outline justify-center w-full text-primary border-primary/30 bg-primary/5 hover:bg-primary/10" onclick="linkSession(${b.id})">
+              <span class="material-symbols-outlined text-[18px]">link</span> Hubungkan ke Sesi Sortir
+            </button>
           ` : ''}
-          <select id="status-select-${b.id}" style="width:100%;">
-            <option value="">Ubah Status Manual...</option>
-            <option value="pending_dp">Menunggu DP</option>
-            <option value="dp_review">Review DP</option>
-            <option value="confirmed">Dikonfirmasi</option>
-            <option value="completed">Selesai</option>
-            <option value="cancelled">Dibatalkan</option>
-          </select>
-          <button class="btn btn-outline btn-sm" onclick="changeStatus(${b.id})">Simpan Status</button>
+          
+          <div class="border-t border-outline-variant/30 pt-4 mt-2">
+            <label class="text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-2 block">Ubah Status Manual</label>
+            <div class="flex gap-2">
+              <select id="status-select-${b.id}" class="flex-1 px-3 py-2 border border-outline-variant rounded-lg text-sm bg-surface-container focus:outline-none focus:border-primary">
+                <option value="">Pilih status...</option>
+                <option value="pending_dp">Menunggu DP</option>
+                <option value="dp_review">Review DP</option>
+                <option value="confirmed">Dikonfirmasi</option>
+                <option value="completed">Selesai</option>
+                <option value="cancelled">Dibatalkan</option>
+              </select>
+              <button class="btn btn-outline" onclick="changeStatus(${b.id})">Simpan</button>
+            </div>
+          </div>
         </div>
       `;
     }
 
-    /* ── Edit Mode ── */
     function enterEditMode(id) {
       const b = currentBookingData;
       if (!b || b.id !== id) { openPanel(id); return; }
@@ -544,38 +1136,40 @@
           <input type="text" data-fd-key="${k}" value="${v}">
         </div>
       `).join('');
-      const eventDateVal = b.event_date ? new Date(b.event_date).toISOString().slice(0,10) : '';
-      const eventTimeVal = b.event_time ? b.event_time.slice(0,5) : '';
+      const eventDateVal = b.event_date ? new Date(b.event_date).toISOString().slice(0, 10) : '';
+      const eventTimeVal = b.event_time ? b.event_time.slice(0, 5) : '';
       document.getElementById('panel-body').innerHTML = `
         <div class="edit-form">
-          <div style="display:flex;align-items:center;gap:var(--sp-3);margin-bottom:var(--sp-2);">
-            <span style="font-weight:800;font-size:1rem;">✏️ Edit Booking #${b.id}</span>
-          </div>
-          <div class="form-row">
+          <h4 class="font-headline-sm text-on-surface mb-2 border-b border-outline-variant/30 pb-2">✏️ Edit Booking #${b.id}</h4>
+          
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div class="form-group"><label>Nama Klien *</label><input type="text" id="edit-client-name" value="${b.client_name}"></div>
             <div class="form-group"><label>No. WhatsApp *</label><input type="tel" id="edit-client-phone" value="${b.client_phone}"></div>
           </div>
-          <div class="form-row">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div class="form-group"><label>Tanggal Acara *</label><input type="date" id="edit-event-date" value="${eventDateVal}"></div>
             <div class="form-group"><label>Jam Mulai</label><input type="time" id="edit-event-time" value="${eventTimeVal}"></div>
           </div>
+          
           <div class="form-group"><label>Lokasi / Venue</label><input type="text" id="edit-location" value="${b.location || ''}"></div>
           <div class="form-group"><label>Harga Paket (Rp)</label><input type="number" id="edit-package-price" value="${b.package_price || ''}"></div>
-          ${fdHtml ? `<div><div class="detail-section-title" style="margin-bottom:var(--sp-3);">Detail ${b.category_name}</div>${fdHtml}</div>` : ''}
-          <div class="edit-actions" style="margin-top:var(--sp-4);">
-            <button class="btn btn-primary" onclick="saveEdit(${b.id})">💾 Simpan Perubahan</button>
+          
+          ${fdHtml ? `<div class="mt-4"><div class="detail-section-title mb-2">Detail Ekstra</div><div class="flex flex-col gap-4">${fdHtml}</div></div>` : ''}
+          
+          <div class="edit-actions mt-6 pt-4 border-t border-outline-variant/30">
             <button class="btn btn-outline" onclick="openPanel(${b.id})">Batal</button>
+            <button class="btn btn-primary" onclick="saveEdit(${b.id})">Simpan Perubahan</button>
           </div>
         </div>
       `;
     }
 
     async function saveEdit(id) {
-      const client_name  = document.getElementById('edit-client-name').value.trim();
+      const client_name = document.getElementById('edit-client-name').value.trim();
       const client_phone = document.getElementById('edit-client-phone').value.trim();
-      const event_date   = document.getElementById('edit-event-date').value;
-      const event_time   = document.getElementById('edit-event-time').value || null;
-      const location     = document.getElementById('edit-location').value.trim() || null;
+      const event_date = document.getElementById('edit-event-date').value;
+      const event_time = document.getElementById('edit-event-time').value || null;
+      const location = document.getElementById('edit-location').value.trim() || null;
       const package_price_raw = document.getElementById('edit-package-price').value;
       const package_price = package_price_raw ? parseFloat(package_price_raw) : null;
       if (!client_name || !client_phone || !event_date) { toast('Nama, no WA, dan tanggal wajib diisi', 'error'); return; }
@@ -600,14 +1194,13 @@
       document.getElementById('panel-backdrop').classList.remove('open');
     }
 
-    /* ── Approve / Reject DP ── */
     async function approveDP(id, fromPanel = false) {
       if (!confirm('Approve DP dan konfirmasi booking ini?')) return;
       try {
         const res = await fetch(`/api/bookings/admin/${id}/approve-dp`, { method: 'PATCH', headers: H });
         const data = await res.json();
         if (!res.ok) { toast(data.error || 'Gagal approve', 'error'); return; }
-        toast('DP disetujui! Booking dikonfirmasi ✅', 'success');
+        toast('DP disetujui! Booking dikonfirmasi', 'success');
         if (fromPanel) closePanel();
         loadBookings();
         if (calendar) calendar.refetchEvents();
@@ -616,7 +1209,7 @@
 
     async function rejectDP(id, fromPanel = false) {
       const reason = prompt('Alasan penolakan (opsional):');
-      if (reason === null) return; // user canceled
+      if (reason === null) return;
       try {
         const res = await fetch(`/api/bookings/admin/${id}/reject-dp`, {
           method: 'PATCH', headers: H, body: JSON.stringify({ reason })
@@ -638,7 +1231,7 @@
         });
         const data = await res.json();
         if (!res.ok) { toast(data.error || 'Gagal simpan harga', 'error'); return; }
-        toast(`Harga paket: ${fmtMoney(data.packagePrice)} · DP: ${fmtMoney(data.dpAmount)}`, 'success');
+        toast(`Berhasil! Harga paket: ${fmtMoney(data.packagePrice)}`, 'success');
         openPanel(id);
       } catch (e) { toast('Gagal. Coba lagi.', 'error'); }
     }
@@ -657,98 +1250,160 @@
     }
 
     async function linkSession(bookingId) {
-      const uuid = prompt('Masukkan UUID sesi sortir foto:');
+      const uuid = prompt('Masukkan ID / UUID Sesi Sortir Foto yang sudah Anda buat di menu Dashboard:');
       if (!uuid) return;
       try {
         const res = await fetch(`/api/bookings/admin/${bookingId}/link-session`, {
           method: 'PATCH', headers: H, body: JSON.stringify({ sessionUuid: uuid })
         });
         const data = await res.json();
-        if (!res.ok) { toast(data.error || 'Gagal', 'error'); return; }
-        toast('Sesi berhasil dihubungkan! 🎉', 'success');
+        if (!res.ok) { toast(data.error || 'Gagal menghubungkan', 'error'); return; }
+        toast('Sesi berhasil dihubungkan!', 'success');
         openPanel(bookingId);
       } catch (e) { toast('Gagal. Coba lagi.', 'error'); }
     }
 
-    /* ── FullCalendar ── */
-    let calendar = null;
-    let calendarInitialized = false;
-    let calPopupEl = null;
+    /* ── Custom Stitch Calendar ── */
+    let currentCalDate = new Date();
+    let calBookings = [];
 
-    const CAL_STATUS_LABELS = {
-      confirmed: '✅ Dikonfirmasi', dp_review: '🔵 Review DP',
-      completed: '⭐ Selesai', pending_dp: '⏳ Menunggu DP'
-    };
-
-    function closCalPopup() {
-      if (calPopupEl) { calPopupEl.remove(); calPopupEl = null; }
+    async function fetchCalendarData(year, monthIndex) {
+      const pad = (n) => String(n).padStart(2, '0');
+      const monthStr = `${year}-${pad(monthIndex + 1)}`;
+      try {
+        const res = await fetch(`/api/bookings/admin/calendar?month=${monthStr}`, { headers: H });
+        if (res.ok) calBookings = await res.json();
+      } catch (e) { console.error('Gagal fetch data calendar', e); }
     }
 
-    function showCalPopup(info) {
-      closCalPopup();
-      const ep = info.event.extendedProps;
-      const id = info.event.id;
-      const fmtM = n => n ? 'Rp ' + Number(n).toLocaleString('id-ID') : '-';
-      const popup = document.createElement('div');
-      popup.className = 'cal-popup';
-      popup.innerHTML = `
-        <div class="cal-popup-title">${ep.categoryName} &mdash; ${ep.clientName}</div>
-        <div class="cal-popup-row"><strong>Status</strong><span>${CAL_STATUS_LABELS[ep.status] || ep.status}</span></div>
-        <div class="cal-popup-row"><strong>Jam</strong><span>${ep.eventTime}</span></div>
-        <div class="cal-popup-row"><strong>Lokasi</strong><span>${ep.location}</span></div>
-        <div class="cal-popup-row"><strong>Harga</strong><span>${fmtM(ep.packagePrice)}</span></div>
-        <div class="cal-popup-row"><strong>DP</strong><span>${fmtM(ep.dpAmount)}</span></div>
-        <div class="cal-popup-actions">
-          <button class="btn btn-primary btn-sm" onclick="closCalPopup(); openPanel(${id});">&#x1F4CB; Detail</button>
-          <button class="btn btn-outline btn-sm" onclick="closCalPopup(); openPanelThenEdit(${id});">&#x270F;&#xFE0F; Edit</button>
-          <button class="btn btn-outline btn-sm" style="flex:0;padding:4px 8px;" onclick="closCalPopup()">&times;</button>
-        </div>
-      `;
-      // Position near click
-      const rect = info.el.getBoundingClientRect();
-      popup.style.top  = (rect.bottom + window.scrollY + 8) + 'px';
-      popup.style.left = Math.min(rect.left + window.scrollX, window.innerWidth - 300) + 'px';
-      document.body.appendChild(popup);
-      calPopupEl = popup;
-      // Close on outside click
-      setTimeout(() => {
-        document.addEventListener('click', closCalPopup, { once: true, capture: true });
-      }, 50);
+    async function renderCustomCalendar() {
+      const year = currentCalDate.getFullYear();
+      const month = currentCalDate.getMonth();
+
+      const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+      document.getElementById('calendar-month-title').textContent = `${monthNames[month]} ${year}`;
+
+      await fetchCalendarData(year, month);
+
+      const grid = document.getElementById('calendar-grid');
+      grid.innerHTML = '';
+
+      const firstDayIndex = new Date(year, month, 1).getDay();
+      const lastDate = new Date(year, month + 1, 0).getDate();
+      const prevLastDate = new Date(year, month, 0).getDate();
+
+      // Render previous month's trailing days
+      for (let x = firstDayIndex; x > 0; x--) {
+        grid.innerHTML += `<div class="aspect-square flex flex-col p-1 rounded-xl text-on-surface-variant/40"><span class="font-body-sm text-right pr-2 pt-1">${prevLastDate - x + 1}</span></div>`;
+      }
+
+      // Render current month days
+      for (let i = 1; i <= lastDate; i++) {
+        const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
+
+        // Find events for this date
+        const eventsToday = calBookings.filter(b => b.start.startsWith(dateStr));
+
+        let eventsHtml = '';
+        if (eventsToday.length > 0) {
+          // Just take the first one or two to display on grid
+          const ev = eventsToday[0];
+          // colors based on status or random
+          let colorClass = 'bg-tertiary-container/20 text-tertiary-container';
+          if (ev.status === 'confirmed') colorClass = 'bg-primary/20 text-primary';
+          else if (ev.status === 'pending_dp') colorClass = 'bg-warning/20 text-warning';
+
+          eventsHtml = `
+            <div class="mt-auto ${colorClass} text-[10px] rounded px-1 py-0.5 truncate mt-1 cursor-pointer hover:opacity-80" onclick="openPanel(${ev.id})" title="${ev.title}">
+              ${ev.title}
+            </div>
+          `;
+          if (eventsToday.length > 1) {
+            eventsHtml += `<div class="text-[9px] text-on-surface-variant text-right">+${eventsToday.length - 1} lagi</div>`;
+          }
+        }
+
+        // Check if today
+        const isToday = new Date().toDateString() === new Date(year, month, i).toDateString();
+        const baseClass = isToday ? 'bg-primary text-on-primary shadow-md font-bold' : 'bg-surface-container-lowest border border-outline-variant/30 text-on-surface';
+
+        grid.innerHTML += `
+          <div class="aspect-square flex flex-col p-1 rounded-xl relative ${baseClass}">
+            <span class="font-body-sm text-right pr-2 pt-1">${i}</span>
+            ${eventsHtml}
+          </div>
+        `;
+      }
+
+      // Render upcoming list on sidebar (take top 4 from calBookings that are upcoming)
+      const upcomingList = document.getElementById('upcoming-events-list');
+      if (upcomingList) {
+        const upcoming = calBookings.filter(b => new Date(b.start) >= new Date()).slice(0, 4);
+        if (upcoming.length === 0) {
+          upcomingList.innerHTML = '<div class="text-sm text-on-surface-variant p-2">Belum ada jadwal terdekat.</div>';
+        } else {
+          upcomingList.innerHTML = upcoming.map((ev, idx) => {
+            const d = new Date(ev.start);
+            const m = monthNames[d.getMonth()].substring(0, 3).toUpperCase();
+            const dateNum = d.getDate();
+            const colorBar = ['bg-primary', 'bg-tertiary-container', 'bg-warning', 'bg-secondary'][idx % 4];
+
+            return `
+              <div onclick="openPanel(${ev.id})" class="flex gap-4 items-start p-4 bg-surface rounded-xl hover:bg-surface-container-low transition-colors group cursor-pointer relative overflow-hidden">
+                <div class="absolute left-0 top-0 bottom-0 w-1 ${colorBar}"></div>
+                <div class="flex flex-col items-center justify-center bg-surface-container rounded-lg w-12 h-12 flex-shrink-0">
+                  <span class="font-label-sm text-on-surface-variant">${m}</span>
+                  <span class="font-headline-md text-on-surface -mt-1">${dateNum}</span>
+                </div>
+                <div class="flex flex-col flex-1 min-w-0">
+                  <h4 class="font-label-md text-on-surface truncate">${ev.title}</h4>
+                  <p class="font-body-sm text-on-surface-variant truncate">${ev.extendedProps?.location || 'Tidak ada lokasi'} • ${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}</p>
+                </div>
+                <span class="material-symbols-outlined text-on-surface-variant/50 group-hover:text-primary transition-colors mt-2">arrow_forward</span>
+              </div>
+            `;
+          }).join('');
+        }
+      }
     }
 
-    function initCalendar() {
-      calendarInitialized = true;
-      const el = document.getElementById('fc-calendar');
-      calendar = new FullCalendar.Calendar(el, {
-        initialView: 'dayGridMonth',
-        locale: 'id',
-        headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek,listWeek' },
-        height: 'auto',
-        nowIndicator: true,
-        eventTimeFormat: { hour: '2-digit', minute: '2-digit', hour12: false },
-        events: async (info, success, failure) => {
-          try {
-            const month = info.start.toISOString().slice(0, 7);
-            const res = await fetch(`/api/bookings/admin/calendar?month=${month}`, { headers: H });
-            const events = await res.json();
-            success(events);
-          } catch (e) { failure(e); }
-        },
-        eventClick: (info) => {
-          info.jsEvent.preventDefault();
-          showCalPopup(info);
-        },
-        eventDidMount: (info) => {
-          const ep = info.event.extendedProps;
-          if (ep.status === 'pending_dp') info.el.style.opacity = '0.55';
-          info.el.style.cursor = 'pointer';
-          info.el.title = `${ep.categoryName} | ${ep.clientName} | ${ep.eventTime} | ${ep.location}`;
+    document.getElementById('btn-cal-prev')?.addEventListener('click', () => {
+      currentCalDate.setMonth(currentCalDate.getMonth() - 1);
+      renderCustomCalendar();
+    });
+
+    document.getElementById('btn-cal-next')?.addEventListener('click', () => {
+      currentCalDate.setMonth(currentCalDate.getMonth() + 1);
+      renderCustomCalendar();
+    });
+
+    // Handle Quick Tasks
+    document.querySelectorAll('.task-checkbox').forEach(label => {
+      label.addEventListener('click', (e) => {
+        e.preventDefault();
+        const checkbox = label.querySelector('.w-5');
+        const icon = label.querySelector('.material-symbols-outlined');
+        if (label.classList.contains('opacity-50')) {
+          label.classList.remove('opacity-50', 'line-through');
+          checkbox.className = 'w-5 h-5 rounded border border-outline-variant flex items-center justify-center group-hover:border-primary transition-colors';
+          icon.className = 'material-symbols-outlined text-[16px] text-transparent';
+        } else {
+          label.classList.add('opacity-50', 'line-through');
+          checkbox.className = 'w-5 h-5 rounded bg-primary flex items-center justify-center transition-colors';
+          icon.className = 'material-symbols-outlined text-[16px] text-on-primary';
         }
       });
-      calendar.render();
+    });
+
+    let calendarInitialized = false;
+    function initCalendar() {
+      // Called when switching to calendar tab
+      if (!calendarInitialized) {
+        calendarInitialized = true;
+        renderCustomCalendar();
+      }
     }
 
-    /* ── Filter ── */
     document.getElementById('btn-filter').addEventListener('click', loadBookings);
     document.getElementById('btn-reset-filter').addEventListener('click', () => {
       document.getElementById('filter-category').value = '';
@@ -757,7 +1412,6 @@
       loadBookings();
     });
 
-    /* ── Init ── */
     const adminData = JSON.parse(localStorage.getItem('sf_admin') || '{}');
     if (adminData.name) document.getElementById('nav-username').textContent = adminData.name;
 
@@ -765,4 +1419,5 @@
     loadBookings();
   </script>
 </body>
+
 </html>

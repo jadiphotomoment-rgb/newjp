@@ -7,238 +7,298 @@
   <meta name="description" content="Dashboard keuangan Jadiphoto.Moment — laporan pemasukan dan pembayaran">
   <meta name="robots" content="noindex, nofollow">
 
-  <!-- Open Graph / Link Preview Tags -->
-  <meta property="og:type" content="website">
-  <meta property="og:site_name" content="Jadiphoto.Moment">
-  <meta property="og:title" content="Dashboard Keuangan — Jadiphoto.Moment Admin">
-  <meta property="og:description" content="Dashboard keuangan Jadiphoto.Moment — laporan pemasukan dan pembayaran">
-  <meta property="og:image" content="/og-preview.png">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/css/style.css?v=3">
-  <script src="/js/theme.js?v=3"></script>
+  <!-- Tailwind & Config -->
   <style>
-    .finance-income-card {
-      background: linear-gradient(135deg, rgba(34,211,116,0.15) 0%, rgba(34,211,116,0.05) 100%);
-      border: 1px solid rgba(34,211,116,0.25);
-      border-radius: var(--r-xl);
-      padding: var(--sp-8);
-      text-align: center;
-      margin-bottom: var(--sp-6);
-    }
-    .finance-income-card .label { font-size: 0.8rem; color: var(--text-2); font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: var(--sp-2); }
-    .finance-income-card .amount {
-      font-family: 'Outfit', sans-serif; font-size: clamp(2rem, 6vw, 3.5rem);
-      font-weight: 900; color: var(--green); line-height: 1;
-      margin-bottom: var(--sp-2);
-    }
-    .finance-income-card .sub { font-size: 0.85rem; color: var(--text-2); }
+    @layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}
+    ::-webkit-scrollbar{display:none;}
+    .hidden { display: none !important; }
+    
+    .loading-overlay { position: relative; width: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 2rem; }
+    .spinner { border: 3px solid rgba(0,0,0,0.1); border-left-color: var(--primary, #6366f1); border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-    /* Chart */
-    .chart-card {
-      background: var(--bg-card); border: 1px solid var(--border);
-      border-radius: var(--r-xl); padding: var(--sp-6);
-      margin-bottom: var(--sp-6);
-    }
-    .chart-card h3 { font-family: 'Outfit', sans-serif; font-weight: 700; font-size: 1rem; margin-bottom: var(--sp-5); }
-    .chart-wrap { position: relative; height: 220px; }
+    /* Chart wrap */
+    .chart-wrap { position: relative; height: 260px; width: 100%; }
+
+    /* Badges */
+    .badge { display: inline-block; padding: 3px 10px; border-radius: 9999px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
+    .badge-pending  { background: rgba(251,146,60,0.15); color: #fb923c; border: 1px solid rgba(251,146,60,0.3); }
+    .badge-approved { background: rgba(34,197,94,0.15); color: #4ade80; border: 1px solid rgba(34,197,94,0.3); }
+    .badge-rejected { background: rgba(248,113,113,0.15); color: #f87171; border: 1px solid rgba(248,113,113,0.3); }
+    html.light .badge-pending  { background: #fff7ed; color: #ea580c; }
+    html.light .badge-approved { background: #f0fdf4; color: #16a34a; }
+    html.light .badge-rejected { background: #fff1f2; color: #dc2626; }
+
+    /* Table */
+    table { width: 100%; text-align: left; border-collapse: collapse; }
+    th { font-size: 11px; font-weight: 700; color: var(--color-on-surface-variant, #9ca4c0); text-transform: uppercase; letter-spacing: 0.06em; padding: 12px 16px; border-bottom: 1px solid var(--color-outline-variant, rgba(255,255,255,0.08)); background: var(--color-surface-container-low, #1e2538); }
+    td { padding: 13px 16px; border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 13.5px; vertical-align: middle; color: var(--color-on-surface, #d4daf2); }
+    tr:last-child td { border: none; }
+    tr:hover td { background: rgba(129,140,248,0.04); }
+    html.light th { background: #eff4ff; color: #464554; border-color: #c7c4d7; }
+    html.light td { border-color: rgba(0,0,0,0.06); color: #0b1c30; }
+    html.light tr:hover td { background: rgba(99,102,241,0.04); }
+
+    /* Btns */
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 8px 16px; border-radius: 9px; font-size: 14px; font-weight: 600; transition: all 0.15s; cursor: pointer; border: none; }
+    .btn-sm { padding: 5px 10px; font-size: 12px; }
+    .btn-primary { background: #6366f1; color: #fff; }
+    .btn-primary:hover { background: #4f46e5; }
+    .btn-outline { border: 1px solid var(--color-outline-variant, rgba(255,255,255,0.15)) !important; background: transparent; color: var(--color-on-surface-variant, #9ca4c0); }
+    .btn-outline:hover { background: rgba(255,255,255,0.07); color: var(--color-on-surface, #d4daf2); }
+    html.light .btn-outline { border-color: #c7c4d7 !important; color: #464554; }
+    html.light .btn-outline:hover { background: #eff4ff; color: #0b1c30; }
+    .btn-danger { background: #ef4444; color: #fff; }
+    .btn-danger:hover { background: #dc2626; }
+    .btn-icon { padding: 8px; border-radius: 9999px; }
 
     /* Category breakdown */
-    .cat-breakdown { display: flex; flex-direction: column; gap: var(--sp-3); }
-    .cat-row {
-      display: flex; align-items: center; gap: var(--sp-4);
-      padding: var(--sp-4); background: var(--bg-2);
-      border-radius: var(--r-lg);
-    }
+    .cat-breakdown { display: flex; flex-direction: column; gap: 12px; }
+    .cat-row { display: flex; align-items: center; gap: 16px; padding: 16px; background: var(--color-surface-container-low, #1e2538); border-radius: 10px; border: 1px solid var(--color-outline-variant, rgba(255,255,255,0.08)); }
+    html.light .cat-row { background: #eff4ff; border-color: #c7c4d7; }
     .cat-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
-    .cat-row-name { font-weight: 600; font-size: 0.9rem; flex: 1; }
-    .cat-row-count { font-size: 0.78rem; color: var(--text-2); }
-    .cat-row-income { font-weight: 700; font-family: 'Outfit', sans-serif; color: var(--green); }
-    .cat-bar-track { height: 4px; background: var(--border); border-radius: 99px; margin-top: var(--sp-1); }
-    .cat-bar-fill { height: 100%; border-radius: 99px; transition: width 0.8s ease; }
+    .cat-row-name { font-weight: 600; font-size: 14px; flex: 1; color: var(--color-on-surface, #d4daf2); }
+    html.light .cat-row-name { color: #0b1c30; }
+    .cat-row-count { font-size: 12px; color: var(--color-on-surface-variant, #9ca4c0); }
+    .cat-row-income { font-weight: 700; font-family: monospace; color: #4ade80; }
+    html.light .cat-row-income { color: #16a34a; }
+    .cat-bar-track { height: 6px; background: rgba(255,255,255,0.1); border-radius: 99px; margin-top: 8px; overflow: hidden; }
+    html.light .cat-bar-track { background: rgba(0,0,0,0.08); }
+    .cat-bar-fill { height: 100%; border-radius: 99px; transition: width 1s ease; }
 
-    /* Payment table actions */
-    .badge-pending  { background: rgba(251,146,60,0.15); color: #fb923c; }
-    .badge-approved { background: rgba(34,211,116,0.15); color: #22d374; }
-    .badge-rejected { background: rgba(248,113,113,0.15); color: #f87171; }
+    /* Proof popup */
+    .proof-popup { position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%); background: var(--color-surface-container-lowest, #1a2030); border: 1px solid var(--color-outline-variant, rgba(255,255,255,0.10)); border-radius: 16px; padding: 20px; box-shadow: 0 20px 60px rgba(0,0,0,0.5); z-index: 9999; width: 95%; max-width: 420px; max-height: 90vh; overflow-y: auto; }
+    html.light .proof-popup { background: #fff; border-color: #c7c4d7; }
+    .proof-popup-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.55); backdrop-filter: blur(6px); z-index: 9998; }
 
-    /* Filter bar */
-    .filter-bar { display: flex; gap: var(--sp-3); flex-wrap: wrap; margin-bottom: var(--sp-5); }
-    .filter-bar select, .filter-bar input[type=month] { width: auto; min-width: 140px; font-size: 0.85rem; padding: 8px 12px; }
+  </style>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{"colors":{"surface-container-high":"#dce9ff","surface-variant":"#d3e4fe","on-tertiary-fixed":"#191c1e","primary-fixed":"#e1e0ff","tertiary":"#595c5e","primary-fixed-dim":"#c0c1ff","inverse-primary":"#c0c1ff","tertiary-container":"#727577","primary":"#6366f1","surface-container-highest":"#d3e4fe","primary-container":"#6063ee","on-primary-fixed":"#07006c","secondary-fixed":"#dae2fd","secondary":"#565e74","background":"#f8f9ff","surface":"#f8f9ff","on-tertiary":"#ffffff","on-secondary":"#ffffff","on-tertiary-fixed-variant":"#444749","on-error-container":"#93000a","tertiary-fixed":"#e0e3e5","inverse-surface":"#213145","surface-container-low":"#eff4ff","inverse-on-surface":"#eaf1ff","outline-variant":"#c7c4d7","on-secondary-container":"#5c647a","error-container":"#ffdad6","on-error":"#ffffff","on-background":"#0b1c30","tertiary-fixed-dim":"#c4c7c9","outline":"#767586","surface-tint":"#6366f1","on-secondary-fixed":"#131b2e","on-secondary-fixed-variant":"#3f465c","on-surface-variant":"#464554","secondary-container":"#dae2fd","surface-container":"#e5eeff","on-primary":"#ffffff","surface-container-lowest":"#ffffff","surface-dim":"#cbdbf5","secondary-fixed-dim":"#bec6e0","error":"#ba1a1a","on-primary-container":"#fffbff","on-tertiary-container":"#fbfdff","surface-bright":"#f8f9ff","on-primary-fixed-variant":"#2f2ebe","on-surface":"#0b1c30"},"borderRadius":{"DEFAULT":"0.25rem","lg":"0.5rem","xl":"0.75rem","full":"9999px"},"spacing":{"margin-mobile":"16px","xl":"40px","gutter":"24px","sm":"8px","xs":"4px","lg":"24px","unit":"4px","margin-desktop":"64px","md":"16px"},"fontFamily":{"headline-lg":["Helvetica Neue", "Arial", "sans-serif"],"body-lg":["Helvetica Neue", "Arial", "sans-serif"],"headline-lg-mobile":["Helvetica Neue", "Arial", "sans-serif"],"label-md":["Helvetica Neue", "Arial", "sans-serif"],"headline-xl":["Helvetica Neue", "Arial", "sans-serif"],"body-md":["Helvetica Neue", "Arial", "sans-serif"],"headline-md":["Helvetica Neue", "Arial", "sans-serif"],"label-sm":["Helvetica Neue", "Arial", "sans-serif"],"body-sm":["Helvetica Neue", "Arial", "sans-serif"]},"fontSize":{"headline-lg":["32px",{"lineHeight":"40px","letterSpacing":"-0.01em","fontWeight":"600"}],"body-lg":["18px",{"lineHeight":"28px","fontWeight":"400"}],"headline-lg-mobile":["24px",{"lineHeight":"32px","fontWeight":"600"}],"label-md":["14px",{"lineHeight":"20px","letterSpacing":"0.05em","fontWeight":"600"}],"headline-xl":["40px",{"lineHeight":"48px","letterSpacing":"-0.02em","fontWeight":"700"}],"body-md":["16px",{"lineHeight":"24px","fontWeight":"400"}],"headline-md":["24px",{"lineHeight":"32px","fontWeight":"600"}],"label-sm":["12px",{"lineHeight":"16px","fontWeight":"500"}],"body-sm":["14px",{"lineHeight":"20px","fontWeight":"400"}]}}}}</script>
+  
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  
+  <link rel="stylesheet" href="/css/style.css?v=3">
+  <link rel="stylesheet" href="/css/admin-theme.css?v=1">
+  <script src="/js/theme.js?v=3"></script>
 
-    /* Payment proof preview popup */
-    .proof-popup {
-      position: fixed; z-index: 9999;
-      top: 50%; left: 50%; transform: translate(-50%, -50%);
-      background: var(--bg-2); border: 1px solid var(--border);
-      border-radius: var(--r-xl); padding: var(--sp-5);
-      box-shadow: 0 20px 60px rgba(0,0,0,0.5);
-      max-width: 420px; width: 95%;
-    }
-    .proof-popup img { width: 100%; border-radius: var(--r-lg); margin-bottom: var(--sp-3); max-height: 300px; object-fit: contain; background:#111; }
-    .proof-popup-backdrop {
-      position: fixed; inset: 0; z-index: 9998;
-      background: rgba(0,0,0,0.6); backdrop-filter: blur(4px);
-    }
-    .proof-popup-title { font-weight: 800; font-size: 0.95rem; margin-bottom: var(--sp-3); }
-    .proof-popup-info { display: flex; flex-direction: column; gap: 4px; font-size: 0.82rem; margin-bottom: var(--sp-4); }
-    .proof-popup-info .pi-row { display: flex; gap: 8px; }
-    .proof-popup-info .pi-key { color: var(--text-3); min-width: 80px; }
-    .proof-popup-actions { display: flex; gap: var(--sp-3); }
-    .proof-popup-actions button { flex: 1; }
-
-    /* Grid layout */
-    .finance-grid {
-      display: grid; grid-template-columns: 1fr 1fr;
-      gap: var(--sp-5); margin-bottom: var(--sp-6);
-    }
-    @media (max-width: 768px) { .finance-grid { grid-template-columns: 1fr; } }
+  <style>
+    /* Reset some style.css configs */
+    html.light body { background-color: #f8f9ff !important; color: #0b1c30 !important; }
+    .admin-layout, .admin-main, .admin-nav { display: block; all: unset; }
   </style>
 </head>
-<body>
-  <div class="bg-mesh" aria-hidden="true"></div>
+<body class="bg-background font-body-md text-on-background">
 
-  <div class="admin-layout">
-    <!-- Nav -->
-    <nav class="admin-nav" role="navigation">
-      <div class="admin-nav-inner">
-        <div class="nav-brand">
-          <div class="nav-brand-icon" aria-hidden="true">📷</div>
-          <span>Jadiphoto.Moment</span>
-        </div>
-        <div class="nav-actions">
-          <div class="user-chip"><div class="user-dot"></div><span id="nav-username">Admin</span></div>
-          <a href="/admin/dashboard.html" class="btn btn-outline btn-sm">📷 Sortir</a>
-          <a href="/admin/bookings.html" class="btn btn-outline btn-sm">📅 Booking</a>
-          <a href="/admin/categories.html" class="btn btn-outline btn-sm">⚙️ Kategori</a>
-          <button class="btn btn-outline btn-sm" onclick="toggleTheme()"><span class="theme-icon">☀️</span></button>
-          <button class="btn btn-outline btn-sm" id="btn-logout">↩ Keluar</button>
+  <!-- Sidebar -->
+  <aside class="fixed left-0 top-0 h-full w-72 bg-surface-container-lowest border-r border-outline-variant/30 z-50 flex flex-col transition-transform duration-300 transform -translate-x-full md:translate-x-0" id="sidebar">
+    <div class="p-lg flex items-center justify-between gap-sm mb-md border-b border-outline-variant/20 pb-4">
+      <div class="flex items-center gap-2">
+        <span class="material-symbols-outlined text-primary text-[28px]">photo_save</span>
+        <img src="/img/Logo warna.webp" alt="Jadiphoto.Moment" class="h-8 w-auto object-contain" />
+      </div>
+      <button class="md:hidden text-on-surface-variant" onclick="document.getElementById('sidebar').classList.add('-translate-x-full')">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+    
+    <div class="px-md mb-6">
+      <div class="bg-surface-container rounded-lg p-3 flex items-center gap-3">
+        <div class="w-8 h-8 rounded-full bg-primary/20 text-primary flex items-center justify-center font-bold">A</div>
+        <div class="flex flex-col">
+          <span class="font-label-sm text-xs text-on-surface-variant">Welcome back,</span>
+          <span class="font-label-md text-on-surface" id="nav-username">Admin</span>
         </div>
       </div>
+    </div>
+
+    <nav class="flex-1 px-md space-y-2">
+      <a href="/admin/dashboard.html" class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all">
+        <span class="material-symbols-outlined">dashboard</span>
+        <span class="font-label-md">Dashboard</span>
+      </a>
+      <a href="/admin/bookings.html" class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all">
+        <span class="material-symbols-outlined">calendar_today</span>
+        <span class="font-label-md">Booking</span>
+      </a>
+      <a href="/admin/sessions.html" class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all">
+        <span class="material-symbols-outlined">add_a_photo</span>
+        <span class="font-label-md">Sesi Sortir</span>
+      </a>
+      <a href="/admin/finance.html" class="flex items-center gap-3 px-4 py-3 rounded-lg transition-all bg-primary/10 text-primary font-semibold" aria-current="page">
+        <span class="material-symbols-outlined">payments</span>
+        <span class="font-label-md">Keuangan</span>
+      </a>
+      <a href="/admin/categories.html" class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all">
+        <span class="material-symbols-outlined">category</span>
+        <span class="font-label-md">Kategori</span>
+      </a>
     </nav>
+    
+    <div class="p-lg border-t border-outline-variant/30 flex flex-col gap-2">
+      <button class="flex items-center gap-3 px-4 py-3 rounded-lg text-error hover:bg-error/10 transition-all text-left mt-2" id="btn-logout">
+        <span class="material-symbols-outlined">logout</span>
+        <span class="font-label-md">Keluar</span>
+      </button>
+    </div>
+  </aside>
 
-    <main class="admin-main" role="main">
-      <div class="page-header">
-        <h1>💰 Dashboard Keuangan</h1>
-        <p>Laporan pemasukan, pembayaran, dan breakdown per kategori layanan</p>
+  <!-- Main Content -->
+  <div class="md:pl-72 flex flex-col min-h-screen">
+    
+    <header class="sticky top-0 h-16 bg-surface-container-lowest/80 backdrop-blur-xl border-b border-outline-variant/20 z-40 flex items-center justify-between px-4 lg:px-8">
+      <div class="flex items-center gap-4">
+        <button class="md:hidden text-on-surface-variant flex items-center" onclick="document.getElementById('sidebar').classList.remove('-translate-x-full')">
+          <span class="material-symbols-outlined">menu</span>
+        </button>
+        <h1 class="font-headline-md text-on-surface hidden sm:block">Dashboard Keuangan</h1>
       </div>
+      <div class="flex items-center gap-4">
+        <button class="btn btn-icon text-on-surface-variant hover:bg-surface-container transition-all" onclick="toggleTheme()" aria-label="Ganti tema">
+          <span class="material-symbols-outlined" data-theme-icon>light_mode</span>
+        </button>
+      </div>
+    </header>
 
+    <main class="flex-1 p-4 lg:p-8 flex flex-col gap-6" role="main">
+      
       <!-- Main income card -->
-      <div class="finance-income-card" id="income-card">
-        <div class="label">Total Pemasukan (Approved)</div>
-        <div class="amount" id="total-income">—</div>
-        <div class="sub" id="income-sub">Memuat data...</div>
+      <div class="bg-gradient-to-br from-emerald-500/10 to-emerald-500/5 border border-emerald-500/20 rounded-2xl p-8 text-center" id="income-card">
+        <div class="text-xs font-bold text-emerald-800 uppercase tracking-widest mb-2">Total Pemasukan (Approved)</div>
+        <div class="text-4xl md:text-5xl lg:text-6xl font-black text-emerald-600 mb-2 font-mono truncate" id="total-income">—</div>
+        <div class="text-sm text-emerald-700/80" id="income-sub">Memuat data...</div>
       </div>
 
       <!-- Stats row -->
-      <div class="stats-grid" style="margin-bottom:var(--sp-6);">
-        <div class="stat-card">
-          <div class="stat-label">Bulan Ini</div>
-          <div class="stat-value" style="color:var(--green);" id="this-month-income">—</div>
-          <div class="stat-sub">Pemasukan bulan berjalan</div>
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="bg-surface-container-lowest rounded-xl p-5 border border-outline-variant/30 flex flex-col justify-between">
+          <div class="text-[11px] text-on-surface-variant font-semibold uppercase mb-1">Bulan Ini</div>
+          <div class="text-xl font-bold text-emerald-600 truncate" id="this-month-income">—</div>
+          <div class="text-xs text-on-surface-variant mt-1">Pemasukan bulan berjalan</div>
         </div>
-        <div class="stat-card">
-          <div class="stat-label">Menunggu Verifikasi</div>
-          <div class="stat-value" style="color:var(--orange);" id="pending-count">—</div>
-          <div class="stat-sub" id="pending-amount">Perlu direview</div>
+        <div class="bg-surface-container-lowest rounded-xl p-5 border border-outline-variant/30 flex flex-col justify-between">
+          <div class="text-[11px] text-on-surface-variant font-semibold uppercase mb-1">Menunggu Verifikasi</div>
+          <div class="text-xl font-bold text-orange-500" id="pending-count">—</div>
+          <div class="text-xs text-on-surface-variant mt-1 truncate" id="pending-amount">Perlu direview</div>
         </div>
-        <div class="stat-card">
-          <div class="stat-label">Total Booking</div>
-          <div class="stat-value" id="total-bookings">—</div>
-          <div class="stat-sub">Semua status</div>
+        <div class="bg-surface-container-lowest rounded-xl p-5 border border-outline-variant/30 flex flex-col justify-between">
+          <div class="text-[11px] text-on-surface-variant font-semibold uppercase mb-1">Total Booking</div>
+          <div class="text-xl font-bold text-on-surface" id="total-bookings">—</div>
+          <div class="text-xs text-on-surface-variant mt-1">Semua status</div>
         </div>
-        <div class="stat-card">
-          <div class="stat-label">Booking Confirmed</div>
-          <div class="stat-value" style="color:var(--purple-2);" id="confirmed-bookings">—</div>
-          <div class="stat-sub">Terkunci di kalender</div>
+        <div class="bg-surface-container-lowest rounded-xl p-5 border border-outline-variant/30 flex flex-col justify-between">
+          <div class="text-[11px] text-on-surface-variant font-semibold uppercase mb-1">Booking Confirmed</div>
+          <div class="text-xl font-bold text-primary" id="confirmed-bookings">—</div>
+          <div class="text-xs text-on-surface-variant mt-1">Terkunci di kalender</div>
         </div>
       </div>
 
       <!-- Chart + Breakdown -->
-      <div class="finance-grid">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <!-- Monthly chart -->
-        <div class="chart-card">
-          <h3>📈 Pemasukan per Bulan</h3>
+        <div class="bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-6">
+          <h3 class="font-headline-sm text-on-surface mb-5 flex items-center gap-2">
+            <span class="material-symbols-outlined text-primary">bar_chart</span> Pemasukan per Bulan
+          </h3>
           <div class="chart-wrap">
             <canvas id="monthly-chart"></canvas>
           </div>
         </div>
 
         <!-- Category breakdown -->
-        <div class="chart-card">
-          <h3>🏷 Breakdown per Kategori</h3>
+        <div class="bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-6">
+          <h3 class="font-headline-sm text-on-surface mb-5 flex items-center gap-2">
+            <span class="material-symbols-outlined text-primary">pie_chart</span> Breakdown Kategori
+          </h3>
           <div class="cat-breakdown" id="cat-breakdown">
-            <div class="loading-overlay" style="min-height:100px;"><div class="spinner"></div></div>
+            <div class="loading-overlay h-40"><div class="spinner border-primary"></div></div>
           </div>
         </div>
       </div>
 
-      <!-- Payments table -->
-      <div class="section-header" style="display: flex; justify-content: space-between; align-items: center;">
-        <h2>Daftar Pembayaran</h2>
-        <button class="btn btn-outline btn-sm" id="btn-export-csv" onclick="exportCsv()">📥 Ekspor CSV</button>
-      </div>
-      <div class="filter-bar">
-        <select id="filter-status">
-          <option value="">Semua Status</option>
-          <option value="pending">Menunggu</option>
-          <option value="approved">Disetujui</option>
-          <option value="rejected">Ditolak</option>
-        </select>
-        <select id="filter-category">
-          <option value="">Semua Kategori</option>
-        </select>
-        <input type="month" id="filter-month">
-        <button class="btn btn-outline btn-sm" id="btn-filter">🔍 Filter</button>
-        <button class="btn btn-outline btn-sm" id="btn-reset">✕ Reset</button>
-      </div>
+      <!-- Payments Table Area -->
+      <div class="bg-surface-container-lowest rounded-xl border border-outline-variant/30 flex flex-col overflow-hidden">
+        
+        <div class="p-5 border-b border-outline-variant/30 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-surface-bright">
+          <h2 class="font-headline-md text-on-surface flex items-center gap-2">
+            <span class="material-symbols-outlined">receipt_long</span> Daftar Pembayaran
+          </h2>
+          <button class="btn btn-outline border-outline-variant/50 bg-surface-container-lowest" id="btn-export-csv" onclick="exportCsv()">
+            <span class="material-symbols-outlined text-[18px]">download</span> Ekspor CSV
+          </button>
+        </div>
+        
+        <div class="px-5 py-4 flex flex-wrap gap-3 border-b border-outline-variant/20 bg-surface-container-lowest">
+          <select id="filter-status" class="border border-outline-variant rounded-lg px-3 py-1.5 text-sm bg-surface-container-low text-on-surface focus:outline-none focus:border-primary">
+            <option value="">Semua Status</option>
+            <option value="pending">Menunggu</option>
+            <option value="approved">Disetujui</option>
+            <option value="rejected">Ditolak</option>
+          </select>
+          <select id="filter-category" class="border border-outline-variant rounded-lg px-3 py-1.5 text-sm bg-surface-container-low text-on-surface focus:outline-none focus:border-primary">
+            <option value="">Semua Kategori</option>
+          </select>
+          <input type="month" id="filter-month" class="border border-outline-variant rounded-lg px-3 py-1.5 text-sm bg-surface-container-low text-on-surface focus:outline-none focus:border-primary">
+          <button class="btn btn-primary btn-sm px-4" id="btn-filter">Filter</button>
+          <button class="btn btn-outline btn-sm px-4" id="btn-reset">Reset</button>
+        </div>
 
-      <div id="payments-loading" class="loading-overlay" style="min-height:150px;"><div class="spinner"></div></div>
-      <div id="payments-empty" class="empty-state hidden">
-        <span class="empty-icon">💳</span><h3>Belum ada pembayaran</h3>
+        <div id="payments-loading" class="loading-overlay h-40">
+          <div class="spinner border-primary"></div>
+        </div>
+        
+        <div id="payments-empty" class="hidden flex flex-col items-center justify-center p-12 text-center h-48">
+          <div class="w-16 h-16 bg-surface-container rounded-full flex items-center justify-center mb-4">
+            <span class="material-symbols-outlined text-on-surface-variant text-[32px]">credit_card_off</span>
+          </div>
+          <h3 class="font-headline-sm text-on-surface">Belum ada pembayaran</h3>
+        </div>
+
+        <div class="hidden overflow-x-auto" id="payments-table-wrap">
+          <table class="w-full">
+            <thead>
+              <tr>
+                <th>Klien</th>
+                <th>Kategori</th>
+                <th>Tanggal Acara</th>
+                <th>Jenis</th>
+                <th>Nominal</th>
+                <th>Harga Paket</th>
+                <th>Bukti</th>
+                <th>Status</th>
+                <th>Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="payments-tbody"></tbody>
+          </table>
+        </div>
+        
+        <div class="hidden flex flex-col p-4 gap-4 sm:hidden" id="payments-cards"></div>
+
       </div>
-      <div class="table-wrap hidden" id="payments-table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Klien</th>
-              <th>Kategori</th>
-              <th>Tanggal Acara</th>
-              <th>Jenis</th>
-              <th>Nominal</th>
-              <th>Harga Paket</th>
-              <th>Bukti</th>
-              <th>Status</th>
-              <th>Aksi</th>
-            </tr>
-          </thead>
-          <tbody id="payments-tbody"></tbody>
-        </table>
-      </div>
-      <div class="session-cards hidden" id="payments-cards"></div>
     </main>
   </div>
 
-  <div id="toast-container" role="status" aria-live="polite"></div>
+  <div id="toast-container" role="status" aria-live="polite" class="fixed bottom-4 right-4 z-[999] flex flex-col gap-2"></div>
 
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <script>
-    /* ── Auth check ── */
     const TOKEN = localStorage.getItem('sf_token');
     if (!TOKEN) location.href = '/admin/login.html';
     const H = { 'Authorization': `Bearer ${TOKEN}`, 'Content-Type': 'application/json' };
 
     function toast(msg, type = 'info') {
-      const el = document.createElement('div'); el.className = `toast toast-${type}`; el.textContent = msg;
+      const el = document.createElement('div');
+      const bg = type === 'success' ? 'bg-emerald-500' : type === 'error' ? 'bg-red-500' : 'bg-blue-500';
+      el.className = `px-4 py-3 rounded-lg shadow-lg text-white text-sm font-medium transition-all transform translate-y-2 opacity-0 ${bg}`; 
+      el.textContent = msg;
       document.getElementById('toast-container').appendChild(el);
-      requestAnimationFrame(() => requestAnimationFrame(() => el.classList.add('show')));
-      setTimeout(() => { el.classList.remove('show'); setTimeout(() => el.remove(), 300); }, 4000);
+      requestAnimationFrame(() => requestAnimationFrame(() => el.classList.remove('translate-y-2', 'opacity-0')));
+      setTimeout(() => { el.classList.add('opacity-0', 'scale-95'); setTimeout(() => el.remove(), 300); }, 4000);
     }
 
     document.getElementById('btn-logout').addEventListener('click', () => { localStorage.clear(); location.href = '/admin/login.html'; });
     
-    /* ── Init ── */
     const adminData = JSON.parse(localStorage.getItem('sf_admin') || '{}');
     if (adminData.name) document.getElementById('nav-username').textContent = adminData.name;
 
@@ -247,7 +307,6 @@
 
     let monthlyChart = null;
 
-    /* ── Load summary ── */
     async function loadSummary() {
       try {
         const res = await fetch('/api/finance/summary', { headers: H });
@@ -274,24 +333,20 @@
 
     function renderCategoryBreakdown(cats, totalIncome) {
       const container = document.getElementById('cat-breakdown');
-      if (!cats.length) { container.innerHTML = '<p style="color:var(--text-3);font-size:0.85rem;">Belum ada data</p>'; return; }
+      if (!cats.length) { container.innerHTML = '<p class="text-sm text-on-surface-variant p-4">Belum ada data</p>'; return; }
 
       const maxIncome = Math.max(...cats.map(c => parseFloat(c.income) || 0), 1);
       container.innerHTML = cats.map(c => {
         const pct = Math.round(((parseFloat(c.income) || 0) / maxIncome) * 100);
         return `
           <div class="cat-row">
-            <div>
-              <div class="cat-dot" style="background:${c.color};"></div>
-            </div>
-            <div style="flex:1;">
-              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+            <div class="cat-dot" style="background:${c.color};"></div>
+            <div class="flex-1">
+              <div class="flex justify-between items-center mb-1">
                 <span class="cat-row-name">${c.category}</span>
                 <span class="cat-row-income">${fmtMoney(c.income)}</span>
               </div>
-              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-                <span class="cat-row-count">${c.booking_count} booking</span>
-              </div>
+              <div class="cat-row-count mb-1">${c.booking_count} booking</div>
               <div class="cat-bar-track">
                 <div class="cat-bar-fill" style="width:${pct}%;background:${c.color};"></div>
               </div>
@@ -328,11 +383,8 @@
           plugins: { legend: { display: false } },
           scales: {
             y: {
-              ticks: {
-                color: '#8b89b0',
-                callback: v => 'Rp ' + Number(v).toLocaleString('id-ID')
-              },
-              grid: { color: 'rgba(255,255,255,0.05)' }
+              ticks: { color: '#8b89b0', callback: v => 'Rp ' + Number(v).toLocaleString('id-ID') },
+              grid: { color: 'rgba(0,0,0,0.05)' }
             },
             x: { ticks: { color: '#8b89b0' }, grid: { display: false } }
           }
@@ -340,14 +392,13 @@
       });
     }
 
-    /* ── Load payments ── */
     async function loadPayments() {
       const status   = document.getElementById('filter-status').value;
       const category = document.getElementById('filter-category').value;
       const month    = document.getElementById('filter-month').value;
       const qs = new URLSearchParams({ ...(status && { status }), ...(category && { category }), ...(month && { month }) });
 
-      document.getElementById('payments-loading').style.display = 'flex';
+      document.getElementById('payments-loading').classList.remove('hidden');
       document.getElementById('payments-empty').classList.add('hidden');
       document.getElementById('payments-table-wrap').classList.add('hidden');
       document.getElementById('payments-cards').classList.add('hidden');
@@ -357,7 +408,7 @@
         const payments = await res.json();
         renderPayments(payments);
       } catch (e) { toast('Gagal memuat pembayaran', 'error'); }
-      finally { document.getElementById('payments-loading').style.display = 'none'; }
+      finally { document.getElementById('payments-loading').classList.add('hidden'); }
     }
 
     let paymentsData = [];
@@ -373,46 +424,51 @@
       const tbody = document.getElementById('payments-tbody');
       tbody.innerHTML = list.map((p, idx) => `
         <tr>
-          <td class="td-name">${p.client_name}<span>${p.client_phone}</span></td>
+          <td>
+            <div class="font-semibold text-on-surface">${p.client_name}</div>
+            <div class="text-xs text-on-surface-variant">${p.client_phone}</div>
+          </td>
           <td><span class="badge" style="background:color-mix(in srgb,${p.color} 15%,transparent);color:${p.color};">${p.category_name}</span></td>
-          <td style="font-size:0.82rem;">${fmtDate(p.event_date)}</td>
-          <td style="text-transform:capitalize;">${p.payment_type}</td>
-          <td style="font-weight:700;font-family:'Outfit',sans-serif;color:var(--green);">${fmtMoney(p.amount)}</td>
-          <td style="font-size:0.82rem;color:var(--text-2);">${p.package_price ? fmtMoney(p.package_price) : '—'}</td>
+          <td class="text-xs">${fmtDate(p.event_date)}</td>
+          <td class="capitalize text-xs">${p.payment_type}</td>
+          <td class="font-bold font-mono text-emerald-600">${fmtMoney(p.amount)}</td>
+          <td class="text-xs text-on-surface-variant">${p.package_price ? fmtMoney(p.package_price) : '—'}</td>
           <td>
             ${p.proof_url
-              ? `<button class="btn btn-outline btn-sm" onclick='showProofPopup(paymentsData[${idx}])'>🔍 Review</button>`
-              : '<span style="color:var(--text-3);">Belum upload</span>'}
+              ? `<button class="btn btn-outline btn-sm bg-surface-container-lowest" onclick='showProofPopup(paymentsData[${idx}])'><span class="material-symbols-outlined text-[16px]">visibility</span> Review</button>`
+              : '<span class="text-xs text-on-surface-variant italic">Belum upload</span>'}
           </td>
           <td><span class="badge badge-${p.status}">${p.status === 'pending' ? '⏳ Menunggu' : p.status === 'approved' ? '✅ Disetujui' : '❌ Ditolak'}</span></td>
-          <td class="td-actions">
+          <td>
             ${p.status === 'pending' ? `
-              <button class="btn btn-primary btn-sm" onclick="approvePayment(${p.id})">✓</button>
-              <button class="btn btn-danger btn-sm" onclick="rejectPayment(${p.id})">✕</button>
-            ` : p.approved_by_name ? `<small style="color:var(--text-3);">oleh ${p.approved_by_name}</small>` : '—'}
+              <div class="flex gap-2">
+                <button class="btn btn-primary btn-sm px-2" title="Approve" onclick="approvePayment(${p.id})"><span class="material-symbols-outlined text-[16px]">check</span></button>
+                <button class="btn btn-danger btn-sm px-2" title="Reject" onclick="rejectPayment(${p.id})"><span class="material-symbols-outlined text-[16px]">close</span></button>
+              </div>
+            ` : p.approved_by_name ? `<span class="text-xs text-on-surface-variant">oleh ${p.approved_by_name}</span>` : '—'}
           </td>
         </tr>
       `).join('');
 
       const cards = document.getElementById('payments-cards');
       cards.innerHTML = list.map((p, idx) => `
-        <div class="session-card">
-          <div class="session-card-header">
+        <div class="bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-4">
+          <div class="flex justify-between items-start mb-2">
             <div>
-              <div class="session-card-name">${p.client_name}</div>
-              <div class="session-card-meta">${p.category_name} · ${fmtDate(p.event_date)}</div>
+              <div class="font-bold text-on-surface">${p.client_name}</div>
+              <div class="text-xs text-on-surface-variant">${p.category_name} · ${fmtDate(p.event_date)}</div>
             </div>
             <span class="badge badge-${p.status}">${p.status === 'pending' ? '⏳ Menunggu' : p.status === 'approved' ? '✅ OK' : '❌ Tolak'}</span>
           </div>
-          <div style="margin-bottom:var(--sp-3);">
-            <div style="font-size:1.1rem;font-weight:800;color:var(--green);">${fmtMoney(p.amount)} <span style="font-size:0.75rem;color:var(--text-3);font-weight:400;">${p.payment_type}</span></div>
-            ${p.package_price ? `<div style="font-size:0.78rem;color:var(--text-3);">Paket: ${fmtMoney(p.package_price)}</div>` : ''}
+          <div class="mb-3">
+            <div class="text-lg font-bold font-mono text-emerald-600">${fmtMoney(p.amount)} <span class="text-xs font-normal text-on-surface-variant uppercase">${p.payment_type}</span></div>
+            ${p.package_price ? `<div class="text-xs text-on-surface-variant">Paket: ${fmtMoney(p.package_price)}</div>` : ''}
           </div>
-          <div class="session-card-footer">
-            ${p.proof_url ? `<button class="btn btn-outline btn-sm" onclick='showProofPopup(paymentsData[${idx}])'>🔍 Review Bukti</button>` : '<span style="font-size:0.78rem;color:var(--text-3);">Belum upload</span>'}
+          <div class="flex items-center gap-2 mt-2 pt-3 border-t border-outline-variant/30">
+            ${p.proof_url ? `<button class="btn btn-outline btn-sm flex-1" onclick='showProofPopup(paymentsData[${idx}])'>Review Bukti</button>` : '<span class="text-xs text-on-surface-variant flex-1 italic">Belum upload bukti</span>'}
             ${p.status === 'pending' ? `
-              <button class="btn btn-primary btn-sm" onclick="approvePayment(${p.id})">✓ Approve</button>
-              <button class="btn btn-danger btn-sm" onclick="rejectPayment(${p.id})">✕ Reject</button>
+              <button class="btn btn-primary btn-sm flex-1" onclick="approvePayment(${p.id})">Approve</button>
+              <button class="btn btn-danger btn-sm flex-1" onclick="rejectPayment(${p.id})">Reject</button>
             ` : ''}
           </div>
         </div>
@@ -422,7 +478,6 @@
       document.getElementById('payments-cards').classList.remove('hidden');
     }
 
-    /* ── Proof popup ── */
     function showProofPopup(p) {
       const fmtM = n => 'Rp ' + Number(n||0).toLocaleString('id-ID');
       const backdrop = document.createElement('div');
@@ -432,24 +487,35 @@
 
       const isImg = p.proof_url && !p.proof_url.endsWith('.pdf');
       popup.innerHTML = `
-        <div class="proof-popup-title">Bukti Pembayaran — ${p.client_name}</div>
-        ${isImg ? `<img src="${p.proof_url}" alt="Bukti Transfer">` : ''}
-        <div class="proof-popup-info">
-          <div class="pi-row"><span class="pi-key">Kategori</span><span>${p.category_name}</span></div>
-          <div class="pi-row"><span class="pi-key">Jenis</span><span style="text-transform:capitalize">${p.payment_type}</span></div>
-          <div class="pi-row"><span class="pi-key">Nominal DP</span><span style="font-weight:700;color:var(--green)">${fmtM(p.amount)}</span></div>
-          ${p.package_price ? `<div class="pi-row"><span class="pi-key">Harga Paket</span><span>${fmtM(p.package_price)}</span></div>` : ''}
-          <div class="pi-row"><span class="pi-key">Tgl Acara</span><span>${fmtDate(p.event_date)}</span></div>
-          ${p.reject_reason ? `<div class="pi-row"><span class="pi-key">Alasan</span><span style="color:var(--red)">${p.reject_reason}</span></div>` : ''}
+        <div class="font-headline-sm text-on-surface mb-4 border-b border-outline-variant/30 pb-2 flex justify-between items-center">
+          <span>Bukti Pembayaran</span>
+          <button class="btn btn-icon btn-outline border-none hover:bg-surface-container" onclick="closeProofPopup()">
+            <span class="material-symbols-outlined">close</span>
+          </button>
         </div>
-        ${p.proof_url ? `<a href="${p.proof_url}" target="_blank" class="btn btn-outline btn-sm" style="width:100%;text-align:center;margin-bottom:var(--sp-3);">&#x1F517; Buka File Asli</a>` : ''}
-        <div class="proof-popup-actions">
+        ${isImg ? `<div class="rounded-lg overflow-hidden border border-outline-variant/30 bg-black/5 mb-4 flex items-center justify-center min-h-[150px]"><img src="${p.proof_url}" alt="Bukti Transfer" class="w-full max-h-[300px] object-contain"></div>` : ''}
+        
+        <div class="flex flex-col gap-2 text-sm mb-4 bg-surface-container-low p-4 rounded-lg">
+          <div class="flex"><span class="text-on-surface-variant w-24">Klien</span><span class="font-semibold">${p.client_name}</span></div>
+          <div class="flex"><span class="text-on-surface-variant w-24">Kategori</span><span>${p.category_name}</span></div>
+          <div class="flex"><span class="text-on-surface-variant w-24">Jenis</span><span class="capitalize">${p.payment_type}</span></div>
+          <div class="flex"><span class="text-on-surface-variant w-24">Nominal</span><span class="font-bold text-emerald-600 font-mono">${fmtM(p.amount)}</span></div>
+          ${p.package_price ? `<div class="flex"><span class="text-on-surface-variant w-24">Harga Paket</span><span>${fmtM(p.package_price)}</span></div>` : ''}
+          <div class="flex"><span class="text-on-surface-variant w-24">Tgl Acara</span><span>${fmtDate(p.event_date)}</span></div>
+          ${p.reject_reason ? `<div class="flex mt-2 p-2 bg-error/10 text-error rounded"><span class="w-24 font-bold">Alasan Tolak</span><span>${p.reject_reason}</span></div>` : ''}
+        </div>
+        
+        ${p.proof_url ? `<a href="${p.proof_url}" target="_blank" class="btn btn-outline w-full justify-center mb-4"><span class="material-symbols-outlined text-[18px]">open_in_new</span> Buka File Asli</a>` : ''}
+        
+        <div class="flex gap-2">
           ${p.status === 'pending' ? `
-            <button class="btn btn-primary" onclick="approvePayment(${p.id}); closeProofPopup()">✅ Approve</button>
-            <button class="btn btn-danger" onclick="rejectPayment(${p.id}); closeProofPopup()">❌ Reject</button>
-          ` : `<button class="btn btn-outline" onclick="closeProofPopup()">Tutup</button>`}
-          ${p.status !== 'pending' ? '' : ''}
-          <button class="btn btn-outline" onclick="closeProofPopup()" style="${p.status === 'pending' ? 'flex:0;padding:8px 12px;' : ''}">&#x2715;</button>
+            <button class="btn btn-primary flex-1 justify-center" onclick="approvePayment(${p.id}); closeProofPopup()">
+              <span class="material-symbols-outlined text-[18px]">check_circle</span> Approve
+            </button>
+            <button class="btn btn-danger flex-1 justify-center" onclick="rejectPayment(${p.id}); closeProofPopup()">
+              <span class="material-symbols-outlined text-[18px]">cancel</span> Reject
+            </button>
+          ` : `<button class="btn btn-outline flex-1 justify-center" onclick="closeProofPopup()">Tutup</button>`}
         </div>
       `;
 
@@ -470,7 +536,7 @@
       try {
         const res = await fetch(`/api/finance/payments/${id}/approve`, { method: 'PATCH', headers: H });
         if (!res.ok) { toast('Gagal approve', 'error'); return; }
-        toast('Pembayaran disetujui ✅', 'success');
+        toast('Pembayaran disetujui', 'success');
         loadPayments(); loadSummary();
       } catch (e) { toast('Gagal', 'error'); }
     }

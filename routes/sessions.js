@@ -102,11 +102,23 @@ router.get('/stats', auth, async (req, res) => {
       WHERE s.admin_id = $1
     `, [req.admin.adminId]);
 
+    // Query for Lead Sources (Sumber Info Kontak dari JSONB form_data)
+    const sourcesRes = await db.query(`
+      SELECT COALESCE(form_data->>'source', 'Lainnya/Tidak Diketahui') AS source, COUNT(*) AS count
+      FROM bookings
+      GROUP BY source
+      ORDER BY count DESC
+    `);
+
     res.json({
       total:     parseInt(totalRes.rows[0].n, 10),
       active:    parseInt(activeRes.rows[0].n, 10),
       completed: parseInt(completedRes.rows[0].n, 10),
-      totalPics: parseInt(totalPicsRes.rows[0].n, 10)
+      totalPics: parseInt(totalPicsRes.rows[0].n, 10),
+      leadSources: sourcesRes.rows.map(r => ({
+        source: r.source,
+        count: parseInt(r.count, 10)
+      }))
     });
   } catch (err) {
     console.error('[sessions] stats error:', err);

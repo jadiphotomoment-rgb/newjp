@@ -1,0 +1,231 @@
+/* ============================================================
+   ADMIN THEME BRIDGE — Lumina Design System Dark/Light Mode
+   Bridges: html.light (legacy toggleTheme()) ↔ Tailwind CSS vars
+   ============================================================ */
+
+/* ── Root: Default = DARK MODE (Lumina Dark) ──────────────── */
+:root {
+  /* Lumina Dark tokens */
+  --color-background: #0f1117;
+  --color-surface: #161b27;
+  --color-surface-container-lowest: #1a2030;
+  --color-surface-container-low: #1e2538;
+  --color-surface-container: #232c40;
+  --color-surface-container-high: #293348;
+  --color-surface-bright: #2a3450;
+  --color-on-background: #e2e8f5;
+  --color-on-surface: #d4daf2;
+  --color-on-surface-variant: #9ca4c0;
+  --color-primary: #818cf8;
+  --color-on-primary: #0f0f3a;
+  --color-outline-variant: rgba(255,255,255,0.10);
+  --color-outline: rgba(255,255,255,0.20);
+  --color-error: #f87171;
+  --color-error-container: rgba(248,113,113,0.15);
+  --color-on-error-container: #fca5a5;
+}
+
+/* ── Light Mode: Applied when html.light ─────────────────── */
+html.light {
+  --color-background: #f8f9ff;
+  --color-surface: #f8f9ff;
+  --color-surface-container-lowest: #ffffff;
+  --color-surface-container-low: #eff4ff;
+  --color-surface-container: #e5eeff;
+  --color-surface-container-high: #dce9ff;
+  --color-surface-bright: #f8f9ff;
+  --color-on-background: #0b1c30;
+  --color-on-surface: #0b1c30;
+  --color-on-surface-variant: #464554;
+  --color-primary: #6366f1;
+  --color-on-primary: #ffffff;
+  --color-outline-variant: #c7c4d7;
+  --color-outline: #767586;
+  --color-error: #ba1a1a;
+  --color-error-container: #ffdad6;
+  --color-on-error-container: #93000a;
+}
+
+/* ── Apply CSS vars to Tailwind's custom color names via body ─ */
+/* This ensures Tailwind bg-background, text-on-surface, etc work in dark */
+body {
+  background-color: var(--color-background) !important;
+  color: var(--color-on-surface) !important;
+  transition: background-color 0.25s ease, color 0.25s ease;
+}
+
+/* Force Tailwind color utilities to use our CSS vars in DARK mode */
+/* These override the Tailwind hardcoded hex values */
+:not(html.light) .bg-background,
+:not(html.light) body.bg-background { background-color: var(--color-background) !important; }
+
+:not(html.light) .bg-surface-container-lowest { background-color: var(--color-surface-container-lowest) !important; }
+:not(html.light) .bg-surface-container-low { background-color: var(--color-surface-container-low) !important; }
+:not(html.light) .bg-surface-container { background-color: var(--color-surface-container) !important; }
+:not(html.light) .bg-surface-container-high { background-color: var(--color-surface-container-high) !important; }
+:not(html.light) .bg-surface-bright { background-color: var(--color-surface-bright) !important; }
+:not(html.light) .text-on-background { color: var(--color-on-background) !important; }
+:not(html.light) .text-on-surface { color: var(--color-on-surface) !important; }
+:not(html.light) .text-on-surface-variant { color: var(--color-on-surface-variant) !important; }
+:not(html.light) .text-primary { color: var(--color-primary) !important; }
+:not(html.light) .bg-primary { background-color: var(--color-primary) !important; }
+:not(html.light) .border-outline-variant { border-color: var(--color-outline-variant) !important; }
+:not(html.light) .border-outline-variant\/30 { border-color: rgba(255,255,255,0.10) !important; }
+:not(html.light) .border-outline-variant\/20 { border-color: rgba(255,255,255,0.07) !important; }
+
+/* Sidebar dark mode */
+:not(html.light) aside#sidebar { background-color: var(--color-surface-container-lowest) !important; border-color: rgba(255,255,255,0.08) !important; }
+
+/* Header dark mode */
+:not(html.light) header { background-color: rgba(26,32,48,0.85) !important; border-color: rgba(255,255,255,0.08) !important; }
+
+/* Cards dark mode */
+:not(html.light) .rounded-xl { background-color: var(--color-surface-container-lowest); }
+
+/* Form inputs dark mode */
+:not(html.light) input:not([type="color"]):not([type="checkbox"]):not([type="radio"]),
+:not(html.light) select,
+:not(html.light) textarea {
+  background-color: var(--color-surface-container-low) !important;
+  color: var(--color-on-surface) !important;
+  border-color: rgba(255,255,255,0.12) !important;
+}
+:not(html.light) input::placeholder, :not(html.light) textarea::placeholder { color: var(--color-on-surface-variant) !important; }
+
+/* Table dark mode */
+:not(html.light) th { background-color: var(--color-surface-container-low) !important; color: var(--color-on-surface-variant) !important; border-color: rgba(255,255,255,0.08) !important; }
+:not(html.light) td { border-color: rgba(255,255,255,0.06) !important; color: var(--color-on-surface) !important; }
+:not(html.light) tr:hover td { background-color: rgba(129,140,248,0.05) !important; }
+
+/* Modal dark mode */
+:not(html.light) .modal-backdrop { background-color: rgba(0,0,0,0.65) !important; }
+:not(html.light) .modal,
+:not(html.light) .bg-surface-container-lowest.rounded-2xl { background-color: var(--color-surface-container-lowest) !important; }
+:not(html.light) .modal-header, :not(html.light) .modal-footer { background-color: var(--color-surface-container-low) !important; border-color: rgba(255,255,255,0.08) !important; }
+
+/* Badge/Chip dark mode – let them keep their color, just adjust bg */
+:not(html.light) .btn-outline {
+  border-color: rgba(255,255,255,0.15) !important;
+  color: var(--color-on-surface-variant) !important;
+}
+:not(html.light) .btn-outline:hover {
+  background-color: rgba(255,255,255,0.07) !important;
+  color: var(--color-on-surface) !important;
+}
+
+/* ── Theme toggle icon sync ──────────────────────────────── */
+/* When html.light, icon shows moon; dark shows sun */
+html.light .theme-mode-icon::before { content: "dark_mode"; }
+:not(html.light) .theme-mode-icon::before { content: "light_mode"; }
+
+/* ── Modal open/close compatibility ──────────────────────── */
+/* JS uses .classList.add('open') to show modals */
+.modal-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.55);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  z-index: 200;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+.modal-backdrop.open { display: flex !important; }
+
+/* ── Badge styles (JS uses these class names) ──────────────── */
+.badge-active    { background: rgba(34,197,94,0.15); color: #16a34a; border: 1px solid rgba(34,197,94,0.3); display: inline-block; padding: 2px 10px; border-radius: 9999px; font-size: 11px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; }
+.badge-completed { background: rgba(99,102,241,0.15); color: #818cf8; border: 1px solid rgba(99,102,241,0.3); display: inline-block; padding: 2px 10px; border-radius: 9999px; font-size: 11px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; }
+.badge-expired   { background: rgba(239,68,68,0.12); color: #f87171; border: 1px solid rgba(239,68,68,0.3); display: inline-block; padding: 2px 10px; border-radius: 9999px; font-size: 11px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; }
+
+/* Short link chip (used in session table) */
+.short-link-chip { display: inline-flex; align-items: center; gap: 4px; background: rgba(99,102,241,0.12); color: #818cf8; border: 1px solid rgba(99,102,241,0.25); border-radius: 99px; padding: 2px 8px; font-size: 11px; cursor: pointer; margin-top: 4px; transition: background 0.15s; }
+.short-link-chip:hover { background: rgba(99,102,241,0.22); }
+
+/* ── Toast override (JS creates these) ────────────────────── */
+.toast {
+  position: relative;
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: var(--color-surface-container-lowest);
+  color: var(--color-on-surface);
+  border: 1px solid var(--color-outline-variant);
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.25);
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 0.25s ease, transform 0.25s ease;
+  pointer-events: auto;
+  max-width: 380px;
+}
+.toast.show { opacity: 1; transform: translateY(0); }
+.toast-success { background: #0d2e1a; border-color: rgba(34,197,94,0.3); color: #4ade80; }
+.toast-error   { background: #2e0d0d; border-color: rgba(239,68,68,0.3); color: #f87171; }
+.toast-info    { background: #0d1a2e; border-color: rgba(99,102,241,0.3); color: #818cf8; }
+html.light .toast { background: #fff; color: #0b1c30; border-color: #c7c4d7; }
+html.light .toast-success { background: #f0fdf4; color: #16a34a; border-color: rgba(34,197,94,0.4); }
+html.light .toast-error   { background: #fff1f2; color: #dc2626; border-color: rgba(239,68,68,0.4); }
+html.light .toast-info    { background: #eef2ff; color: #4338ca; border-color: rgba(99,102,241,0.4); }
+
+#toast-container {
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  pointer-events: none;
+}
+
+/* ── FullCalendar Lumina overrides ───────────────────────── */
+.fc { font-family: 'Helvetica Neue', Arial, sans-serif !important; }
+.fc .fc-toolbar-title { font-size: 1.1rem !important; font-weight: 700 !important; color: var(--color-on-surface) !important; }
+.fc .fc-button-primary {
+  background: #6366f1 !important; border-color: #6366f1 !important; 
+  font-size: 0.8rem !important; font-weight: 600 !important; 
+  border-radius: 8px !important; padding: 6px 12px !important;
+  text-transform: capitalize !important;
+}
+.fc .fc-button-primary:hover { background: #4f46e5 !important; border-color: #4f46e5 !important; }
+.fc .fc-button-primary:not(:disabled).fc-button-active { background: #4338ca !important; border-color: #4338ca !important; }
+
+:not(html.light) .fc .fc-col-header-cell { background: var(--color-surface-container-low) !important; }
+:not(html.light) .fc-theme-standard td, :not(html.light) .fc-theme-standard th { border-color: rgba(255,255,255,0.08) !important; }
+:not(html.light) .fc-theme-standard .fc-scrollgrid { border-color: rgba(255,255,255,0.08) !important; }
+:not(html.light) .fc .fc-col-header-cell-cushion { color: var(--color-on-surface-variant) !important; }
+:not(html.light) .fc .fc-daygrid-day-number { color: var(--color-on-surface-variant) !important; }
+:not(html.light) .fc .fc-daygrid-day.fc-day-today { background: rgba(99,102,241,0.08) !important; }
+:not(html.light) .fc { background: transparent; color: var(--color-on-surface) !important; }
+:not(html.light) .fc-view-harness { background: var(--color-surface-container-lowest) !important; border-radius: 8px; overflow: hidden; }
+
+html.light .fc .fc-col-header-cell { background: #eff4ff; }
+html.light .fc-theme-standard td, html.light .fc-theme-standard th { border-color: #c7c4d7; }
+html.light .fc .fc-toolbar-title { color: #0b1c30; }
+html.light .fc .fc-daygrid-day-number { color: #464554; }
+html.light .fc .fc-daygrid-day.fc-day-today { background: rgba(99,102,241,0.06); }
+
+.fc .fc-event { 
+  border: none !important; padding: 2px 6px !important; 
+  font-size: 0.72rem !important; font-weight: 700 !important; 
+  cursor: pointer !important; border-radius: 4px !important; 
+}
+
+/* ── Scrollbar hide ─────────────────────────────────────── */
+* { scrollbar-width: none; -ms-overflow-style: none; }
+*::-webkit-scrollbar { display: none; }
+
+/* ── Selection area (session list table & card compatibility) */
+.confirm-list ul li { padding: 6px 0; border-bottom: 1px solid var(--color-outline-variant); font-size: 0.88rem; color: var(--color-on-surface); }
+.confirm-list ul li:last-child { border-bottom: none; }
+
+/* ── Sidebar link dark active state ─────────────────────── */
+:not(html.light) nav a[aria-current="page"] { background: rgba(129,140,248,0.15) !important; color: #a5b4fc !important; }
+:not(html.light) nav a:not([aria-current]):hover { background: rgba(255,255,255,0.06) !important; color: var(--color-on-surface) !important; }
+
+/* ── Calendar container dark ─────────────────────────────── */
+:not(html.light) #calendar-container { background: var(--color-surface-container-lowest) !important; border-color: rgba(255,255,255,0.08) !important; }

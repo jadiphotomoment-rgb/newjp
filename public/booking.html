@@ -476,6 +476,18 @@
               <input type="tel" id="client-phone" placeholder="08xxxxxxxxxx" required>
             </div>
           </div>
+          <div class="form-group" style="margin-top: 16px;">
+            <label for="client-source">Sumber Info (Tahu dari mana?) *</label>
+            <select id="client-source" required>
+              <option value="" disabled selected>Pilih salah satu...</option>
+              <option value="Instagram">Instagram</option>
+              <option value="TikTok">TikTok</option>
+              <option value="Rekomendasi Teman/Keluarga">Rekomendasi Teman / Keluarga</option>
+              <option value="Pencarian Google">Pencarian Google</option>
+              <option value="Iklan">Iklan (Ads)</option>
+              <option value="Lainnya">Lainnya</option>
+            </select>
+          </div>
         </div>
 
         <!-- TIX ID-style: Pilih Tanggal + Sesi -->
@@ -518,6 +530,56 @@
           <div class="dp-label">Estimasi Down Payment (DP)</div>
           <div class="dp-amount" id="dp-amount-display">—</div>
           <div class="dp-note" id="dp-note"></div>
+        </div>
+
+        <!-- QRIS Payment Section (muncul setelah DP info terisi) -->
+        <div id="qris-payment-section" style="display:none; margin-bottom: var(--sp-5);">
+          <div style="
+            background: linear-gradient(135deg, rgba(139,92,246,0.08), rgba(99,102,241,0.06));
+            border: 1.5px solid rgba(139,92,246,0.25);
+            border-radius: var(--r-xl);
+            padding: var(--sp-6);
+            text-align: center;
+          ">
+            <div style="display:flex; align-items:center; justify-content:center; gap:8px; margin-bottom: var(--sp-2);">
+              <span style="font-size:1.4rem;">📱</span>
+              <h3 style="font-size:1rem; font-weight:800; color:var(--text-0); margin:0;">Pembayaran DP via QRIS</h3>
+            </div>
+            <p style="font-size:0.8rem; color:var(--text-2); margin-bottom:var(--sp-4); line-height:1.6;">
+              Scan QR Code di bawah untuk transfer DP langsung.<br>
+              Setelah bayar, <strong>screenshot bukti pembayaran</strong> untuk diupload.
+            </p>
+            <div style="
+              display: inline-block;
+              background: #fff;
+              border-radius: 16px;
+              padding: 12px;
+              box-shadow: 0 4px 24px rgba(0,0,0,0.12);
+              margin-bottom: var(--sp-4);
+            ">
+              <img
+                src="/img/Qris Jadiphoto.webp"
+                alt="QRIS Jadiphoto.Moment"
+                style="width: 220px; height: 220px; object-fit: contain; display: block;"
+              />
+            </div>
+            <div style="margin-bottom: var(--sp-4);">
+              <a href="/img/Qris Jadiphoto.png" download="QRIS_Jadiphoto.png" class="btn btn-outline btn-sm" style="display: inline-flex; align-items: center; gap: 8px; background: #fff; border-color: rgba(139,92,246,0.25);">
+                <span aria-hidden="true">⬇️</span> Download QRIS
+              </a>
+            </div>
+            <div style="
+              background: rgba(139,92,246,0.10);
+              border-radius: 8px;
+              padding: 8px 16px;
+              display: inline-block;
+              font-size: 0.8rem;
+              color: var(--text-1);
+              font-weight: 600;
+            ">
+              💡 QRIS berlaku untuk semua bank & e-wallet
+            </div>
+          </div>
         </div>
 
         <button type="submit" class="btn btn-primary" style="width: 100%; padding: 14px;" id="btn-submit">
@@ -736,7 +798,7 @@
 
       if (!selectedCat) return;
       try {
-        const res = await fetch(`/api/booking-categories/${selectedCat.slug}/slots?date=${dateStr}`);
+        const res = await fetch(`/api/bookings/categories/${selectedCat.slug}/slots?date=${dateStr}`);
         if (!res.ok) throw new Error();
         currentSlots = await res.json();
         renderSlotGrid(currentSlots);
@@ -906,8 +968,14 @@
       const box = document.getElementById('dp-info-box');
       const amountEl = document.getElementById('dp-amount-display');
       const noteEl = document.getElementById('dp-note');
-      if (!selectedCat) { box.style.display = 'none'; return; }
+      const qrisSection = document.getElementById('qris-payment-section');
+      if (!selectedCat) {
+        box.style.display = 'none';
+        if (qrisSection) qrisSection.style.display = 'none';
+        return;
+      }
       box.style.display = 'block';
+      if (qrisSection) qrisSection.style.display = 'block';
 
       if (selectedPkg && selectedPkg.price > 0) {
         let dp = 0;
@@ -1000,6 +1068,9 @@
         const el = document.getElementById(`dyn-${f.key}`);
         if (el) formData[f.key] = el.value.trim();
       });
+      // Extract lead source
+      const sourceEl = document.getElementById('client-source');
+      if (sourceEl) formData.source = sourceEl.value;
 
       const payload = {
         clientName:   document.getElementById('client-name').value.trim(),
