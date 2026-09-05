@@ -380,6 +380,7 @@ router.get('/admin/list', auth, async (req, res) => {
       `SELECT b.id, b.client_name, b.client_phone, b.event_date, b.event_time,
               b.location, b.form_data, b.package_price, b.dp_amount, b.status,
               b.created_at, b.session_id,
+              b.google_event_id, b.calendar_sync_status,
               bc.name AS category_name, bc.slug AS category_slug, bc.color,
               (SELECT COUNT(*) FROM payments WHERE booking_id = b.id AND status = 'pending') AS pending_payments
        FROM bookings b
