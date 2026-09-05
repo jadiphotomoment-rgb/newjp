@@ -15,8 +15,18 @@ const PORT = process.env.PORT || 3000;
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true }));
 
-// Serve static files from public/
-app.use(express.static(path.join(__dirname, 'public')));
+// Redirect .html requests to clean URLs
+app.use((req, res, next) => {
+  if (req.path.endsWith('.html')) {
+    const cleanPath = req.path.slice(0, -5);
+    const query = req.url.slice(req.path.length);
+    return res.redirect(301, cleanPath + query);
+  }
+  next();
+});
+
+// Serve static files from public/ with extensions hidden
+app.use(express.static(path.join(__dirname, 'public'), { extensions: ['html', 'htm'] }));
 
 // ── API Routes ───────────────────────────────────────────────
 app.use('/api/auth',       require('./routes/auth'));
@@ -30,11 +40,12 @@ app.use('/api/bookings',             require('./routes/bookings'));
 app.use('/api/booking-categories',   require('./routes/bookings'));  // alias publik
 app.use('/api/admin/categories',     require('./routes/categories'));
 app.use('/api/finance',              require('./routes/finance'));
+app.use('/api/google',               require('./routes/google'));
 
 // ── Page Routes ──────────────────────────────────────────────
 // Root → redirect to admin login
 app.get('/', (req, res) => {
-  res.redirect('/admin/login.html');
+  res.redirect('/admin/login');
 });
 
 // Booking public pages
@@ -48,7 +59,7 @@ app.get('/upload-dp', (req, res) => {
 // Ignore favicon to prevent 404 logs
 app.get('/favicon.ico', (req, res) => res.status(204).end());
 
-// ── Short Link redirect: /s/:slug → gallery.html?session=UUID ─
+// ── Short Link redirect: /s/:slug → gallery?session=UUID ─
 app.get('/s/:slug', async (req, res) => {
   try {
     const db = require('./database');
@@ -57,7 +68,7 @@ app.get('/s/:slug', async (req, res) => {
       [req.params.slug]
     );
     if (!rows[0]) return res.status(404).send('<h1>Link tidak ditemukan</h1>');
-    res.redirect(`/gallery.html?session=${rows[0].uuid}`);
+    res.redirect(`/gallery?session=${rows[0].uuid}`);
   } catch (err) {
     console.error('[shortlink] error:', err);
     res.status(500).send('<h1>Server Error</h1>');

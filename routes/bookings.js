@@ -6,6 +6,7 @@ const db       = require('../database');
 const auth     = require('../middleware/auth');
 const https    = require('https');
 const { buildTemplateMsg } = require('../utils/template');
+const { google } = require('googleapis');
 
 // ── WhatsApp sender (reuse logic from notify.js) ─────────────────
 function sendWhatsApp(target, message) {
@@ -792,6 +793,155 @@ router.get('/admin/calendar', auth, async (req, res) => {
   } catch (err) {
     console.error('[bookings] calendar error:', err);
     res.status(500).json({ error: 'Database error' });
+  }
+});
+
+// POST /api/admin/bookings/:id/sync-calendar — Sinkronisasi ke Google Calendar
+router.post('/admin/:id/sync-calendar', auth, async (req, res) => {
+  try {
+    // 1. Dapatkan token Google untuk admin ini
+    const tokenRes = await db.query('SELECT * FROM google_oauth_tokens WHERE admin_id = $1', [req.admin.adminId]);
+    if (!tokenRes.rows[0]) {
+      return res.status(401).json({ error: 'Belum terhubung ke Google Calendar. Silakan hubungkan akun terlebih dahulu.' });
+    }
+    const tokenData = tokenRes.rows[0];
+
+    const oauth2Client = new google.auth.OAuth2(
+      process.env.GOOGLE_CLIENT_ID,
+      process.env.GOOGLE_CLIENT_SECRET
+    );
+    oauth2Client.setCredentials({
+      access_token: tokenData.access_token,
+      refresh_token: tokenData.refresh_token,
+      expiry_date: new Date(tokenData.expires_at).getTime()
+    });
+
+    // Handle token refresh otomatis
+    oauth2Client.on('tokens', async (tokens) => {
+      if (tokens.refresh_token) {
+        await db.query(
+          'UPDATE google_oauth_tokens SET access_token = $1, refresh_token = $2, expires_at = $3 WHERE admin_id = $4',
+          [tokens.access_token, tokens.refresh_token, new Date(tokens.expiry_date), req.admin.adminId]
+        );
+      } else {
+        await db.query(
+          'UPDATE google_oauth_tokens SET access_token = $1, expires_at = $2 WHERE admin_id = $3',
+          [tokens.access_token, new Date(tokens.expiry_date), req.admin.adminId]
+        );
+      }
+    });
+
+    // 2. Ambil data booking
+    const bookRes = await db.query(
+      `SELECT b.*, bc.name as category_name
+       FROM bookings b
+       JOIN booking_categories bc ON b.category_id = bc.id
+       WHERE b.id = $1`,
+      [req.params.id]
+    );
+    if (!bookRes.rows[0]) return res.status(404).json({ error: 'Booking tidak ditemukan' });
+    const booking = bookRes.rows[0];
+
+    const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
+    
+    // Siapkan data event
+    // Format Waktu: event_date + event_time
+    const dateStr = booking.event_date.toISOString().slice(0, 10);
+    const timeStr = booking.event_time || '09:00:00';
+    const startDateTime = new Date(`${dateStr}T${timeStr}+07:00`);
+    
+    // Asumsi durasi 2 jam default jika tidak ada end_time
+    const endDateTime = new Date(startDateTime.getTime() + 2 * 60 * 60 * 1000);
+
+    const event = {
+      summary: `[${booking.category_name}] ${booking.client_name}`,
+      location: booking.location || '',
+      description: `Client: ${booking.client_name}\\nPhone: ${booking.client_phone}\\nPaket: Rp ${Number(booking.package_price).toLocaleString('id-ID')}\\nStatus: ${booking.status}\\n\\nBooking ID: ${booking.id}`,
+      start: {
+        dateTime: startDateTime.toISOString(),
+        timeZone: 'Asia/Jakarta',
+      },
+      end: {
+        dateTime: endDateTime.toISOString(),
+        timeZone: 'Asia/Jakarta',
+      },
+      reminders: {
+        useDefault: false,
+        overrides: [
+          { method: 'email', minutes: 24 * 60 },
+          { method: 'popup', minutes: 30 },
+        ],
+      },
+    };
+
+    let calendarRes;
+    if (booking.google_event_id) {
+      // Update existing event
+      try {
+        calendarRes = await calendar.events.patch({
+          calendarId: 'primary',
+          eventId: booking.google_event_id,
+          requestBody: event,
+        });
+      } catch (patchErr) {
+        // Jika event dihapus dari calendar, id tidak ditemukan (404), kita buat baru
+        if (patchErr.code === 404 || patchErr.code === 410) {
+          calendarRes = await calendar.events.insert({
+            calendarId: 'primary',
+            requestBody: event,
+          });
+        } else {
+          throw patchErr; // Lemparkan error jika selain 404/410
+        }
+      }
+    } else {
+      // Insert new event
+      calendarRes = await calendar.events.insert({
+        calendarId: 'primary',
+        requestBody: event,
+      });
+    }
+
+    const eventId = calendarRes.data.id;
+
+    // 3. Update status booking & log
+    await db.query(
+      `UPDATE bookings SET google_event_id = $1, calendar_sync_status = 'synced' WHERE id = $2`,
+      [eventId, booking.id]
+    );
+
+    await db.query(
+      `INSERT INTO sync_logs (booking_id, status, message) VALUES ($1, 'success', 'Synced to calendar')`,
+      [booking.id]
+    );
+
+    res.json({ message: 'Berhasil disinkronisasi ke Google Calendar', eventId, htmlLink: calendarRes.data.htmlLink });
+
+  } catch (err) {
+    console.error('[bookings] sync-calendar error:', err);
+    let errorMessage = 'Gagal sinkronisasi dengan Google Calendar';
+    if (err.response && err.response.data && err.response.data.error) {
+       errorMessage = err.response.data.error.message;
+       if(err.code === 401 || err.code === 403) {
+         errorMessage = 'Akses ditolak atau token kadaluarsa. Silakan hubungkan ulang akun Google Calendar Anda.';
+         // Jika invalid_grant atau auth issue, hapus token agar user bisa reconnect
+         if (err.message && err.message.includes('invalid_grant')) {
+           await db.query('DELETE FROM google_oauth_tokens WHERE admin_id = $1', [req.admin.adminId]).catch(e => console.error(e));
+         }
+       }
+    }
+
+    await db.query(
+      `UPDATE bookings SET calendar_sync_status = 'failed' WHERE id = $1`,
+      [req.params.id]
+    ).catch(e => console.error(e));
+
+    await db.query(
+      `INSERT INTO sync_logs (booking_id, status, message) VALUES ($1, 'failed', $2)`,
+      [req.params.id, errorMessage]
+    ).catch(e => console.error(e));
+
+    res.status(500).json({ error: errorMessage });
   }
 });
 

@@ -48,6 +48,8 @@ const db = {
           status       VARCHAR(50) NOT NULL DEFAULT 'active',
           edit_status  VARCHAR(30) NOT NULL DEFAULT 'received',
           edit_note    TEXT,
+          notified_at  TIMESTAMP,
+          user_id      INT REFERENCES admins(id) NULL,
           admin_id     INTEGER NOT NULL,
           created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
           completed_at TIMESTAMP,
@@ -110,6 +112,12 @@ const db = {
           IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='payments' AND column_name='blob_key') THEN
             ALTER TABLE payments ADD COLUMN blob_key TEXT;
           END IF;
+          IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='bookings' AND column_name='google_event_id') THEN
+            ALTER TABLE bookings ADD COLUMN google_event_id VARCHAR(255) NULL;
+          END IF;
+          IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='bookings' AND column_name='calendar_sync_status') THEN
+            ALTER TABLE bookings ADD COLUMN calendar_sync_status VARCHAR(20) DEFAULT 'not_synced';
+          END IF;
         END
         $$;
 
@@ -166,6 +174,8 @@ const db = {
           dp_deadline    TIMESTAMP NULL,
           status         VARCHAR(20) NOT NULL DEFAULT 'pending_dp',
           session_id     INT REFERENCES sessions(id) NULL,
+          google_event_id VARCHAR(255) NULL,
+          calendar_sync_status VARCHAR(20) DEFAULT 'not_synced',
           created_at     TIMESTAMP DEFAULT now()
         );
 
@@ -196,6 +206,25 @@ const db = {
           mime_type   VARCHAR(100),
           file_size   BIGINT,
           created_at  TIMESTAMP DEFAULT now()
+        );
+
+        -- Oauth Tokens
+        CREATE TABLE IF NOT EXISTS google_oauth_tokens (
+          id SERIAL PRIMARY KEY,
+          admin_id INT REFERENCES admins(id) ON DELETE CASCADE UNIQUE,
+          access_token TEXT NOT NULL,
+          refresh_token TEXT NOT NULL,
+          expires_at TIMESTAMP NOT NULL,
+          created_at TIMESTAMP DEFAULT now()
+        );
+
+        -- Sync Logs
+        CREATE TABLE IF NOT EXISTS sync_logs (
+          id SERIAL PRIMARY KEY,
+          booking_id INT REFERENCES bookings(id) ON DELETE CASCADE,
+          status VARCHAR(20),
+          message TEXT,
+          created_at TIMESTAMP DEFAULT now()
         );
 
         -- Indexes

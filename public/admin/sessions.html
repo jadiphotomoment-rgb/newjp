@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="id">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -9,74 +10,308 @@
 
   <!-- Tailwind & Config -->
   <style>
-    @layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}
-    ::-webkit-scrollbar{display:none;}
+    @layer base {
+
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        overscroll-behavior: none;
+      }
+
+      main>:first-child {
+        margin-top: 0 !important;
+      }
+
+      main>:last-child {
+        margin-bottom: 0 !important;
+      }
+    }
+
+    ::-webkit-scrollbar {
+      display: none;
+    }
+
     /* Custom hidden class for JS compatibility */
-    .hidden { display: none !important; }
+    .hidden {
+      display: none !important;
+    }
+
     /* Loading overlay styles (retained) */
-    .loading-overlay { position: relative; width: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 2rem; }
-    .spinner { border: 3px solid rgba(0,0,0,0.1); border-left-color: var(--primary, #6366f1); border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; }
-    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    .loading-overlay {
+      position: relative;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+    }
+
+    .spinner {
+      border: 3px solid rgba(0, 0, 0, 0.1);
+      border-left-color: var(--primary, #6366f1);
+      border-radius: 50%;
+      width: 24px;
+      height: 24px;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      0% {
+        transform: rotate(0deg);
+      }
+
+      100% {
+        transform: rotate(360deg);
+      }
+    }
   </style>
   <script src="https://cdn.tailwindcss.com"></script>
-  <script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{"colors":{"surface-container-high":"#dce9ff","surface-variant":"#d3e4fe","on-tertiary-fixed":"#191c1e","primary-fixed":"#e1e0ff","tertiary":"#595c5e","primary-fixed-dim":"#c0c1ff","inverse-primary":"#c0c1ff","tertiary-container":"#727577","primary":"#6366f1","surface-container-highest":"#d3e4fe","primary-container":"#6063ee","on-primary-fixed":"#07006c","secondary-fixed":"#dae2fd","secondary":"#565e74","background":"#f8f9ff","surface":"#f8f9ff","on-tertiary":"#ffffff","on-secondary":"#ffffff","on-tertiary-fixed-variant":"#444749","on-error-container":"#93000a","tertiary-fixed":"#e0e3e5","inverse-surface":"#213145","surface-container-low":"#eff4ff","inverse-on-surface":"#eaf1ff","outline-variant":"#c7c4d7","on-secondary-container":"#5c647a","error-container":"#ffdad6","on-error":"#ffffff","on-background":"#0b1c30","tertiary-fixed-dim":"#c4c7c9","outline":"#767586","surface-tint":"#6366f1","on-secondary-fixed":"#131b2e","on-secondary-fixed-variant":"#3f465c","on-surface-variant":"#464554","secondary-container":"#dae2fd","surface-container":"#e5eeff","on-primary":"#ffffff","surface-container-lowest":"#ffffff","surface-dim":"#cbdbf5","secondary-fixed-dim":"#bec6e0","error":"#ba1a1a","on-primary-container":"#fffbff","on-tertiary-container":"#fbfdff","surface-bright":"#f8f9ff","on-primary-fixed-variant":"#2f2ebe","on-surface":"#0b1c30"},"borderRadius":{"DEFAULT":"0.25rem","lg":"0.5rem","xl":"0.75rem","full":"9999px"},"spacing":{"margin-mobile":"16px","xl":"40px","gutter":"24px","sm":"8px","xs":"4px","lg":"24px","unit":"4px","margin-desktop":"64px","md":"16px"},"fontFamily":{"headline-lg":["Helvetica Neue", "Arial", "sans-serif"],"body-lg":["Helvetica Neue", "Arial", "sans-serif"],"headline-lg-mobile":["Helvetica Neue", "Arial", "sans-serif"],"label-md":["Helvetica Neue", "Arial", "sans-serif"],"headline-xl":["Helvetica Neue", "Arial", "sans-serif"],"body-md":["Helvetica Neue", "Arial", "sans-serif"],"headline-md":["Helvetica Neue", "Arial", "sans-serif"],"label-sm":["Helvetica Neue", "Arial", "sans-serif"],"body-sm":["Helvetica Neue", "Arial", "sans-serif"]},"fontSize":{"headline-lg":["32px",{"lineHeight":"40px","letterSpacing":"-0.01em","fontWeight":"600"}],"body-lg":["18px",{"lineHeight":"28px","fontWeight":"400"}],"headline-lg-mobile":["24px",{"lineHeight":"32px","fontWeight":"600"}],"label-md":["14px",{"lineHeight":"20px","letterSpacing":"0.05em","fontWeight":"600"}],"headline-xl":["40px",{"lineHeight":"48px","letterSpacing":"-0.02em","fontWeight":"700"}],"body-md":["16px",{"lineHeight":"24px","fontWeight":"400"}],"headline-md":["24px",{"lineHeight":"32px","fontWeight":"600"}],"label-sm":["12px",{"lineHeight":"16px","fontWeight":"500"}],"body-sm":["14px",{"lineHeight":"20px","fontWeight":"400"}]}}}}</script>
-  
-  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+  <script
+    id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { "colors": { "surface-container-high": "#dce9ff", "surface-variant": "#d3e4fe", "on-tertiary-fixed": "#191c1e", "primary-fixed": "#e1e0ff", "tertiary": "#595c5e", "primary-fixed-dim": "#c0c1ff", "inverse-primary": "#c0c1ff", "tertiary-container": "#727577", "primary": "#6366f1", "surface-container-highest": "#d3e4fe", "primary-container": "#6063ee", "on-primary-fixed": "#07006c", "secondary-fixed": "#dae2fd", "secondary": "#565e74", "background": "#f8f9ff", "surface": "#f8f9ff", "on-tertiary": "#ffffff", "on-secondary": "#ffffff", "on-tertiary-fixed-variant": "#444749", "on-error-container": "#93000a", "tertiary-fixed": "#e0e3e5", "inverse-surface": "#213145", "surface-container-low": "#eff4ff", "inverse-on-surface": "#eaf1ff", "outline-variant": "#c7c4d7", "on-secondary-container": "#5c647a", "error-container": "#ffdad6", "on-error": "#ffffff", "on-background": "#0b1c30", "tertiary-fixed-dim": "#c4c7c9", "outline": "#767586", "surface-tint": "#6366f1", "on-secondary-fixed": "#131b2e", "on-secondary-fixed-variant": "#3f465c", "on-surface-variant": "#464554", "secondary-container": "#dae2fd", "surface-container": "#e5eeff", "on-primary": "#ffffff", "surface-container-lowest": "#ffffff", "surface-dim": "#cbdbf5", "secondary-fixed-dim": "#bec6e0", "error": "#ba1a1a", "on-primary-container": "#fffbff", "on-tertiary-container": "#fbfdff", "surface-bright": "#f8f9ff", "on-primary-fixed-variant": "#2f2ebe", "on-surface": "#0b1c30" }, "borderRadius": { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" }, "spacing": { "margin-mobile": "16px", "xl": "40px", "gutter": "24px", "sm": "8px", "xs": "4px", "lg": "24px", "unit": "4px", "margin-desktop": "64px", "md": "16px" }, "fontFamily": { "headline-lg": ["Helvetica Neue", "Arial", "sans-serif"], "body-lg": ["Helvetica Neue", "Arial", "sans-serif"], "headline-lg-mobile": ["Helvetica Neue", "Arial", "sans-serif"], "label-md": ["Helvetica Neue", "Arial", "sans-serif"], "headline-xl": ["Helvetica Neue", "Arial", "sans-serif"], "body-md": ["Helvetica Neue", "Arial", "sans-serif"], "headline-md": ["Helvetica Neue", "Arial", "sans-serif"], "label-sm": ["Helvetica Neue", "Arial", "sans-serif"], "body-sm": ["Helvetica Neue", "Arial", "sans-serif"] }, "fontSize": { "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600" }], "body-lg": ["18px", { "lineHeight": "28px", "fontWeight": "400" }], "headline-lg-mobile": ["24px", { "lineHeight": "32px", "fontWeight": "600" }], "label-md": ["14px", { "lineHeight": "20px", "letterSpacing": "0.05em", "fontWeight": "600" }], "headline-xl": ["40px", { "lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "700" }], "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }], "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "600" }], "label-sm": ["12px", { "lineHeight": "16px", "fontWeight": "500" }], "body-sm": ["14px", { "lineHeight": "20px", "fontWeight": "400" }] } } } }</script>
+
+  <link
+    href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200"
+    rel="stylesheet" />
   <link rel="stylesheet" href="/css/style.css?v=3">
   <link rel="stylesheet" href="/css/admin-theme.css?v=1">
   <script src="/js/theme.js?v=3"></script>
 
   <style>
     /* Reset some existing style.css conflicts */
-    html.light body { background-color: #f8f9ff !important; color: #0b1c30 !important; }
-    .admin-layout, .admin-main, .admin-nav { display: block; all: unset; }
+    html.light body {
+      background-color: #f8f9ff !important;
+      color: #0b1c30 !important;
+    }
+
+    .admin-layout,
+    .admin-main,
+    .admin-nav {
+      display: block;
+      all: unset;
+    }
+
     /* Modal – display controlled via admin-theme.css (.modal-backdrop, .modal-backdrop.open) */
-    .modal { background: var(--color-surface-container-lowest, #1a2030); width: 100%; max-width: 560px; border-radius: 16px; box-shadow: 0 20px 60px rgba(0,0,0,0.4); display: flex; flex-direction: column; overflow: hidden; max-height: 90vh; }
-    .modal-header { padding: 20px 24px; border-bottom: 1px solid var(--color-outline-variant, rgba(255,255,255,0.10)); display: flex; justify-content: space-between; align-items: center; background: var(--color-surface-container-low, #1e2538); }
-    .modal-header h3 { font-size: 1.05rem; font-weight: 700; color: var(--color-on-surface, #d4daf2); margin: 0; }
-    .modal-body { padding: 24px; overflow-y: auto; }
-    .modal-footer { padding: 16px 24px; border-top: 1px solid var(--color-outline-variant, rgba(255,255,255,0.10)); display: flex; justify-content: flex-end; gap: 12px; background: var(--color-surface-container-low, #1e2538); }
-    .form-group { display: flex; flex-direction: column; margin-bottom: 16px; }
-    .form-group label { font-size: 12px; font-weight: 600; color: var(--color-on-surface-variant, #9ca4c0); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.04em; }
-    .form-group input, .form-group select, .form-group textarea { border: 1px solid var(--color-outline-variant, rgba(255,255,255,0.12)); border-radius: 8px; padding: 10px 12px; color: var(--color-on-surface, #d4daf2); background: var(--color-surface-container-low, #1e2538); font-size: 14px; transition: border-color 0.15s; outline: none; }
-    .form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: #818cf8; box-shadow: 0 0 0 3px rgba(99,102,241,0.15); }
-    html.light .form-group input, html.light .form-group select, html.light .form-group textarea { background: #fff; border-color: #c7c4d7; color: #0b1c30; }
-    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 9px 18px; border-radius: 9px; font-size: 14px; font-weight: 600; transition: all 0.15s; cursor: pointer; border: none; }
-    .btn-sm { padding: 6px 12px; font-size: 12px; }
-    .btn-primary { background: #6366f1; color: #fff; }
-    .btn-primary:hover { background: #4f46e5; }
-    .btn-outline { border: 1px solid var(--color-outline-variant, rgba(255,255,255,0.15)) !important; background: transparent; color: var(--color-on-surface-variant, #9ca4c0); }
-    .btn-outline:hover { background: rgba(255,255,255,0.07); color: var(--color-on-surface, #d4daf2); }
-    html.light .btn-outline { border-color: #c7c4d7 !important; color: #464554; }
-    html.light .btn-outline:hover { background: #eff4ff; color: #0b1c30; }
-    .btn-icon { padding: 8px; border-radius: 9999px; }
-    .btn-danger { background: #ef4444; color: #fff; }
-    .btn-danger:hover { background: #dc2626; }
+    .modal {
+      background: var(--color-surface-container-lowest, #1a2030);
+      width: 100%;
+      max-width: 560px;
+      border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      max-height: 90vh;
+    }
+
+    .modal-header {
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--color-outline-variant, rgba(255, 255, 255, 0.10));
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--color-surface-container-low, #1e2538);
+    }
+
+    .modal-header h3 {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: var(--color-on-surface, #d4daf2);
+      margin: 0;
+    }
+
+    .modal-body {
+      padding: 24px;
+      overflow-y: auto;
+    }
+
+    .modal-footer {
+      padding: 16px 24px;
+      border-top: 1px solid var(--color-outline-variant, rgba(255, 255, 255, 0.10));
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+      background: var(--color-surface-container-low, #1e2538);
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      margin-bottom: 16px;
+    }
+
+    .form-group label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--color-on-surface-variant, #9ca4c0);
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+      border: 1px solid var(--color-outline-variant, rgba(255, 255, 255, 0.12));
+      border-radius: 8px;
+      padding: 10px 12px;
+      color: var(--color-on-surface, #d4daf2);
+      background: var(--color-surface-container-low, #1e2538);
+      font-size: 14px;
+      transition: border-color 0.15s;
+      outline: none;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus,
+    .form-group textarea:focus {
+      border-color: #818cf8;
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+    }
+
+    html.light .form-group input,
+    html.light .form-group select,
+    html.light .form-group textarea {
+      background: #fff;
+      border-color: #c7c4d7;
+      color: #0b1c30;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 9px 18px;
+      border-radius: 9px;
+      font-size: 14px;
+      font-weight: 600;
+      transition: all 0.15s;
+      cursor: pointer;
+      border: none;
+    }
+
+    .btn-sm {
+      padding: 6px 12px;
+      font-size: 12px;
+    }
+
+    .btn-primary {
+      background: #6366f1;
+      color: #fff;
+    }
+
+    .btn-primary:hover {
+      background: #4f46e5;
+    }
+
+    .btn-outline {
+      border: 1px solid var(--color-outline-variant, rgba(255, 255, 255, 0.15)) !important;
+      background: transparent;
+      color: var(--color-on-surface-variant, #9ca4c0);
+    }
+
+    .btn-outline:hover {
+      background: rgba(255, 255, 255, 0.07);
+      color: var(--color-on-surface, #d4daf2);
+    }
+
+    html.light .btn-outline {
+      border-color: #c7c4d7 !important;
+      color: #464554;
+    }
+
+    html.light .btn-outline:hover {
+      background: #eff4ff;
+      color: #0b1c30;
+    }
+
+    .btn-icon {
+      padding: 8px;
+      border-radius: 9999px;
+    }
+
+    .btn-danger {
+      background: #ef4444;
+      color: #fff;
+    }
+
+    .btn-danger:hover {
+      background: #dc2626;
+    }
+
     /* Table Styling */
-    table { width: 100%; text-align: left; border-collapse: collapse; }
-    th { font-size: 11px; font-weight: 700; color: var(--color-on-surface-variant, #9ca4c0); text-transform: uppercase; letter-spacing: 0.06em; padding: 12px 16px; border-bottom: 1px solid var(--color-outline-variant, rgba(255,255,255,0.08)); background: var(--color-surface-container-low, #1e2538); }
-    td { padding: 14px 16px; border-bottom: 1px solid var(--color-outline-variant, rgba(255,255,255,0.06)); font-size: 13.5px; vertical-align: middle; color: var(--color-on-surface, #d4daf2); }
-    tr:last-child td { border: none; }
-    tr:hover td { background: rgba(129,140,248,0.04); }
-    html.light th { background: #eff4ff; color: #464554; border-color: #c7c4d7; }
-    html.light td { border-color: rgba(0,0,0,0.06); color: #0b1c30; }
-    html.light tr:hover td { background: rgba(99,102,241,0.04); }
+    table {
+      width: 100%;
+      text-align: left;
+      border-collapse: collapse;
+    }
+
+    th {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--color-on-surface-variant, #9ca4c0);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--color-outline-variant, rgba(255, 255, 255, 0.08));
+      background: var(--color-surface-container-low, #1e2538);
+    }
+
+    td {
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--color-outline-variant, rgba(255, 255, 255, 0.06));
+      font-size: 13.5px;
+      vertical-align: middle;
+      color: var(--color-on-surface, #d4daf2);
+    }
+
+    tr:last-child td {
+      border: none;
+    }
+
+    tr:hover td {
+      background: rgba(129, 140, 248, 0.04);
+    }
+
+    html.light th {
+      background: #eff4ff;
+      color: #464554;
+      border-color: #c7c4d7;
+    }
+
+    html.light td {
+      border-color: rgba(0, 0, 0, 0.06);
+      color: #0b1c30;
+    }
+
+    html.light tr:hover td {
+      background: rgba(99, 102, 241, 0.04);
+    }
   </style>
 </head>
+
 <body class="bg-background font-body-md text-on-background">
 
   <!-- Sidebar -->
-  <aside class="fixed left-0 top-0 h-full w-72 bg-surface-container-lowest border-r border-outline-variant/30 z-50 flex flex-col transition-transform duration-300 transform -translate-x-full md:translate-x-0" id="sidebar">
+  <aside
+    class="fixed left-0 top-0 h-full w-72 bg-surface-container-lowest border-r border-outline-variant/30 z-50 flex flex-col transition-transform duration-300 transform -translate-x-full md:translate-x-0"
+    id="sidebar">
     <div class="p-lg flex items-center justify-between gap-sm mb-md border-b border-outline-variant/20 pb-4">
       <div class="flex items-center gap-2">
-        <span class="material-symbols-outlined text-primary text-[28px]">photo_save</span>
+
         <img src="/img/Logo warna.webp" alt="Jadiphoto.Moment" class="h-8 w-auto object-contain" />
       </div>
-      <button class="md:hidden text-on-surface-variant" onclick="document.getElementById('sidebar').classList.add('-translate-x-full')">
+      <button class="md:hidden text-on-surface-variant"
+        onclick="document.getElementById('sidebar').classList.add('-translate-x-full')">
         <span class="material-symbols-outlined">close</span>
       </button>
     </div>
-    
+
     <div class="px-md mb-6">
       <div class="bg-surface-container rounded-lg p-3 flex items-center gap-3">
         <div class="w-8 h-8 rounded-full bg-primary/20 text-primary flex items-center justify-center font-bold">A</div>
@@ -88,38 +323,50 @@
     </div>
 
     <nav class="flex-1 px-md space-y-2">
-      <a href="/admin/dashboard.html" class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all">
+      <a href="/admin/dashboard.html"
+        class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all">
         <span class="material-symbols-outlined">dashboard</span>
         <span class="font-label-md">Dashboard</span>
       </a>
-      <a href="/admin/bookings.html" class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all">
+      <a href="/admin/bookings.html"
+        class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all">
         <span class="material-symbols-outlined">calendar_today</span>
         <span class="font-label-md">Booking</span>
       </a>
-      <a href="/admin/sessions.html" class="flex items-center gap-3 px-4 py-3 rounded-lg transition-all bg-primary/10 text-primary font-semibold" aria-current="page">
+      <a href="/admin/sessions.html"
+        class="flex items-center gap-3 px-4 py-3 rounded-lg transition-all bg-primary/10 text-primary font-semibold"
+        aria-current="page">
         <span class="material-symbols-outlined">add_a_photo</span>
         <span class="font-label-md">Sesi Sortir</span>
       </a>
-      <a href="/admin/finance.html" class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all">
+      <a href="/admin/finance.html"
+        class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all">
         <span class="material-symbols-outlined">payments</span>
         <span class="font-label-md">Keuangan</span>
       </a>
-      <a href="/admin/categories.html" class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all">
+      <a href="/admin/categories.html"
+        class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all">
         <span class="material-symbols-outlined">category</span>
         <span class="font-label-md">Kategori</span>
       </a>
     </nav>
-    
+
     <div class="p-lg border-t border-outline-variant/30 flex flex-col gap-2">
-      <button class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container transition-all text-left" id="btn-change-pass">
+      <button
+        class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container transition-all text-left"
+        id="btn-change-pass">
         <span class="material-symbols-outlined">lock_reset</span>
         <span class="font-label-md">Ganti Password</span>
       </button>
-      <button class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container transition-all text-left" id="btn-cek-db">
+      <button
+        class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container transition-all text-left"
+        id="btn-cek-db">
         <span class="material-symbols-outlined">database</span>
         <span class="font-label-md">Cek Database</span>
       </button>
-      <button class="flex items-center gap-3 px-4 py-3 rounded-lg text-error hover:bg-error/10 transition-all text-left mt-2" id="btn-logout">
+      <button
+        class="flex items-center gap-3 px-4 py-3 rounded-lg text-error hover:bg-error/10 transition-all text-left mt-2"
+        id="btn-logout">
         <span class="material-symbols-outlined">logout</span>
         <span class="font-label-md">Keluar</span>
       </button>
@@ -128,17 +375,20 @@
 
   <!-- Main Content Wrapper -->
   <div class="md:pl-72 flex flex-col min-h-screen">
-    
+
     <!-- Top Header -->
-    <header class="sticky top-0 h-16 bg-surface-container-lowest/80 backdrop-blur-xl border-b border-outline-variant/20 z-40 flex items-center justify-between px-4 lg:px-8">
+    <header
+      class="sticky top-0 h-16 bg-surface-container-lowest/80 backdrop-blur-xl border-b border-outline-variant/20 z-40 flex items-center justify-between px-4 lg:px-8">
       <div class="flex items-center gap-4">
-        <button class="md:hidden text-on-surface-variant flex items-center" onclick="document.getElementById('sidebar').classList.remove('-translate-x-full')">
+        <button class="md:hidden text-on-surface-variant flex items-center"
+          onclick="document.getElementById('sidebar').classList.remove('-translate-x-full')">
           <span class="material-symbols-outlined">menu</span>
         </button>
         <h1 class="font-headline-md text-on-surface hidden sm:block">Overview</h1>
       </div>
       <div class="flex items-center gap-4">
-        <button class="btn btn-icon text-on-surface-variant hover:bg-surface-container transition-all" onclick="toggleTheme()" aria-label="Ganti tema">
+        <button class="btn btn-icon text-on-surface-variant hover:bg-surface-container transition-all"
+          onclick="toggleTheme()" aria-label="Ganti tema">
           <span class="material-symbols-outlined" data-theme-icon>light_mode</span>
         </button>
         <div class="w-8 h-8 rounded-full border border-outline-variant overflow-hidden">
@@ -148,35 +398,38 @@
     </header>
 
     <main class="flex-1 p-4 lg:p-8 flex flex-col gap-6" role="main">
-         <!-- Main Layout: Sesi Sortir -->
+      <!-- Main Layout: Sesi Sortir -->
       <div class="flex-1 min-h-[500px] flex flex-col">
-        
+
         <!-- Sorting Sessions Section -->
-        <div class="bg-surface-container-lowest rounded-xl border border-outline-variant/30 flex flex-col flex-1 overflow-hidden">
-          <div class="p-5 border-b border-outline-variant/30 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-surface-bright">
+        <div
+          class="bg-surface-container-lowest rounded-xl border border-outline-variant/30 flex flex-col flex-1 overflow-hidden">
+          <div
+            class="p-5 border-b border-outline-variant/30 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-surface-bright">
             <h2 class="font-headline-md text-on-surface">Sesi Sortir Foto</h2>
             <button id="btn-new-session" class="btn btn-primary shadow-sm hover:shadow-md transition-shadow">
               <span class="material-symbols-outlined text-[18px]">add</span> Sesi Baru
             </button>
           </div>
 
-          <div class="p-5 grid grid-cols-2 md:grid-cols-4 gap-4 bg-surface-container-low/30 border-b border-outline-variant/20">
-             <div>
-               <div class="text-[11px] text-on-surface-variant font-semibold uppercase mb-1">Total Sesi Sortir</div>
-               <div class="text-xl font-bold text-on-surface" id="stat-total">—</div>
-             </div>
-             <div>
-               <div class="text-[11px] text-on-surface-variant font-semibold uppercase mb-1">Sesi Aktif</div>
-               <div class="text-xl font-bold text-primary" id="stat-active">—</div>
-             </div>
-             <div>
-               <div class="text-[11px] text-on-surface-variant font-semibold uppercase mb-1">Sesi Selesai</div>
-               <div class="text-xl font-bold text-emerald-600" id="stat-completed">—</div>
-             </div>
-             <div>
-               <div class="text-[11px] text-on-surface-variant font-semibold uppercase mb-1">Total Foto Dipilih</div>
-               <div class="text-xl font-bold text-on-surface" id="stat-photos">—</div>
-             </div>
+          <div
+            class="p-5 grid grid-cols-2 md:grid-cols-4 gap-4 bg-surface-container-low/30 border-b border-outline-variant/20">
+            <div>
+              <div class="text-[11px] text-on-surface-variant font-semibold uppercase mb-1">Total Sesi Sortir</div>
+              <div class="text-xl font-bold text-on-surface" id="stat-total">—</div>
+            </div>
+            <div>
+              <div class="text-[11px] text-on-surface-variant font-semibold uppercase mb-1">Sesi Aktif</div>
+              <div class="text-xl font-bold text-primary" id="stat-active">—</div>
+            </div>
+            <div>
+              <div class="text-[11px] text-on-surface-variant font-semibold uppercase mb-1">Sesi Selesai</div>
+              <div class="text-xl font-bold text-emerald-600" id="stat-completed">—</div>
+            </div>
+            <div>
+              <div class="text-[11px] text-on-surface-variant font-semibold uppercase mb-1">Total Foto Dipilih</div>
+              <div class="text-xl font-bold text-on-surface" id="stat-photos">—</div>
+            </div>
           </div>
 
           <!-- Loading State -->
@@ -191,7 +444,8 @@
               <span class="material-symbols-outlined text-on-surface-variant text-[32px]">inbox</span>
             </div>
             <h3 class="font-headline-sm text-on-surface mb-2">Belum ada sesi sortir</h3>
-            <p class="text-on-surface-variant text-sm mb-6 max-w-sm">Klik tombol Sesi Baru untuk membuat link galeri pemilihan foto bagi klien Anda.</p>
+            <p class="text-on-surface-variant text-sm mb-6 max-w-sm">Klik tombol Sesi Baru untuk membuat link galeri
+              pemilihan foto bagi klien Anda.</p>
             <button id="btn-new-session-empty" class="btn btn-outline border-primary text-primary hover:bg-primary/5">
               <span class="material-symbols-outlined text-[18px]">add</span> Buat Sesi Pertama
             </button>
@@ -230,11 +484,14 @@
     <div class="modal">
       <div class="modal-header">
         <h3>Buat Sesi Sortir Baru</h3>
-        <button class="btn btn-icon btn-outline border-none hover:bg-surface-container modal-close" aria-label="Tutup modal">
+        <button class="btn btn-icon btn-outline border-none hover:bg-surface-container modal-close"
+          aria-label="Tutup modal">
           <span class="material-symbols-outlined">close</span>
         </button>
       </div>
-      <div id="modal-alert" class="alert alert-error hidden mx-6 mt-4 p-3 bg-error-container text-on-error-container rounded-lg text-sm" role="alert"></div>
+      <div id="modal-alert"
+        class="alert alert-error hidden mx-6 mt-4 p-3 bg-error-container text-on-error-container rounded-lg text-sm"
+        role="alert"></div>
       <form class="modal-body" id="form-new-session" novalidate>
         <div class="form-group">
           <label for="client-name">Nama Klien / Folder *</label>
@@ -243,12 +500,14 @@
         <div class="form-group">
           <label for="client-phone">No. WhatsApp Klien (Opsional)</label>
           <input type="tel" id="client-phone" placeholder="Contoh: 08123456789 atau 628123456789">
-          <small class="text-xs text-on-surface-variant mt-1">Digunakan untuk mengirim link Google Drive saat hasil edit selesai.</small>
+          <small class="text-xs text-on-surface-variant mt-1">Digunakan untuk mengirim link Google Drive saat hasil edit
+            selesai.</small>
         </div>
         <div class="form-group">
           <label for="folder-url">Link Google Drive Folder Mentahan *</label>
           <input type="url" id="folder-url" placeholder="https://drive.google.com/drive/folders/..." required>
-          <small class="text-xs text-on-surface-variant mt-1">Pastikan folder diset "Siapa saja dengan link dapat melihat"</small>
+          <small class="text-xs text-on-surface-variant mt-1">Pastikan folder diset "Siapa saja dengan link dapat
+            melihat"</small>
         </div>
         <div class="form-group">
           <label for="photo-limit">Batas Maksimal Foto yang Boleh Dipilih</label>
@@ -258,7 +517,8 @@
           <button type="button" class="btn btn-outline modal-close">Batal</button>
           <button type="submit" id="btn-create" class="btn btn-primary">
             <span id="btn-create-text">Buat Sesi</span>
-            <div id="btn-create-spinner" class="spinner hidden w-4 h-4 border-2 border-white/30 border-l-white" aria-hidden="true"></div>
+            <div id="btn-create-spinner" class="spinner hidden w-4 h-4 border-2 border-white/30 border-l-white"
+              aria-hidden="true"></div>
           </button>
         </div>
       </form>
@@ -270,11 +530,14 @@
     <div class="modal">
       <div class="modal-header">
         <h3>Edit Sesi Sortir</h3>
-        <button class="btn btn-icon btn-outline border-none hover:bg-surface-container modal-close" aria-label="Tutup modal">
+        <button class="btn btn-icon btn-outline border-none hover:bg-surface-container modal-close"
+          aria-label="Tutup modal">
           <span class="material-symbols-outlined">close</span>
         </button>
       </div>
-      <div id="modal-edit-alert" class="alert alert-error hidden mx-6 mt-4 p-3 bg-error-container text-on-error-container rounded-lg text-sm" role="alert"></div>
+      <div id="modal-edit-alert"
+        class="alert alert-error hidden mx-6 mt-4 p-3 bg-error-container text-on-error-container rounded-lg text-sm"
+        role="alert"></div>
       <form class="modal-body" id="form-edit-session" novalidate>
         <input type="hidden" id="edit-session-uuid">
         <div class="form-group">
@@ -297,7 +560,8 @@
           <button type="button" class="btn btn-outline modal-close">Batal</button>
           <button type="submit" id="btn-update-session" class="btn btn-primary">
             <span id="btn-update-session-text">Simpan Perubahan</span>
-            <div id="btn-update-session-spinner" class="spinner hidden w-4 h-4 border-2 border-white/30 border-l-white" aria-hidden="true"></div>
+            <div id="btn-update-session-spinner" class="spinner hidden w-4 h-4 border-2 border-white/30 border-l-white"
+              aria-hidden="true"></div>
           </button>
         </div>
       </form>
@@ -309,24 +573,32 @@
     <div class="modal max-w-md">
       <div class="modal-header border-none bg-surface-container-lowest pb-0">
         <h3></h3>
-        <button class="btn btn-icon btn-outline border-none hover:bg-surface-container" id="modal-created-close" aria-label="Tutup">
+        <button class="btn btn-icon btn-outline border-none hover:bg-surface-container" id="modal-created-close"
+          aria-label="Tutup">
           <span class="material-symbols-outlined">close</span>
         </button>
       </div>
       <div class="modal-body text-center pt-0">
-        <div class="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4">
+        <div
+          class="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4">
           <span class="material-symbols-outlined text-[32px]">check_circle</span>
         </div>
         <h3 class="font-headline-md text-on-surface mb-2">Sesi Berhasil Dibuat!</h3>
-        <p class="text-on-surface-variant text-sm mb-6">Bagikan link berikut ke klien agar mereka dapat mulai memilih foto.</p>
-        
-        <div class="flex items-center gap-2 bg-surface-container rounded-lg p-1.5 mb-6 border border-outline-variant/30">
-          <input type="text" id="gallery-link-input" readonly class="flex-1 bg-transparent border-none focus:ring-0 text-sm px-3 text-on-surface font-mono" aria-label="Link galeri klien">
-          <button id="btn-copy-link" class="btn btn-primary py-1.5 px-3 text-sm h-auto" aria-label="Salin link">Salin</button>
+        <p class="text-on-surface-variant text-sm mb-6">Bagikan link berikut ke klien agar mereka dapat mulai memilih
+          foto.</p>
+
+        <div
+          class="flex items-center gap-2 bg-surface-container rounded-lg p-1.5 mb-6 border border-outline-variant/30">
+          <input type="text" id="gallery-link-input" readonly
+            class="flex-1 bg-transparent border-none focus:ring-0 text-sm px-3 text-on-surface font-mono"
+            aria-label="Link galeri klien">
+          <button id="btn-copy-link" class="btn btn-primary py-1.5 px-3 text-sm h-auto"
+            aria-label="Salin link">Salin</button>
         </div>
-        
+
         <div class="flex gap-3">
-          <a id="btn-open-gallery" href="#" target="_blank" rel="noopener" class="btn btn-outline flex-1 justify-center">
+          <a id="btn-open-gallery" href="#" target="_blank" rel="noopener"
+            class="btn btn-outline flex-1 justify-center">
             <span class="material-symbols-outlined text-[18px]">open_in_new</span> Buka Galeri
           </a>
           <button id="btn-created-done" class="btn btn-primary flex-1 justify-center">Selesai</button>
@@ -340,7 +612,8 @@
     <div class="modal">
       <div class="modal-header">
         <h3>Foto Terpilih</h3>
-        <button class="btn btn-icon btn-outline border-none hover:bg-surface-container" id="modal-sel-close" aria-label="Tutup">
+        <button class="btn btn-icon btn-outline border-none hover:bg-surface-container" id="modal-sel-close"
+          aria-label="Tutup">
           <span class="material-symbols-outlined">close</span>
         </button>
       </div>
@@ -350,12 +623,14 @@
         </div>
       </div>
       <!-- Edit Status Updater -->
-      <div id="modal-sel-status-panel" class="modal-body hidden bg-surface-container-low border-t border-outline-variant/30">
+      <div id="modal-sel-status-panel"
+        class="modal-body hidden bg-surface-container-low border-t border-outline-variant/30">
         <h4 class="font-label-md text-on-surface mb-3">Update Status Edit & Notifikasi</h4>
-        
+
         <div class="form-group">
           <label for="update-edit-status">Status Pengerjaan</label>
-          <select id="update-edit-status" class="form-control bg-surface-container-lowest" onchange="toggleDoneFields()">
+          <select id="update-edit-status" class="form-control bg-surface-container-lowest"
+            onchange="toggleDoneFields()">
             <option value="received">Pilihan Diterima</option>
             <option value="editing">Sedang Diedit</option>
             <option value="done">✅ Selesai & Siap Diunduh</option>
@@ -368,29 +643,35 @@
           </div>
           <div class="form-group mb-3">
             <label for="update-client-phone">Nomor WhatsApp Klien</label>
-            <input type="tel" id="update-client-phone" class="form-control bg-surface-container-lowest" placeholder="Contoh: 08123456789 atau 628123456789">
+            <input type="tel" id="update-client-phone" class="form-control bg-surface-container-lowest"
+              placeholder="Contoh: 08123456789 atau 628123456789">
           </div>
           <div class="form-group mb-3">
             <label for="update-result-drive-url">Link Google Drive Hasil Edit</label>
-            <input type="url" id="update-result-drive-url" class="form-control bg-surface-container-lowest" placeholder="https://drive.google.com/drive/folders/...">
+            <input type="url" id="update-result-drive-url" class="form-control bg-surface-container-lowest"
+              placeholder="https://drive.google.com/drive/folders/...">
           </div>
           <label class="flex items-center gap-2 cursor-pointer mt-2 text-sm text-on-surface">
-            <input type="checkbox" id="update-send-wa" checked class="w-4 h-4 text-primary bg-surface-container-lowest border-outline-variant rounded focus:ring-primary">
+            <input type="checkbox" id="update-send-wa" checked
+              class="w-4 h-4 text-primary bg-surface-container-lowest border-outline-variant rounded focus:ring-primary">
             <span>Kirim pesan WA otomatis sekarang</span>
           </label>
         </div>
 
         <div class="form-group">
           <label for="update-edit-note">Catatan Tambahan (Opsional)</label>
-          <textarea id="update-edit-note" class="form-control bg-surface-container-lowest" placeholder="Catatan untuk internal atau klien..." rows="2"></textarea>
+          <textarea id="update-edit-note" class="form-control bg-surface-container-lowest"
+            placeholder="Catatan untuk internal atau klien..." rows="2"></textarea>
         </div>
 
         <div class="flex gap-2">
           <button id="btn-update-status" class="btn btn-primary flex-1 justify-center">
             <span id="btn-update-status-text">Simpan Status</span>
-            <div id="btn-update-status-spinner" class="spinner hidden w-4 h-4 border-2 border-white/30 border-l-white" aria-hidden="true"></div>
+            <div id="btn-update-status-spinner" class="spinner hidden w-4 h-4 border-2 border-white/30 border-l-white"
+              aria-hidden="true"></div>
           </button>
-          <button id="btn-send-wa-now" type="button" class="btn btn-outline hidden" title="Kirim Ulang WA Saja" onclick="sendWaDoneOnly()">
+          <button id="btn-send-wa-now" type="button" class="btn btn-outline hidden" title="Kirim Ulang WA Saja"
+            onclick="sendWaDoneOnly()">
             <span class="material-symbols-outlined text-[18px]">send</span> WA Saja
           </button>
         </div>
@@ -403,11 +684,14 @@
     <div class="modal max-w-sm">
       <div class="modal-header">
         <h3>Ganti Password</h3>
-        <button class="btn btn-icon btn-outline border-none hover:bg-surface-container" id="modal-pass-close" aria-label="Tutup">
+        <button class="btn btn-icon btn-outline border-none hover:bg-surface-container" id="modal-pass-close"
+          aria-label="Tutup">
           <span class="material-symbols-outlined">close</span>
         </button>
       </div>
-      <div id="modal-pass-alert" class="alert hidden mx-6 mt-4 p-3 rounded-lg text-sm bg-error-container text-on-error-container" role="alert"></div>
+      <div id="modal-pass-alert"
+        class="alert hidden mx-6 mt-4 p-3 rounded-lg text-sm bg-error-container text-on-error-container" role="alert">
+      </div>
       <form class="modal-body" id="form-change-pass" novalidate>
         <div class="form-group">
           <label for="pass-current">Password Saat Ini</label>
@@ -415,7 +699,8 @@
         </div>
         <div class="form-group">
           <label for="pass-new">Password Baru</label>
-          <input type="password" id="pass-new" required minlength="6" autocomplete="new-password" placeholder="Min. 6 karakter">
+          <input type="password" id="pass-new" required minlength="6" autocomplete="new-password"
+            placeholder="Min. 6 karakter">
         </div>
         <div class="form-group">
           <label for="pass-confirm">Konfirmasi Password Baru</label>
@@ -425,7 +710,8 @@
           <button type="button" class="btn btn-outline" id="modal-pass-close2">Batal</button>
           <button type="submit" id="btn-save-pass" class="btn btn-primary">
             <span>Simpan</span>
-            <div id="btn-pass-spinner" class="spinner hidden w-4 h-4 border-2 border-white/30 border-l-white" aria-hidden="true"></div>
+            <div id="btn-pass-spinner" class="spinner hidden w-4 h-4 border-2 border-white/30 border-l-white"
+              aria-hidden="true"></div>
           </button>
         </div>
       </form>
@@ -446,24 +732,28 @@
           <span class="material-symbols-outlined text-[32px]">warning</span>
         </div>
         <p id="modal-del-desc" class="text-on-surface-variant text-sm">
-          Tindakan ini akan menghapus sesi dan semua data pilihan foto secara permanen. Link klien tidak akan bisa diakses lagi.
+          Tindakan ini akan menghapus sesi dan semua data pilihan foto secara permanen. Link klien tidak akan bisa
+          diakses lagi.
         </p>
       </div>
       <div class="modal-footer justify-center bg-transparent border-none mb-2">
         <button type="button" class="btn btn-outline" id="modal-del-cancel">Batal</button>
         <button type="button" id="btn-confirm-delete" class="btn btn-danger">
           <span>Hapus Permanen</span>
-          <div id="btn-del-spinner" class="spinner hidden w-4 h-4 border-2 border-white/30 border-l-white" aria-hidden="true"></div>
+          <div id="btn-del-spinner" class="spinner hidden w-4 h-4 border-2 border-white/30 border-l-white"
+            aria-hidden="true"></div>
         </button>
       </div>
     </div>
   </div>
 
-  <div id="toast-container" role="status" aria-live="polite" class="fixed bottom-4 right-4 z-[200] flex flex-col gap-2"></div>
+  <div id="toast-container" role="status" aria-live="polite" class="fixed bottom-4 right-4 z-[200] flex flex-col gap-2">
+  </div>
 
   <script>
 
   </script>
   <script src="/js/admin-sessions.js?v=5" defer></script>
 </body>
+
 </html>

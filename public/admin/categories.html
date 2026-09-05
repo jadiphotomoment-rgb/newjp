@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="id">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -9,107 +10,444 @@
 
   <!-- Tailwind & Config -->
   <style>
-    @layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}
-    ::-webkit-scrollbar{display:none;}
-    .hidden { display: none !important; }
-    
-    .loading-overlay { position: relative; width: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 2rem; }
-    .spinner { border: 3px solid rgba(0,0,0,0.1); border-left-color: var(--primary, #6366f1); border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; }
-    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    @layer base {
+
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        overscroll-behavior: none;
+      }
+
+      main>:first-child {
+        margin-top: 0 !important;
+      }
+
+      main>:last-child {
+        margin-bottom: 0 !important;
+      }
+    }
+
+    ::-webkit-scrollbar {
+      display: none;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    .loading-overlay {
+      position: relative;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+    }
+
+    .spinner {
+      border: 3px solid rgba(0, 0, 0, 0.1);
+      border-left-color: var(--primary, #6366f1);
+      border-radius: 50%;
+      width: 24px;
+      height: 24px;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      0% {
+        transform: rotate(0deg);
+      }
+
+      100% {
+        transform: rotate(360deg);
+      }
+    }
 
     /* Badges */
-    .badge { display: inline-block; padding: 3px 10px; border-radius: 9999px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
-    .badge-active  { background: rgba(34,197,94,0.15); color: #4ade80; border: 1px solid rgba(34,197,94,0.3); }
-    .badge-expired { background: rgba(248,113,113,0.15); color: #f87171; border: 1px solid rgba(248,113,113,0.3); }
-    html.light .badge-active  { background: #f0fdf4; color: #16a34a; border-color: rgba(22,163,74,0.3); }
-    html.light .badge-expired { background: #fff1f2; color: #dc2626; border-color: rgba(220,38,38,0.3); }
+    .badge {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 9999px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .badge-active {
+      background: rgba(34, 197, 94, 0.15);
+      color: #4ade80;
+      border: 1px solid rgba(34, 197, 94, 0.3);
+    }
+
+    .badge-expired {
+      background: rgba(248, 113, 113, 0.15);
+      color: #f87171;
+      border: 1px solid rgba(248, 113, 113, 0.3);
+    }
+
+    html.light .badge-active {
+      background: #f0fdf4;
+      color: #16a34a;
+      border-color: rgba(22, 163, 74, 0.3);
+    }
+
+    html.light .badge-expired {
+      background: #fff1f2;
+      color: #dc2626;
+      border-color: rgba(220, 38, 38, 0.3);
+    }
 
     /* Btns */
-    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 8px 16px; border-radius: 9px; font-size: 14px; font-weight: 600; transition: all 0.15s; cursor: pointer; border: none; }
-    .btn-sm { padding: 5px 10px; font-size: 12px; }
-    .btn-primary { background: #6366f1; color: #fff; }
-    .btn-primary:hover { background: #4f46e5; }
-    .btn-outline { border: 1px solid var(--color-outline-variant, rgba(255,255,255,0.15)) !important; background: transparent; color: var(--color-on-surface-variant, #9ca4c0); }
-    .btn-outline:hover { background: rgba(255,255,255,0.07); color: var(--color-on-surface, #d4daf2); }
-    html.light .btn-outline { border-color: #c7c4d7 !important; color: #464554; }
-    html.light .btn-outline:hover { background: #eff4ff; color: #0b1c30; }
-    .btn-danger { background: #ef4444; color: #fff; }
-    .btn-danger:hover { background: #dc2626; }
-    .btn-icon { padding: 8px; border-radius: 9999px; }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 8px 16px;
+      border-radius: 9px;
+      font-size: 14px;
+      font-weight: 600;
+      transition: all 0.15s;
+      cursor: pointer;
+      border: none;
+    }
+
+    .btn-sm {
+      padding: 5px 10px;
+      font-size: 12px;
+    }
+
+    .btn-primary {
+      background: #6366f1;
+      color: #fff;
+    }
+
+    .btn-primary:hover {
+      background: #4f46e5;
+    }
+
+    .btn-outline {
+      border: 1px solid var(--color-outline-variant, rgba(255, 255, 255, 0.15)) !important;
+      background: transparent;
+      color: var(--color-on-surface-variant, #9ca4c0);
+    }
+
+    .btn-outline:hover {
+      background: rgba(255, 255, 255, 0.07);
+      color: var(--color-on-surface, #d4daf2);
+    }
+
+    html.light .btn-outline {
+      border-color: #c7c4d7 !important;
+      color: #464554;
+    }
+
+    html.light .btn-outline:hover {
+      background: #eff4ff;
+      color: #0b1c30;
+    }
+
+    .btn-danger {
+      background: #ef4444;
+      color: #fff;
+    }
+
+    .btn-danger:hover {
+      background: #dc2626;
+    }
+
+    .btn-icon {
+      padding: 8px;
+      border-radius: 9999px;
+    }
 
     /* Form inputs */
-    .form-group { display: flex; flex-direction: column; gap: 6px; }
-    .form-group label { font-size: 11px; font-weight: 700; color: var(--color-on-surface-variant, #9ca4c0); text-transform: uppercase; letter-spacing: 0.05em; }
-    .form-group input:not([type="color"]):not([type="checkbox"]), .form-group select, .form-group textarea { width: 100%; padding: 9px 12px; border: 1px solid var(--color-outline-variant, rgba(255,255,255,0.12)); border-radius: 8px; background: var(--color-surface-container-low, #1e2538); color: var(--color-on-surface, #d4daf2); font-size: 14px; outline: none; transition: border-color 0.15s; }
-    .form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: #818cf8; box-shadow: 0 0 0 3px rgba(99,102,241,0.15); }
-    html.light .form-group input:not([type="color"]):not([type="checkbox"]), html.light .form-group select, html.light .form-group textarea { background: #fff; border-color: #c7c4d7; color: #0b1c30; }
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .form-group label {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--color-on-surface-variant, #9ca4c0);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .form-group input:not([type="color"]):not([type="checkbox"]),
+    .form-group select,
+    .form-group textarea {
+      width: 100%;
+      padding: 9px 12px;
+      border: 1px solid var(--color-outline-variant, rgba(255, 255, 255, 0.12));
+      border-radius: 8px;
+      background: var(--color-surface-container-low, #1e2538);
+      color: var(--color-on-surface, #d4daf2);
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus,
+    .form-group textarea:focus {
+      border-color: #818cf8;
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+    }
+
+    html.light .form-group input:not([type="color"]):not([type="checkbox"]),
+    html.light .form-group select,
+    html.light .form-group textarea {
+      background: #fff;
+      border-color: #c7c4d7;
+      color: #0b1c30;
+    }
 
     /* Category Cards & Editor */
-    .cat-card { background: var(--color-surface-container-lowest, #1a2030); border: 1px solid var(--color-outline-variant, rgba(255,255,255,0.08)); border-radius: 14px; padding: 20px; margin-bottom: 16px; transition: all 0.2s; }
-    html.light .cat-card { background: #fff; border-color: #c7c4d7; }
-    .cat-card.editing { border-color: #818cf8; box-shadow: 0 0 0 2px rgba(99,102,241,0.2); }
-    .cat-color-swatch { width: 16px; height: 16px; border-radius: 50%; flex-shrink: 0; }
-    .editor-panel { background: var(--color-surface-container-low, #1e2538); border: 1px solid var(--color-outline-variant, rgba(255,255,255,0.08)); border-radius: 12px; padding: 24px; margin-top: 16px; }
-    html.light .editor-panel { background: #eff4ff; border-color: #c7c4d7; }
-    .editor-panel-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: var(--color-on-surface-variant, #9ca4c0); margin-bottom: 16px; }
+    .cat-card {
+      background: var(--color-surface-container-lowest, #1a2030);
+      border: 1px solid var(--color-outline-variant, rgba(255, 255, 255, 0.08));
+      border-radius: 14px;
+      padding: 20px;
+      margin-bottom: 16px;
+      transition: all 0.2s;
+    }
+
+    html.light .cat-card {
+      background: #fff;
+      border-color: #c7c4d7;
+    }
+
+    .cat-card.editing {
+      border-color: #818cf8;
+      box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+    }
+
+    .cat-color-swatch {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .editor-panel {
+      background: var(--color-surface-container-low, #1e2538);
+      border: 1px solid var(--color-outline-variant, rgba(255, 255, 255, 0.08));
+      border-radius: 12px;
+      padding: 24px;
+      margin-top: 16px;
+    }
+
+    html.light .editor-panel {
+      background: #eff4ff;
+      border-color: #c7c4d7;
+    }
+
+    .editor-panel-title {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: var(--color-on-surface-variant, #9ca4c0);
+      margin-bottom: 16px;
+    }
 
     /* Field Lists */
-    .field-list { display: flex; flex-direction: column; gap: 12px; }
-    .field-item { display: grid; grid-template-columns: 1fr 1fr 120px auto; gap: 12px; align-items: start; padding: 16px; background: var(--color-surface-container-lowest, #1a2030); border-radius: 10px; border: 1px solid var(--color-outline-variant, rgba(255,255,255,0.08)); }
-    .slot-item { display: grid; grid-template-columns: 1fr 1fr auto; gap: 12px; align-items: start; padding: 16px; background: var(--color-surface-container-lowest, #1a2030); border-radius: 10px; border: 1px solid var(--color-outline-variant, rgba(255,255,255,0.08)); }
-    .package-item { display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 12px; align-items: start; padding: 16px; background: var(--color-surface-container-lowest, #1a2030); border-radius: 10px; border: 1px solid var(--color-outline-variant, rgba(255,255,255,0.08)); }
-    html.light .field-item, html.light .slot-item, html.light .package-item { background: #fff; border-color: #c7c4d7; }
+    .field-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .field-item {
+      display: grid;
+      grid-template-columns: 1fr 1fr 120px auto;
+      gap: 12px;
+      align-items: start;
+      padding: 16px;
+      background: var(--color-surface-container-lowest, #1a2030);
+      border-radius: 10px;
+      border: 1px solid var(--color-outline-variant, rgba(255, 255, 255, 0.08));
+    }
+
+    .slot-item {
+      display: grid;
+      grid-template-columns: 1fr 1fr auto;
+      gap: 12px;
+      align-items: start;
+      padding: 16px;
+      background: var(--color-surface-container-lowest, #1a2030);
+      border-radius: 10px;
+      border: 1px solid var(--color-outline-variant, rgba(255, 255, 255, 0.08));
+    }
+
+    .package-item {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr auto;
+      gap: 12px;
+      align-items: start;
+      padding: 16px;
+      background: var(--color-surface-container-lowest, #1a2030);
+      border-radius: 10px;
+      border: 1px solid var(--color-outline-variant, rgba(255, 255, 255, 0.08));
+    }
+
+    html.light .field-item,
+    html.light .slot-item,
+    html.light .package-item {
+      background: #fff;
+      border-color: #c7c4d7;
+    }
+
     @media (max-width: 640px) {
-      .field-item { grid-template-columns: 1fr 1fr; }
-      .slot-item { grid-template-columns: 1fr 1fr; }
-      .package-item { grid-template-columns: 1fr 1fr; }
+      .field-item {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .slot-item {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .package-item {
+        grid-template-columns: 1fr 1fr;
+      }
     }
 
     /* WA template variable chips */
-    .var-chip-btn { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; background: rgba(129,140,248,0.12); border: 1px solid rgba(129,140,248,0.25); border-radius: 9999px; color: #a5b4fc; font-family: monospace; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.15s; }
-    .var-chip-btn:hover { background: rgba(129,140,248,0.22); }
-    html.light .var-chip-btn { background: rgba(99,102,241,0.08); border-color: rgba(99,102,241,0.2); color: #4f46e5; }
-    .var-chip-btn.chip-form { background: rgba(74,222,128,0.12); border-color: rgba(74,222,128,0.25); color: #4ade80; }
-    .var-chip-btn.chip-form:hover { background: rgba(74,222,128,0.22); }
-    html.light .var-chip-btn.chip-form { background: rgba(22,163,74,0.08); border-color: rgba(22,163,74,0.2); color: #15803d; }
+    .var-chip-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 10px;
+      background: rgba(129, 140, 248, 0.12);
+      border: 1px solid rgba(129, 140, 248, 0.25);
+      border-radius: 9999px;
+      color: #a5b4fc;
+      font-family: monospace;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .var-chip-btn:hover {
+      background: rgba(129, 140, 248, 0.22);
+    }
+
+    html.light .var-chip-btn {
+      background: rgba(99, 102, 241, 0.08);
+      border-color: rgba(99, 102, 241, 0.2);
+      color: #4f46e5;
+    }
+
+    .var-chip-btn.chip-form {
+      background: rgba(74, 222, 128, 0.12);
+      border-color: rgba(74, 222, 128, 0.25);
+      color: #4ade80;
+    }
+
+    .var-chip-btn.chip-form:hover {
+      background: rgba(74, 222, 128, 0.22);
+    }
+
+    html.light .var-chip-btn.chip-form {
+      background: rgba(22, 163, 74, 0.08);
+      border-color: rgba(22, 163, 74, 0.2);
+      color: #15803d;
+    }
 
     /* Drive Folder Picker */
-    .drive-folder-picker { background: rgba(96,165,250,0.05); border: 1px solid rgba(96,165,250,0.2); border-radius: 14px; padding: 20px; margin-top: 16px; }
-    html.light .drive-folder-picker { background: #eff6ff; border-color: rgba(59,130,246,0.2); }
-    .folder-status { display: flex; align-items: center; gap: 12px; padding: 12px; background: var(--color-surface-container-lowest, #1a2030); border: 1px solid var(--color-outline-variant, rgba(255,255,255,0.08)); border-radius: 10px; margin-top: 12px; font-size: 14px; }
-    html.light .folder-status { background: #fff; border-color: #c7c4d7; }
-    .folder-status.ok { border-color: rgba(74,222,128,0.4); background: rgba(74,222,128,0.05); }
-    .folder-status.empty { border-color: rgba(251,146,60,0.4); background: rgba(251,146,60,0.05); }
+    .drive-folder-picker {
+      background: rgba(96, 165, 250, 0.05);
+      border: 1px solid rgba(96, 165, 250, 0.2);
+      border-radius: 14px;
+      padding: 20px;
+      margin-top: 16px;
+    }
 
+    html.light .drive-folder-picker {
+      background: #eff6ff;
+      border-color: rgba(59, 130, 246, 0.2);
+    }
+
+    .folder-status {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px;
+      background: var(--color-surface-container-lowest, #1a2030);
+      border: 1px solid var(--color-outline-variant, rgba(255, 255, 255, 0.08));
+      border-radius: 10px;
+      margin-top: 12px;
+      font-size: 14px;
+    }
+
+    html.light .folder-status {
+      background: #fff;
+      border-color: #c7c4d7;
+    }
+
+    .folder-status.ok {
+      border-color: rgba(74, 222, 128, 0.4);
+      background: rgba(74, 222, 128, 0.05);
+    }
+
+    .folder-status.empty {
+      border-color: rgba(251, 146, 60, 0.4);
+      background: rgba(251, 146, 60, 0.05);
+    }
   </style>
   <script src="https://cdn.tailwindcss.com"></script>
-  <script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{"colors":{"surface-container-high":"#dce9ff","surface-variant":"#d3e4fe","on-tertiary-fixed":"#191c1e","primary-fixed":"#e1e0ff","tertiary":"#595c5e","primary-fixed-dim":"#c0c1ff","inverse-primary":"#c0c1ff","tertiary-container":"#727577","primary":"#6366f1","surface-container-highest":"#d3e4fe","primary-container":"#6063ee","on-primary-fixed":"#07006c","secondary-fixed":"#dae2fd","secondary":"#565e74","background":"#f8f9ff","surface":"#f8f9ff","on-tertiary":"#ffffff","on-secondary":"#ffffff","on-tertiary-fixed-variant":"#444749","on-error-container":"#93000a","tertiary-fixed":"#e0e3e5","inverse-surface":"#213145","surface-container-low":"#eff4ff","inverse-on-surface":"#eaf1ff","outline-variant":"#c7c4d7","on-secondary-container":"#5c647a","error-container":"#ffdad6","on-error":"#ffffff","on-background":"#0b1c30","tertiary-fixed-dim":"#c4c7c9","outline":"#767586","surface-tint":"#6366f1","on-secondary-fixed":"#131b2e","on-secondary-fixed-variant":"#3f465c","on-surface-variant":"#464554","secondary-container":"#dae2fd","surface-container":"#e5eeff","on-primary":"#ffffff","surface-container-lowest":"#ffffff","surface-dim":"#cbdbf5","secondary-fixed-dim":"#bec6e0","error":"#ba1a1a","on-primary-container":"#fffbff","on-tertiary-container":"#fbfdff","surface-bright":"#f8f9ff","on-primary-fixed-variant":"#2f2ebe","on-surface":"#0b1c30"},"borderRadius":{"DEFAULT":"0.25rem","lg":"0.5rem","xl":"0.75rem","full":"9999px"},"spacing":{"margin-mobile":"16px","xl":"40px","gutter":"24px","sm":"8px","xs":"4px","lg":"24px","unit":"4px","margin-desktop":"64px","md":"16px"},"fontFamily":{"headline-lg":["Helvetica Neue", "Arial", "sans-serif"],"body-lg":["Helvetica Neue", "Arial", "sans-serif"],"headline-lg-mobile":["Helvetica Neue", "Arial", "sans-serif"],"label-md":["Helvetica Neue", "Arial", "sans-serif"],"headline-xl":["Helvetica Neue", "Arial", "sans-serif"],"body-md":["Helvetica Neue", "Arial", "sans-serif"],"headline-md":["Helvetica Neue", "Arial", "sans-serif"],"label-sm":["Helvetica Neue", "Arial", "sans-serif"],"body-sm":["Helvetica Neue", "Arial", "sans-serif"]},"fontSize":{"headline-lg":["32px",{"lineHeight":"40px","letterSpacing":"-0.01em","fontWeight":"600"}],"body-lg":["18px",{"lineHeight":"28px","fontWeight":"400"}],"headline-lg-mobile":["24px",{"lineHeight":"32px","fontWeight":"600"}],"label-md":["14px",{"lineHeight":"20px","letterSpacing":"0.05em","fontWeight":"600"}],"headline-xl":["40px",{"lineHeight":"48px","letterSpacing":"-0.02em","fontWeight":"700"}],"body-md":["16px",{"lineHeight":"24px","fontWeight":"400"}],"headline-md":["24px",{"lineHeight":"32px","fontWeight":"600"}],"label-sm":["12px",{"lineHeight":"16px","fontWeight":"500"}],"body-sm":["14px",{"lineHeight":"20px","fontWeight":"400"}]}}}}</script>
-  
-  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+  <script
+    id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { "colors": { "surface-container-high": "#dce9ff", "surface-variant": "#d3e4fe", "on-tertiary-fixed": "#191c1e", "primary-fixed": "#e1e0ff", "tertiary": "#595c5e", "primary-fixed-dim": "#c0c1ff", "inverse-primary": "#c0c1ff", "tertiary-container": "#727577", "primary": "#6366f1", "surface-container-highest": "#d3e4fe", "primary-container": "#6063ee", "on-primary-fixed": "#07006c", "secondary-fixed": "#dae2fd", "secondary": "#565e74", "background": "#f8f9ff", "surface": "#f8f9ff", "on-tertiary": "#ffffff", "on-secondary": "#ffffff", "on-tertiary-fixed-variant": "#444749", "on-error-container": "#93000a", "tertiary-fixed": "#e0e3e5", "inverse-surface": "#213145", "surface-container-low": "#eff4ff", "inverse-on-surface": "#eaf1ff", "outline-variant": "#c7c4d7", "on-secondary-container": "#5c647a", "error-container": "#ffdad6", "on-error": "#ffffff", "on-background": "#0b1c30", "tertiary-fixed-dim": "#c4c7c9", "outline": "#767586", "surface-tint": "#6366f1", "on-secondary-fixed": "#131b2e", "on-secondary-fixed-variant": "#3f465c", "on-surface-variant": "#464554", "secondary-container": "#dae2fd", "surface-container": "#e5eeff", "on-primary": "#ffffff", "surface-container-lowest": "#ffffff", "surface-dim": "#cbdbf5", "secondary-fixed-dim": "#bec6e0", "error": "#ba1a1a", "on-primary-container": "#fffbff", "on-tertiary-container": "#fbfdff", "surface-bright": "#f8f9ff", "on-primary-fixed-variant": "#2f2ebe", "on-surface": "#0b1c30" }, "borderRadius": { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" }, "spacing": { "margin-mobile": "16px", "xl": "40px", "gutter": "24px", "sm": "8px", "xs": "4px", "lg": "24px", "unit": "4px", "margin-desktop": "64px", "md": "16px" }, "fontFamily": { "headline-lg": ["Helvetica Neue", "Arial", "sans-serif"], "body-lg": ["Helvetica Neue", "Arial", "sans-serif"], "headline-lg-mobile": ["Helvetica Neue", "Arial", "sans-serif"], "label-md": ["Helvetica Neue", "Arial", "sans-serif"], "headline-xl": ["Helvetica Neue", "Arial", "sans-serif"], "body-md": ["Helvetica Neue", "Arial", "sans-serif"], "headline-md": ["Helvetica Neue", "Arial", "sans-serif"], "label-sm": ["Helvetica Neue", "Arial", "sans-serif"], "body-sm": ["Helvetica Neue", "Arial", "sans-serif"] }, "fontSize": { "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600" }], "body-lg": ["18px", { "lineHeight": "28px", "fontWeight": "400" }], "headline-lg-mobile": ["24px", { "lineHeight": "32px", "fontWeight": "600" }], "label-md": ["14px", { "lineHeight": "20px", "letterSpacing": "0.05em", "fontWeight": "600" }], "headline-xl": ["40px", { "lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "700" }], "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }], "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "600" }], "label-sm": ["12px", { "lineHeight": "16px", "fontWeight": "500" }], "body-sm": ["14px", { "lineHeight": "20px", "fontWeight": "400" }] } } } }</script>
+
+  <link
+    href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200"
+    rel="stylesheet" />
   <link rel="stylesheet" href="/css/style.css?v=3">
   <link rel="stylesheet" href="/css/admin-theme.css?v=1">
   <script src="/js/theme.js?v=3"></script>
 
   <style>
     /* Reset some style.css configs */
-    html.light body { background-color: #f8f9ff !important; color: #0b1c30 !important; }
-    .admin-layout, .admin-main, .admin-nav { display: block; all: unset; }
+    html.light body {
+      background-color: #f8f9ff !important;
+      color: #0b1c30 !important;
+    }
+
+    .admin-layout,
+    .admin-main,
+    .admin-nav {
+      display: block;
+      all: unset;
+    }
   </style>
 </head>
+
 <body class="bg-background font-body-md text-on-background">
 
   <!-- Sidebar -->
-  <aside class="fixed left-0 top-0 h-full w-72 bg-surface-container-lowest border-r border-outline-variant/30 z-50 flex flex-col transition-transform duration-300 transform -translate-x-full md:translate-x-0" id="sidebar">
+  <aside
+    class="fixed left-0 top-0 h-full w-72 bg-surface-container-lowest border-r border-outline-variant/30 z-50 flex flex-col transition-transform duration-300 transform -translate-x-full md:translate-x-0"
+    id="sidebar">
     <div class="p-lg flex items-center justify-between gap-sm mb-md border-b border-outline-variant/20 pb-4">
       <div class="flex items-center gap-2">
-        <span class="material-symbols-outlined text-primary text-[28px]">photo_save</span>
         <img src="/img/Logo warna.webp" alt="Jadiphoto.Moment" class="h-8 w-auto object-contain" />
       </div>
-      <button class="md:hidden text-on-surface-variant" onclick="document.getElementById('sidebar').classList.add('-translate-x-full')">
+      <button class="md:hidden text-on-surface-variant"
+        onclick="document.getElementById('sidebar').classList.add('-translate-x-full')">
         <span class="material-symbols-outlined">close</span>
       </button>
     </div>
-    
+
     <div class="px-md mb-6">
       <div class="bg-surface-container rounded-lg p-3 flex items-center gap-3">
         <div class="w-8 h-8 rounded-full bg-primary/20 text-primary flex items-center justify-center font-bold">A</div>
@@ -121,30 +459,38 @@
     </div>
 
     <nav class="flex-1 px-md space-y-2">
-      <a href="/admin/dashboard.html" class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all">
+      <a href="/admin/dashboard.html"
+        class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all">
         <span class="material-symbols-outlined">dashboard</span>
         <span class="font-label-md">Dashboard</span>
       </a>
-      <a href="/admin/bookings.html" class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all">
+      <a href="/admin/bookings.html"
+        class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all">
         <span class="material-symbols-outlined">calendar_today</span>
         <span class="font-label-md">Booking</span>
       </a>
-      <a href="/admin/sessions.html" class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all">
+      <a href="/admin/sessions.html"
+        class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all">
         <span class="material-symbols-outlined">add_a_photo</span>
         <span class="font-label-md">Sesi Sortir</span>
       </a>
-      <a href="/admin/finance.html" class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all">
+      <a href="/admin/finance.html"
+        class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all">
         <span class="material-symbols-outlined">payments</span>
         <span class="font-label-md">Keuangan</span>
       </a>
-      <a href="/admin/categories.html" class="flex items-center gap-3 px-4 py-3 rounded-lg transition-all bg-primary/10 text-primary font-semibold" aria-current="page">
+      <a href="/admin/categories.html"
+        class="flex items-center gap-3 px-4 py-3 rounded-lg transition-all bg-primary/10 text-primary font-semibold"
+        aria-current="page">
         <span class="material-symbols-outlined">category</span>
         <span class="font-label-md">Kategori</span>
       </a>
     </nav>
-    
+
     <div class="p-lg border-t border-outline-variant/30 flex flex-col gap-2">
-      <button class="flex items-center gap-3 px-4 py-3 rounded-lg text-error hover:bg-error/10 transition-all text-left mt-2" id="btn-logout">
+      <button
+        class="flex items-center gap-3 px-4 py-3 rounded-lg text-error hover:bg-error/10 transition-all text-left mt-2"
+        id="btn-logout">
         <span class="material-symbols-outlined">logout</span>
         <span class="font-label-md">Keluar</span>
       </button>
@@ -153,23 +499,26 @@
 
   <!-- Main Content -->
   <div class="md:pl-72 flex flex-col min-h-screen">
-    
-    <header class="sticky top-0 h-16 bg-surface-container-lowest/80 backdrop-blur-xl border-b border-outline-variant/20 z-40 flex items-center justify-between px-4 lg:px-8">
+
+    <header
+      class="sticky top-0 h-16 bg-surface-container-lowest/80 backdrop-blur-xl border-b border-outline-variant/20 z-40 flex items-center justify-between px-4 lg:px-8">
       <div class="flex items-center gap-4">
-        <button class="md:hidden text-on-surface-variant flex items-center" onclick="document.getElementById('sidebar').classList.remove('-translate-x-full')">
+        <button class="md:hidden text-on-surface-variant flex items-center"
+          onclick="document.getElementById('sidebar').classList.remove('-translate-x-full')">
           <span class="material-symbols-outlined">menu</span>
         </button>
         <h1 class="font-headline-md text-on-surface hidden sm:block">Kategori Booking</h1>
       </div>
       <div class="flex items-center gap-4">
-        <button class="btn btn-icon text-on-surface-variant hover:bg-surface-container transition-all" onclick="toggleTheme()" aria-label="Ganti tema">
+        <button class="btn btn-icon text-on-surface-variant hover:bg-surface-container transition-all"
+          onclick="toggleTheme()" aria-label="Ganti tema">
           <span class="material-symbols-outlined" data-theme-icon>light_mode</span>
         </button>
       </div>
     </header>
 
     <main class="flex-1 p-4 lg:p-8 flex flex-col gap-6" role="main">
-      
+
       <div class="bg-blue-500/10 border border-blue-500/20 text-blue-800 p-4 rounded-xl text-sm flex items-start gap-3">
         <span class="material-symbols-outlined text-blue-600 shrink-0">info</span>
         <p>Perubahan field form akan langsung berlaku pada halaman booking klien. Tidak perlu deploy ulang.</p>
@@ -179,12 +528,13 @@
         <div class="spinner border-primary"></div>
         <p class="mt-4 text-sm text-on-surface-variant">Memuat kategori...</p>
       </div>
-      
+
       <div id="categories-container" class="flex flex-col"></div>
     </main>
   </div>
 
-  <div id="toast-container" role="status" aria-live="polite" class="fixed bottom-4 right-4 z-[999] flex flex-col gap-2"></div>
+  <div id="toast-container" role="status" aria-live="polite" class="fixed bottom-4 right-4 z-[999] flex flex-col gap-2">
+  </div>
 
   <script>
     const TOKEN = localStorage.getItem('sf_token');
@@ -194,7 +544,7 @@
     function toast(msg, type = 'info') {
       const el = document.createElement('div');
       const bg = type === 'success' ? 'bg-emerald-500' : type === 'error' ? 'bg-red-500' : 'bg-blue-500';
-      el.className = `px-4 py-3 rounded-lg shadow-lg text-white text-sm font-medium transition-all transform translate-y-2 opacity-0 ${bg}`; 
+      el.className = `px-4 py-3 rounded-lg shadow-lg text-white text-sm font-medium transition-all transform translate-y-2 opacity-0 ${bg}`;
       el.textContent = msg;
       document.getElementById('toast-container').appendChild(el);
       requestAnimationFrame(() => requestAnimationFrame(() => el.classList.remove('translate-y-2', 'opacity-0')));
@@ -338,15 +688,15 @@
             <div class="mt-3 p-3 bg-surface-container-lowest border border-outline-variant/30 rounded-lg">
               <div class="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant mb-2">📌 Variabel Standar</div>
               <div class="flex flex-wrap gap-1.5 mb-3">
-                ${['client_name','event_date','event_time','location','package_price','dp_amount']
-                  .map(v => `<button type="button" class="var-chip-btn" onclick="insertVar('cat-wa-${cat.id}','{{${v}}}')">+ {{${v}}}</button>`).join('')}
+                ${['client_name', 'event_date', 'event_time', 'location', 'package_price', 'dp_amount']
+          .map(v => `<button type="button" class="var-chip-btn" onclick="insertVar('cat-wa-${cat.id}','{{${v}}}')">+ {{${v}}}</button>`).join('')}
               </div>
               
-              ${ cat.fields.length ? `
+              ${cat.fields.length ? `
               <div class="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant mb-2">🗂️ Variabel Form</div>
               <div class="flex flex-wrap gap-1.5">
                 ${cat.fields.map(f => `<button type="button" class="var-chip-btn chip-form" onclick="insertVar('cat-wa-${cat.id}','{{${f.key}}}')">+ {{${f.key}}}</button>`).join('')}
-              </div>` : '' }
+              </div>` : ''}
             </div>
           </div>
 
@@ -455,13 +805,13 @@
       if (!ta) return;
       ta.focus();
       const start = ta.selectionStart;
-      const end   = ta.selectionEnd;
+      const end = ta.selectionEnd;
       const before = ta.value.substring(0, start);
-      const after  = ta.value.substring(end);
+      const after = ta.value.substring(end);
       ta.value = before + variable + after;
       const newPos = start + variable.length;
       ta.selectionStart = newPos;
-      ta.selectionEnd   = newPos;
+      ta.selectionEnd = newPos;
       ta.focus();
     }
 
@@ -538,23 +888,23 @@
       const cat = categories.find(c => c.id === catId);
       if (!cat) return;
 
-      const name    = document.getElementById(`cat-name-${catId}`).value.trim();
-      const dpType  = document.getElementById(`dp-type-${catId}`).value;
+      const name = document.getElementById(`cat-name-${catId}`).value.trim();
+      const dpType = document.getElementById(`dp-type-${catId}`).value;
       const dpValue = document.getElementById(`dp-value-${catId}`).value;
-      const color   = document.getElementById(`cat-color-${catId}`).value;
+      const color = document.getElementById(`cat-color-${catId}`).value;
 
       const fields = [];
       document.querySelectorAll(`#fields-${catId} .field-item`).forEach((row) => {
-        const keyEl   = row.querySelector(`[id^="field-key-"]`);
+        const keyEl = row.querySelector(`[id^="field-key-"]`);
         const labelEl = row.querySelector(`[id^="field-label-"]`);
-        const typeEl  = row.querySelector(`[id^="field-type-"]`);
-        const reqEl   = row.querySelector(`[id^="field-req-"]`);
-        const optEl   = row.querySelector(`[id^="field-options-"]`);
+        const typeEl = row.querySelector(`[id^="field-type-"]`);
+        const reqEl = row.querySelector(`[id^="field-req-"]`);
+        const optEl = row.querySelector(`[id^="field-options-"]`);
         if (!keyEl || !keyEl.value.trim()) return;
         const field = {
-          key:      keyEl.value.trim().replace(/\s+/g, '_').toLowerCase(),
-          label:    labelEl ? labelEl.value.trim() : '',
-          type:     typeEl ? typeEl.value : 'text',
+          key: keyEl.value.trim().replace(/\s+/g, '_').toLowerCase(),
+          label: labelEl ? labelEl.value.trim() : '',
+          type: typeEl ? typeEl.value : 'text',
           required: reqEl ? reqEl.checked : false,
         };
         if (field.type === 'select' && optEl) {
@@ -565,7 +915,7 @@
 
       const time_slots = [];
       document.querySelectorAll(`#slots-${catId} .slot-item`).forEach(row => {
-        const timeEl  = row.querySelector(`[id^="slot-time-"]`);
+        const timeEl = row.querySelector(`[id^="slot-time-"]`);
         const quotaEl = row.querySelector(`[id^="slot-quota-"]`);
         if (!timeEl || !timeEl.value) return;
         time_slots.push({ time: timeEl.value, quota: parseInt(quotaEl.value, 10) || 1 });
@@ -573,13 +923,13 @@
 
       const packages = [];
       document.querySelectorAll(`#packages-${catId} .package-item`).forEach(row => {
-        const idEl    = row.querySelector(`[id^="pkg-id-"]`);
-        const nameEl  = row.querySelector(`[id^="pkg-name-"]`);
+        const idEl = row.querySelector(`[id^="pkg-id-"]`);
+        const nameEl = row.querySelector(`[id^="pkg-name-"]`);
         const priceEl = row.querySelector(`[id^="pkg-price-"]`);
-        const descEl  = row.querySelector(`[id^="pkg-desc-"]`);
+        const descEl = row.querySelector(`[id^="pkg-desc-"]`);
         if (!nameEl || !nameEl.value.trim()) return;
         packages.push({
-          id: idEl && idEl.value ? idEl.value : `pkg_${Date.now()}_${Math.random().toString(36).substr(2,4)}`,
+          id: idEl && idEl.value ? idEl.value : `pkg_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
           name: nameEl.value.trim(),
           price: parseFloat(priceEl.value) || 0,
           description: descEl ? descEl.value.trim() : ''
@@ -599,9 +949,9 @@
 
       try {
         const res = await fetch(`/api/admin/categories/${catId}`, {
-          method:  'PUT',
+          method: 'PUT',
           headers: H,
-          body:    JSON.stringify({ name, fields, packages, dp_type: dpType, dp_value: dpValue, color, time_slots, wa_template, drive_folder_id, drive_folder_name })
+          body: JSON.stringify({ name, fields, packages, dp_type: dpType, dp_value: dpValue, color, time_slots, wa_template, drive_folder_id, drive_folder_name })
         });
         const data = await res.json();
         if (!res.ok) { toast(data.error || 'Gagal simpan', 'error'); return; }
@@ -624,32 +974,33 @@
       if (!input) return;
       const folderId = extractDriveFolderId(input.value.trim());
       if (!folderId) { toast('Format URL tidak valid', 'error'); return; }
-      
+
       const statusEl = document.getElementById(`drive-status-${catId}`);
-      const fnameEl  = document.getElementById(`drive-fname-${catId}`);
-      const fidEl    = document.getElementById(`drive-fid-${catId}`);
+      const fnameEl = document.getElementById(`drive-fname-${catId}`);
+      const fidEl = document.getElementById(`drive-fid-${catId}`);
       if (statusEl) { statusEl.className = 'folder-status ok'; }
-      if (fnameEl)  fnameEl.textContent = 'Folder siap disave';
-      if (fidEl)    fidEl.textContent   = 'ID: ' + folderId;
-      
+      if (fnameEl) fnameEl.textContent = 'Folder siap disave';
+      if (fidEl) fidEl.textContent = 'ID: ' + folderId;
+
       input.value = 'https://drive.google.com/drive/folders/' + folderId;
       input.dataset.folderId = folderId;
-      toast('Folder ID diekstrak: ' + folderId.substring(0,10) + '...', 'success');
+      toast('Folder ID diekstrak: ' + folderId.substring(0, 10) + '...', 'success');
     }
 
     function clearDriveFolder(catId) {
-      const input  = document.getElementById(`drive-url-${catId}`);
+      const input = document.getElementById(`drive-url-${catId}`);
       const status = document.getElementById(`drive-status-${catId}`);
-      const fname  = document.getElementById(`drive-fname-${catId}`);
-      const fid    = document.getElementById(`drive-fid-${catId}`);
-      if (input)  { input.value = ''; delete input.dataset.folderId; delete input.dataset.folderName; }
+      const fname = document.getElementById(`drive-fname-${catId}`);
+      const fid = document.getElementById(`drive-fid-${catId}`);
+      if (input) { input.value = ''; delete input.dataset.folderId; delete input.dataset.folderName; }
       if (status) status.className = 'folder-status empty';
-      if (fname)  fname.textContent = 'Belum ada folder yang dipilih';
-      if (fid)    fid.textContent   = 'Menggunakan folder global';
+      if (fname) fname.textContent = 'Belum ada folder yang dipilih';
+      if (fid) fid.textContent = 'Menggunakan folder global';
       toast('Folder Drive dihapus', 'info');
     }
 
     loadCategories();
   </script>
 </body>
+
 </html>

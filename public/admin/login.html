@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="id">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,80 +9,160 @@
   <meta name="robots" content="noindex, nofollow">
 
   <!-- Tailwind & Config -->
-  <style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style>
+  <style>
+    @layer base {
+
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        overscroll-behavior: none;
+      }
+
+      main>:first-child {
+        margin-top: 0 !important;
+      }
+
+      main>:last-child {
+        margin-bottom: 0 !important;
+      }
+    }
+
+    ::-webkit-scrollbar {
+      display: none;
+    }
+  </style>
   <script src="https://cdn.tailwindcss.com"></script>
-  <script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{"colors":{"surface-container-high":"#dce9ff","surface-variant":"#d3e4fe","on-tertiary-fixed":"#191c1e","primary-fixed":"#e1e0ff","tertiary":"#595c5e","primary-fixed-dim":"#c0c1ff","inverse-primary":"#c0c1ff","tertiary-container":"#727577","primary":"#6366f1","surface-container-highest":"#d3e4fe","primary-container":"#6063ee","on-primary-fixed":"#07006c","secondary-fixed":"#dae2fd","secondary":"#565e74","background":"#f8f9ff","surface":"#f8f9ff","on-tertiary":"#ffffff","on-secondary":"#ffffff","on-tertiary-fixed-variant":"#444749","on-error-container":"#93000a","tertiary-fixed":"#e0e3e5","inverse-surface":"#213145","surface-container-low":"#eff4ff","inverse-on-surface":"#eaf1ff","outline-variant":"#c7c4d7","on-secondary-container":"#5c647a","error-container":"#ffdad6","on-error":"#ffffff","on-background":"#0b1c30","tertiary-fixed-dim":"#c4c7c9","outline":"#767586","surface-tint":"#6366f1","on-secondary-fixed":"#131b2e","on-secondary-fixed-variant":"#3f465c","on-surface-variant":"#464554","secondary-container":"#dae2fd","surface-container":"#e5eeff","on-primary":"#ffffff","surface-container-lowest":"#ffffff","surface-dim":"#cbdbf5","secondary-fixed-dim":"#bec6e0","error":"#ba1a1a","on-primary-container":"#fffbff","on-tertiary-container":"#fbfdff","surface-bright":"#f8f9ff","on-primary-fixed-variant":"#2f2ebe","on-surface":"#0b1c30"},"borderRadius":{"DEFAULT":"0.25rem","lg":"0.5rem","xl":"0.75rem","full":"9999px"},"spacing":{"margin-mobile":"16px","xl":"40px","gutter":"24px","sm":"8px","xs":"4px","lg":"24px","unit":"4px","margin-desktop":"64px","md":"16px"},"fontFamily":{"headline-lg":["Helvetica Neue", "Arial", "sans-serif"],"body-lg":["Helvetica Neue", "Arial", "sans-serif"],"headline-lg-mobile":["Helvetica Neue", "Arial", "sans-serif"],"label-md":["Helvetica Neue", "Arial", "sans-serif"],"headline-xl":["Helvetica Neue", "Arial", "sans-serif"],"body-md":["Helvetica Neue", "Arial", "sans-serif"],"headline-md":["Helvetica Neue", "Arial", "sans-serif"],"label-sm":["Helvetica Neue", "Arial", "sans-serif"],"body-sm":["Helvetica Neue", "Arial", "sans-serif"]},"fontSize":{"headline-lg":["32px",{"lineHeight":"40px","letterSpacing":"-0.01em","fontWeight":"600"}],"body-lg":["18px",{"lineHeight":"28px","fontWeight":"400"}],"headline-lg-mobile":["24px",{"lineHeight":"32px","fontWeight":"600"}],"label-md":["14px",{"lineHeight":"20px","letterSpacing":"0.05em","fontWeight":"600"}],"headline-xl":["40px",{"lineHeight":"48px","letterSpacing":"-0.02em","fontWeight":"700"}],"body-md":["16px",{"lineHeight":"24px","fontWeight":"400"}],"headline-md":["24px",{"lineHeight":"32px","fontWeight":"600"}],"label-sm":["12px",{"lineHeight":"16px","fontWeight":"500"}],"body-sm":["14px",{"lineHeight":"20px","fontWeight":"400"}]}}}}</script>
-  
-  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+  <script
+    id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { "colors": { "surface-container-high": "#dce9ff", "surface-variant": "#d3e4fe", "on-tertiary-fixed": "#191c1e", "primary-fixed": "#e1e0ff", "tertiary": "#595c5e", "primary-fixed-dim": "#c0c1ff", "inverse-primary": "#c0c1ff", "tertiary-container": "#727577", "primary": "#6366f1", "surface-container-highest": "#d3e4fe", "primary-container": "#6063ee", "on-primary-fixed": "#07006c", "secondary-fixed": "#dae2fd", "secondary": "#565e74", "background": "#f8f9ff", "surface": "#f8f9ff", "on-tertiary": "#ffffff", "on-secondary": "#ffffff", "on-tertiary-fixed-variant": "#444749", "on-error-container": "#93000a", "tertiary-fixed": "#e0e3e5", "inverse-surface": "#213145", "surface-container-low": "#eff4ff", "inverse-on-surface": "#eaf1ff", "outline-variant": "#c7c4d7", "on-secondary-container": "#5c647a", "error-container": "#ffdad6", "on-error": "#ffffff", "on-background": "#0b1c30", "tertiary-fixed-dim": "#c4c7c9", "outline": "#767586", "surface-tint": "#6366f1", "on-secondary-fixed": "#131b2e", "on-secondary-fixed-variant": "#3f465c", "on-surface-variant": "#464554", "secondary-container": "#dae2fd", "surface-container": "#e5eeff", "on-primary": "#ffffff", "surface-container-lowest": "#ffffff", "surface-dim": "#cbdbf5", "secondary-fixed-dim": "#bec6e0", "error": "#ba1a1a", "on-primary-container": "#fffbff", "on-tertiary-container": "#fbfdff", "surface-bright": "#f8f9ff", "on-primary-fixed-variant": "#2f2ebe", "on-surface": "#0b1c30" }, "borderRadius": { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" }, "spacing": { "margin-mobile": "16px", "xl": "40px", "gutter": "24px", "sm": "8px", "xs": "4px", "lg": "24px", "unit": "4px", "margin-desktop": "64px", "md": "16px" }, "fontFamily": { "headline-lg": ["Helvetica Neue", "Arial", "sans-serif"], "body-lg": ["Helvetica Neue", "Arial", "sans-serif"], "headline-lg-mobile": ["Helvetica Neue", "Arial", "sans-serif"], "label-md": ["Helvetica Neue", "Arial", "sans-serif"], "headline-xl": ["Helvetica Neue", "Arial", "sans-serif"], "body-md": ["Helvetica Neue", "Arial", "sans-serif"], "headline-md": ["Helvetica Neue", "Arial", "sans-serif"], "label-sm": ["Helvetica Neue", "Arial", "sans-serif"], "body-sm": ["Helvetica Neue", "Arial", "sans-serif"] }, "fontSize": { "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600" }], "body-lg": ["18px", { "lineHeight": "28px", "fontWeight": "400" }], "headline-lg-mobile": ["24px", { "lineHeight": "32px", "fontWeight": "600" }], "label-md": ["14px", { "lineHeight": "20px", "letterSpacing": "0.05em", "fontWeight": "600" }], "headline-xl": ["40px", { "lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "700" }], "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }], "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "600" }], "label-sm": ["12px", { "lineHeight": "16px", "fontWeight": "500" }], "body-sm": ["14px", { "lineHeight": "20px", "fontWeight": "400" }] } } } }</script>
+
+  <link
+    href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+    rel="stylesheet" />
   <link rel="stylesheet" href="/css/style.css?v=3">
   <link rel="stylesheet" href="/css/admin-theme.css?v=1">
   <script src="/js/theme.js?v=3"></script>
 </head>
+
 <body class="bg-background font-body-md text-on-background">
 
   <!-- Theme toggle button -->
-  <button class="btn btn-icon text-on-surface-variant hover:bg-surface-container transition-all absolute top-4 right-4 z-50 bg-surface-container-lowest shadow-sm" onclick="toggleTheme()" aria-label="Ganti tema">
+  <button
+    class="btn btn-icon text-on-surface-variant hover:bg-surface-container transition-all absolute top-4 right-4 z-50 bg-surface-container-lowest shadow-sm"
+    onclick="toggleTheme()" aria-label="Ganti tema">
     <span class="material-symbols-outlined" data-theme-icon>light_mode</span>
   </button>
 
   <main class="min-h-screen flex items-center justify-center p-md relative" role="main">
-    <div class="flex flex-col w-full h-full justify-center items-center">
-      <div class="w-full max-w-[1024px] bg-surface-container-lowest rounded-[32px] shadow-sm flex flex-col md:flex-row overflow-hidden relative border border-outline-variant/30">
-        <!-- Left Column: Visual Area -->
-        <div class="w-full md:w-1/2 p-sm md:p-lg hidden md:block">
-          <div class="w-full h-full bg-cover bg-center rounded-3xl min-h-[500px]" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuCqGxXvu-A-AKP26mS-_oe7IyN9YiL4DWNweBwl44pVHlrrhDtBGDtArI_sMjcjskWMNDehSSLKbLuMKl-BGyZfzh84-HxvjIto8NHjdmBz0yqesoq7FB4NYbt5hwJUqBeZCp1KGwU-FrGLbhV4APy2LLbt1adSN06-XrSdfq-Jg3y_pQJy1YQvV7_Qke3bL2hFCY42P3sgBUJHDH4DshzGVbIw2k0FcVFX3x5O7XY_Cal7OcEfXaB7')"></div>
+    <div class="flex flex-col w-full h-full justify-center items-center px-4">
+      <div
+        class="w-full max-w-[1100px] bg-surface-container-lowest rounded-[40px] shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex flex-col md:flex-row-reverse p-3 md:p-4 border border-outline-variant/20 relative">
+
+        <!-- Visual Area -->
+        <div class="w-full md:w-1/2 flex rounded-[32px] overflow-hidden min-h-[250px] md:min-h-[500px] mb-6 md:mb-0">
+          <img src="/img/login.jpg" alt="Login Image" class="w-full h-full object-cover object-center rounded-[32px]">
         </div>
-        
+
         <!-- Right Column: Form Area -->
-        <div class="w-full md:w-1/2 p-xl md:p-[64px] flex flex-col justify-center">
-          
+        <div class="w-full md:w-1/2 p-8 md:p-12 lg:p-16 flex flex-col justify-center">
+
           <!-- Brand Logo / Title -->
-          <div class="flex items-center gap-sm mb-xl justify-center md:justify-start">
-            <span class="material-symbols-outlined text-primary text-[24px]">photo_save</span>
-            <span class="font-label-md text-on-surface tracking-wider uppercase">Jadiphoto.Moment</span>
-          </div>
-          
-          <div class="text-center md:text-left mb-xl">
-            <h1 class="font-headline-lg text-on-background mb-sm">Panel Admin</h1>
-            <p class="font-body-md text-on-surface-variant">Silakan login untuk melanjutkan</p>
+          <div class="flex items-center gap-sm mb-10 justify-center md:justify-start">
+            <img src="/img/Logo warna.webp" alt="Jadiphoto.Moment" class="h-7 w-auto object-contain dark:hidden" />
+            <img src="/img/Logo putih.webp" alt="Jadiphoto.Moment"
+              class="h-7 w-auto object-contain hidden dark:block" />
           </div>
 
-          <form class="flex flex-col gap-lg w-full" id="login-form" novalidate>
-            <div id="login-alert" class="alert alert-error hidden w-full bg-error-container text-on-error-container p-sm rounded text-sm mb-2" role="alert" aria-live="polite"></div>
+          <div class="text-center md:text-left mb-8">
+            <h1 class="text-[32px] font-bold text-on-background mb-2 tracking-tight leading-tight">Welcome Back!</h1>
+            <p class="text-[15px] font-medium text-on-surface-variant">Enter Your Details Below</p>
+          </div>
+
+          <form class="flex flex-col gap-6 w-full" id="login-form" novalidate>
+            <div id="login-alert"
+              class="alert alert-error hidden w-full bg-error-container text-on-error-container p-sm rounded text-sm mb-2"
+              role="alert" aria-live="polite"></div>
 
             <!-- Username Input -->
-            <div class="relative group">
-              <label for="username" class="font-label-md text-on-surface-variant absolute -top-3 left-0 bg-surface-container-lowest px-1 transition-all group-focus-within:text-primary z-10">Username</label>
-              <input class="w-full bg-transparent border-b border-outline-variant py-sm text-body-lg text-on-background focus:outline-none focus:border-primary transition-colors pb-sm relative z-0" 
-                     type="text" id="username" name="username" placeholder="Masukkan username admin" autocomplete="username" required autofocus />
+            <div class="flex flex-col relative">
+              <label for="username" class="text-[13px] font-semibold text-on-surface-variant mb-1">Email /
+                Username</label>
+              <input
+                class="w-full bg-transparent border-b border-outline-variant/40 py-2.5 text-[15px] text-on-background focus:outline-none focus:border-primary transition-colors placeholder:text-outline-variant/50"
+                type="text" id="username" name="username" placeholder="hello.alex@gmail.com" autocomplete="username"
+                required autofocus />
             </div>
 
             <!-- Password Input -->
-            <div class="relative group mt-sm">
-              <label for="password" class="font-label-md text-on-surface-variant absolute -top-3 left-0 bg-surface-container-lowest px-1 transition-all group-focus-within:text-primary z-10">Password</label>
-              <input class="w-full bg-transparent border-b border-outline-variant py-sm text-body-lg text-on-background focus:outline-none focus:border-primary transition-colors pb-sm relative z-0" 
-                     type="password" id="password" name="password" placeholder="Masukkan password" autocomplete="current-password" required />
-              <button class="absolute right-0 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-primary transition-colors z-10" 
-                      type="button" id="toggle-password" aria-label="Tampilkan password">
-                <span class="material-symbols-outlined text-[20px]">visibility_off</span>
-              </button>
+            <div class="flex flex-col relative mt-2">
+              <label for="password" class="text-[13px] font-semibold text-on-surface-variant mb-1">Password</label>
+              <div class="relative w-full">
+                <input
+                  class="w-full bg-transparent border-b border-outline-variant/40 py-2.5 pr-10 text-[15px] text-on-background focus:outline-none focus:border-primary transition-colors placeholder:text-outline-variant/50"
+                  type="password" id="password" name="password" placeholder="••••••••" autocomplete="current-password"
+                  required />
+                <button
+                  class="absolute right-0 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-primary transition-colors z-10"
+                  type="button" id="toggle-password" aria-label="Tampilkan password">
+                  <span class="material-symbols-outlined text-[20px]">visibility_off</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Additional Options -->
+            <div class="flex items-center justify-between mt-1">
+              <label class="flex items-center gap-2.5 cursor-pointer group">
+                <div
+                  class="w-4 h-4 rounded border border-outline-variant/60 flex items-center justify-center group-hover:border-primary transition-colors">
+                  <!-- Custom checkbox styling could go here if needed, keeping it simple for now -->
+                  <input type="checkbox" class="opacity-0 absolute w-0 h-0" />
+                  <span
+                    class="material-symbols-outlined text-[14px] text-primary hidden group-has-[:checked]:block">check</span>
+                </div>
+                <span
+                  class="text-[13px] font-medium text-on-surface-variant group-hover:text-on-surface transition-colors">Remember
+                  me</span>
+              </label>
+              <a href="#" class="text-[13px] font-semibold text-[#e91e63] hover:text-[#c2185b] transition-colors">Forgot
+                password?</a>
             </div>
 
             <!-- Primary Action -->
-            <button class="w-full bg-primary hover:opacity-90 text-white font-label-md py-[14px] rounded-lg transition-opacity mt-md flex justify-center items-center gap-2" 
-                    type="submit" id="btn-login">
-              <span id="btn-login-text">Masuk</span>
-              <div id="btn-login-spinner" class="spinner hidden border-2 border-white border-t-transparent rounded-full w-4 h-4 animate-spin" aria-hidden="true"></div>
+            <button
+              class="w-full bg-[#e91e63] hover:bg-[#c2185b] text-white font-semibold py-3.5 rounded-xl transition-colors mt-2 flex justify-center items-center gap-2"
+              type="submit" id="btn-login">
+              <span id="btn-login-text">Log in</span>
+              <div id="btn-login-spinner"
+                class="spinner hidden border-2 border-white border-t-transparent rounded-full w-4 h-4 animate-spin"
+                aria-hidden="true"></div>
+            </button>
+
+            <!-- Google Login -->
+            <button
+              class="w-full bg-[#f2f4f7] dark:bg-surface-container hover:bg-[#e4e7ec] dark:hover:bg-surface-container-high text-[#344054] dark:text-on-surface font-semibold py-3.5 rounded-xl transition-colors flex justify-center items-center gap-3"
+              type="button">
+              <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" class="w-5 h-5" />
+              <span>Log in with Google</span>
             </button>
           </form>
-          
+
+          <div class="mt-8 text-center">
+            <p class="text-[14px] text-on-surface-variant font-medium">Don't have an account? <a href="#"
+                class="text-[#e91e63] hover:text-[#c2185b] font-bold hover:underline transition-colors">Sign Up</a></p>
+          </div>
+
         </div>
       </div>
     </div>
   </main>
 
-  <div id="toast-container" role="status" aria-live="polite" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2"></div>
+  <div id="toast-container" role="status" aria-live="polite" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2">
+  </div>
 
   <script src="/js/admin-login.js?v=3" defer></script>
 </body>
+
 </html>

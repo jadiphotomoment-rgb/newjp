@@ -282,7 +282,7 @@ async function viewSelections(uuid) {
 
     if (!items.length) {
       content.innerHTML = `<p style="color:var(--text-2); text-align:center; padding:32px;">Belum ada seleksi tersimpan.</p>`;
-      document.getElementById('modal-sel-status-panel').style.display = 'none';
+      document.getElementById('modal-sel-status-panel').classList.add('hidden');
       return;
     }
 
@@ -309,7 +309,7 @@ async function viewSelections(uuid) {
     // ── Update Status UI ──
     const statusPanel = document.getElementById('modal-sel-status-panel');
     if (session.status === 'completed') {
-      statusPanel.style.display = 'block';
+      statusPanel.classList.remove('hidden');
       currentViewingUuid = uuid;
       document.getElementById('update-edit-status').value = session.edit_status || 'received';
       document.getElementById('update-edit-note').value = session.edit_note || '';
@@ -321,12 +321,12 @@ async function viewSelections(uuid) {
       const btnUpdate = document.getElementById('btn-update-status');
       btnUpdate.onclick = () => updateEditStatus(uuid);
     } else {
-      statusPanel.style.display = 'none';
+      statusPanel.classList.add('hidden');
     }
 
   } catch (err) {
     content.innerHTML = `<p style="color:var(--red); padding:16px;">Gagal memuat seleksi: ${err.message}</p>`;
-    document.getElementById('modal-sel-status-panel').style.display = 'none';
+    document.getElementById('modal-sel-status-panel').classList.add('hidden');
   }
 }
 window.viewSelections = viewSelections;
@@ -338,11 +338,11 @@ function toggleDoneFields() {
   const donePanel = document.getElementById('done-wa-panel');
   const btnWaNow = document.getElementById('btn-send-wa-now');
   if (status === 'done') {
-    donePanel.style.display = 'block';
-    btnWaNow.style.display = 'inline-flex';
+    donePanel.classList.remove('hidden');
+    btnWaNow.classList.remove('hidden');
   } else {
-    donePanel.style.display = 'none';
-    btnWaNow.style.display = 'none';
+    donePanel.classList.add('hidden');
+    btnWaNow.classList.add('hidden');
   }
 }
 window.toggleDoneFields = toggleDoneFields;

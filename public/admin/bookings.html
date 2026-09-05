@@ -578,6 +578,12 @@
         <h1 class="font-headline-md text-on-surface hidden sm:block">Manajemen Booking</h1>
       </div>
       <div class="flex items-center gap-4">
+        <button id="btn-connect-google" class="btn btn-outline btn-sm bg-surface-container-lowest border-primary/30 text-primary hidden" onclick="connectGoogle()">
+          <span class="material-symbols-outlined text-[16px]">calendar_month</span> Hubungkan Kalender
+        </button>
+        <span id="badge-google-connected" class="badge badge-approved hidden" title="Google Calendar Terhubung">
+          <span class="material-symbols-outlined text-[14px] align-middle mr-1">check_circle</span> Kalender Terhubung
+        </span>
         <button class="btn btn-icon text-on-surface-variant hover:bg-surface-container transition-all"
           onclick="toggleTheme()" aria-label="Ganti tema">
           <span class="material-symbols-outlined" data-theme-icon>light_mode</span>
@@ -688,6 +694,7 @@
                   <th>Tanggal Acara</th>
                   <th>Status</th>
                   <th>Harga / DP</th>
+                  <th class="text-center">Kalender</th>
                   <th class="text-right">Aksi</th>
                 </tr>
               </thead>
@@ -967,6 +974,18 @@
             <div class="font-semibold text-on-surface">${fmtMoney(b.package_price)}</div>
             <div class="text-xs text-on-surface-variant">DP: ${fmtMoney(b.dp_amount)}</div>
           </td>
+          <td class="text-center">
+            <div class="flex flex-col items-center gap-1">
+              ${b.calendar_sync_status === 'synced' 
+                ? '<span class="badge badge-approved mb-1 w-full text-center">Synced</span>'
+                : b.calendar_sync_status === 'failed'
+                  ? '<span class="badge badge-rejected mb-1 w-full text-center">Failed</span>'
+                  : ''}
+              <button class="btn btn-outline btn-sm bg-surface-container-lowest w-full text-[11px]" onclick="syncCalendar(${b.id}, this)">
+                <span class="material-symbols-outlined text-[14px]">sync</span> ${b.calendar_sync_status === 'synced' ? 'Update' : 'Sync'}
+              </button>
+            </div>
+          </td>
           <td class="text-right">
             <div class="flex justify-end gap-2">
               <button class="btn btn-outline btn-sm bg-surface-container-lowest" onclick="openPanel(${b.id})">👁 Detail</button>
@@ -995,6 +1014,14 @@
           <div class="text-sm font-semibold mb-3 flex justify-between">
             <span>Harga: ${fmtMoney(b.package_price)}</span>
             <span class="text-on-surface-variant">DP: ${fmtMoney(b.dp_amount)}</span>
+          </div>
+          <div class="mb-3 pt-3 border-t border-outline-variant/30 flex justify-between items-center">
+            <div class="text-xs text-on-surface-variant">Google Calendar: 
+              <span class="font-semibold ${b.calendar_sync_status === 'synced' ? 'text-emerald-500' : b.calendar_sync_status === 'failed' ? 'text-red-500' : 'text-on-surface-variant'}">${b.calendar_sync_status || 'not synced'}</span>
+            </div>
+            <button class="btn btn-outline btn-sm" onclick="syncCalendar(${b.id}, this)">
+              <span class="material-symbols-outlined text-[14px]">sync</span> Sync
+            </button>
           </div>
           <div class="flex gap-2">
             <button class="btn btn-outline btn-sm flex-1" onclick="openPanel(${b.id})">Detail</button>
@@ -1415,8 +1442,83 @@
     const adminData = JSON.parse(localStorage.getItem('sf_admin') || '{}');
     if (adminData.name) document.getElementById('nav-username').textContent = adminData.name;
 
-    loadCategories();
-    loadBookings();
+    // -- Google Calendar Sync Functions --
+    let isGoogleConnected = false;
+
+    async function checkGoogleStatus() {
+      try {
+        const res = await fetch('/api/google/status', { headers: H });
+        if (res.ok) {
+          const data = await res.json();
+          isGoogleConnected = data.connected;
+          if (isGoogleConnected) {
+            document.getElementById('badge-google-connected')?.classList.remove('hidden');
+            document.getElementById('btn-connect-google')?.classList.add('hidden');
+          } else {
+            document.getElementById('badge-google-connected')?.classList.add('hidden');
+            document.getElementById('btn-connect-google')?.classList.remove('hidden');
+          }
+        }
+      } catch (err) {
+        console.error('Failed to check google status', err);
+      }
+    }
+
+    async function connectGoogle() {
+      try {
+        const res = await fetch('/api/google/auth', { headers: H });
+        const data = await res.json();
+        if (data.url) {
+          window.location.href = data.url;
+        }
+      } catch (err) {
+        toast('Gagal menginisialisasi Google Auth', 'error');
+      }
+    }
+
+    async function syncCalendar(bookingId, btn) {
+      if (!isGoogleConnected) {
+        toast('Silakan hubungkan akun Google Calendar terlebih dahulu (tombol di atas kanan)', 'error');
+        return;
+      }
+      
+      const originalHtml = btn.innerHTML;
+      btn.innerHTML = '<span class="spinner border-primary w-4 h-4 mr-1"></span> Menyimkronkan...';
+      btn.disabled = true;
+
+      try {
+        const res = await fetch(`/api/bookings/admin/${bookingId}/sync-calendar`, {
+          method: 'POST',
+          headers: H
+        });
+        const data = await res.json();
+        
+        if (!res.ok) throw new Error(data.error || 'Gagal sinkronisasi');
+        
+        toast('Berhasil disinkronisasi ke Google Calendar', 'success');
+        loadBookings(); // Reload to update badges
+      } catch (err) {
+        toast(err.message, 'error');
+        btn.innerHTML = originalHtml;
+        btn.disabled = false;
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      // Check URL parameters for OAuth redirect feedback
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get('success') === 'google_connected') {
+        toast('Akun Google Calendar berhasil dihubungkan', 'success');
+        window.history.replaceState({}, document.title, window.location.pathname);
+      } else if (urlParams.get('error')) {
+        toast('Gagal menghubungkan ke Google: ' + urlParams.get('error'), 'error');
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+
+      checkGoogleStatus();
+      loadCategories();
+      loadBookings();
+    });
   </script>
 </body>
 
