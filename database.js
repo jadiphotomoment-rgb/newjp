@@ -236,6 +236,32 @@ const db = {
         CREATE INDEX IF NOT EXISTS idx_attachments_booking ON attachments(booking_id);
       `);
 
+      // ── Create tables (Shortlink) ──────────────────────────────
+      await pool.query(`
+        -- Data Shortlink
+        CREATE TABLE IF NOT EXISTS shortlinks (
+          id SERIAL PRIMARY KEY,
+          short_code VARCHAR(50) UNIQUE NOT NULL,
+          original_url TEXT NOT NULL,
+          admin_id INT REFERENCES admins(id) ON DELETE SET NULL,
+          created_at TIMESTAMP DEFAULT now()
+        );
+
+        -- Data Analitik Klik Shortlink
+        CREATE TABLE IF NOT EXISTS shortlink_clicks (
+          id SERIAL PRIMARY KEY,
+          shortlink_id INT REFERENCES shortlinks(id) ON DELETE CASCADE,
+          ip_address VARCHAR(45),
+          user_agent TEXT,
+          referrer TEXT,
+          clicked_at TIMESTAMP DEFAULT now()
+        );
+
+        -- Indexes
+        CREATE INDEX IF NOT EXISTS idx_shortlinks_code ON shortlinks(short_code);
+        CREATE INDEX IF NOT EXISTS idx_shortlink_clicks_link_id ON shortlink_clicks(shortlink_id);
+      `);
+
       // ── Seed default booking categories ──────────────────────────
       const { rows: catRows } = await pool.query('SELECT COUNT(*) AS cnt FROM booking_categories');
       if (parseInt(catRows[0].cnt, 10) === 0) {

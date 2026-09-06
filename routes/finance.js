@@ -307,7 +307,7 @@ router.get('/export', auth, async (req, res) => {
 router.delete('/payments/:id', auth, async (req, res) => {
   try {
     const { rows } = await db.query(
-      `DELETE FROM payments WHERE id = $1 RETURNING id, booking_id, client_phone`,
+      `DELETE FROM payments WHERE id = $1 RETURNING id`,
       [req.params.id]
     );
     if (!rows[0]) return res.status(404).json({ error: 'Pembayaran tidak ditemukan' });

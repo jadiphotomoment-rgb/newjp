@@ -41,6 +41,7 @@ app.use('/api/booking-categories',   require('./routes/bookings'));  // alias pu
 app.use('/api/admin/categories',     require('./routes/categories'));
 app.use('/api/finance',              require('./routes/finance'));
 app.use('/api/google',               require('./routes/google'));
+app.use('/api/shortlinks',           require('./routes/shortlinks'));
 
 // ── Page Routes ──────────────────────────────────────────────
 // Root → redirect to admin login
@@ -71,6 +72,35 @@ app.get('/s/:slug', async (req, res) => {
     res.redirect(`/gallery?session=${rows[0].uuid}`);
   } catch (err) {
     console.error('[shortlink] error:', err);
+    res.status(500).send('<h1>Server Error</h1>');
+  }
+});
+
+// ── General Short Link redirect: /l/:code ────────────────────
+app.get('/l/:code', async (req, res) => {
+  try {
+    const db = require('./database');
+    const { rows } = await db.query(
+      'SELECT id, original_url FROM shortlinks WHERE short_code = $1',
+      [req.params.code]
+    );
+    if (!rows[0]) return res.status(404).send('<h1>Link tidak ditemukan</h1>');
+    
+    // Redirect immediately
+    res.redirect(rows[0].original_url);
+
+    // Track click asynchronously
+    const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+    const userAgent = req.headers['user-agent'] || '';
+    const referrer = req.headers.referer || req.headers.referrer || '';
+    
+    db.query(
+      'INSERT INTO shortlink_clicks (shortlink_id, ip_address, user_agent, referrer) VALUES ($1, $2, $3, $4)',
+      [rows[0].id, ip, userAgent, referrer]
+    ).catch(err => console.error('[shortlink tracking error]:', err));
+
+  } catch (err) {
+    console.error('[shortlink /l/:code] error:', err);
     res.status(500).send('<h1>Server Error</h1>');
   }
 });

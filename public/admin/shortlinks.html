@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Shortlink — Jadiphoto.Moment Admin</title>
+  <meta name="robots" content="noindex, nofollow">
+  
+  <style>
+    @layer base {
+      html, body { margin: 0; padding: 0; }
+      body { overscroll-behavior: none; }
+    }
+    ::-webkit-scrollbar { display: none; }
+    .hidden { display: none !important; }
+    
+    .spinner {
+      border: 3px solid rgba(0,0,0,0.1);
+      border-left-color: var(--primary, #6366f1);
+      border-radius: 50%;
+      width: 24px;
+      height: 24px;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+  </style>
+  <link href="/css/style.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/style.css?v=3">
+  <link rel="stylesheet" href="/css/admin-theme.css?v=1">
+  <script src="/js/theme.js?v=3"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  
+  <style>
+    html.light body { background-color: #f8f9ff !important; color: #0b1c30 !important; }
+    .admin-layout, .admin-main, .admin-nav { display: block; all: unset; }
+
+    /* Forms */
+    .form-group { display: flex; flex-direction: column; margin-bottom: 16px; }
+    .form-group label {
+      font-size: 12px; font-weight: 600; color: var(--color-on-surface-variant, #9ca4c0);
+      margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.04em;
+    }
+    .form-group input {
+      border: 1px solid var(--color-outline-variant, rgba(255, 255, 255, 0.12));
+      border-radius: 8px; padding: 10px 12px; color: var(--color-on-surface, #d4daf2);
+      background: var(--color-surface-container-low, #1e2538); font-size: 14px;
+      transition: border-color 0.15s; outline: none;
+    }
+    .form-group input:focus { border-color: #818cf8; box-shadow: 0 0 0 3px rgba(99,102,241,0.15); }
+    html.light .form-group input { background: #fff; border-color: #c7c4d7; color: #0b1c30; }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      padding: 9px 18px; border-radius: 9px; font-size: 14px; font-weight: 600;
+      transition: all 0.15s; cursor: pointer; border: none;
+    }
+    .btn-sm { padding: 6px 12px; font-size: 12px; }
+    .btn-primary { background: #6366f1; color: #fff; }
+    .btn-primary:hover { background: #4f46e5; }
+    .btn-danger { background: #ef4444; color: #fff; }
+    .btn-danger:hover { background: #dc2626; }
+    .btn-icon { padding: 8px; border-radius: 9999px; }
+
+    /* Modals */
+    .modal {
+      background: var(--color-surface-container-lowest, #1a2030);
+      width: 100%; max-width: 560px; border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+      display: flex; flex-direction: column; overflow: hidden; max-height: 90vh;
+    }
+    .modal-header {
+      padding: 20px 24px; border-bottom: 1px solid var(--color-outline-variant, rgba(255, 255, 255, 0.10));
+      display: flex; justify-content: space-between; align-items: center;
+      background: var(--color-surface-container-low, #1e2538);
+    }
+    .modal-header h3 { font-size: 1.05rem; font-weight: 700; color: var(--color-on-surface, #d4daf2); margin: 0; }
+    .modal-body { padding: 24px; overflow-y: auto; }
+    .modal-footer {
+      padding: 16px 24px; border-top: 1px solid var(--color-outline-variant, rgba(255, 255, 255, 0.10));
+      display: flex; justify-content: flex-end; gap: 12px;
+      background: var(--color-surface-container-low, #1e2538);
+    }
+
+    /* Tables */
+    table { width: 100%; text-align: left; border-collapse: collapse; }
+    th {
+      font-size: 11px; font-weight: 700; color: var(--color-on-surface-variant, #9ca4c0);
+      text-transform: uppercase; letter-spacing: 0.06em; padding: 12px 16px;
+      border-bottom: 1px solid var(--color-outline-variant, rgba(255, 255, 255, 0.08));
+      background: var(--color-surface-container-low, #1e2538);
+    }
+    td {
+      padding: 14px 16px; border-bottom: 1px solid var(--color-outline-variant, rgba(255, 255, 255, 0.06));
+      font-size: 13.5px; vertical-align: middle; color: var(--color-on-surface, #d4daf2);
+    }
+    tr:last-child td { border: none; }
+    tr:hover td { background: rgba(129, 140, 248, 0.04); }
+    
+    html.light th { background: #eff4ff; color: #464554; border-color: #c7c4d7; }
+    html.light td { border-color: rgba(0,0,0,0.06); color: #0b1c30; }
+    html.light tr:hover td { background: rgba(99,102,241,0.04); }
+  </style>
+</head>
+
+<body class="bg-background font-body-md text-on-background">
+  <!-- Sidebar -->
+  <aside class="fixed left-0 top-0 h-full w-72 bg-surface-container-lowest border-r border-outline-variant/30 z-50 flex flex-col transition-transform duration-300 transform -translate-x-full md:translate-x-0" id="sidebar">
+    <div class="p-lg flex items-center justify-between gap-sm mb-md border-b border-outline-variant/20 pb-4">
+      <div class="flex items-center gap-2">
+        <img src="/img/Logo warna.webp" alt="Jadiphoto.Moment" class="h-8 w-auto object-contain" />
+      </div>
+      <button class="md:hidden text-on-surface-variant" onclick="document.getElementById('sidebar').classList.add('-translate-x-full')">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+
+    <div class="px-md mb-6">
+      <div class="bg-surface-container rounded-lg p-3 flex items-center gap-3">
+        <div class="w-8 h-8 rounded-full bg-primary/20 text-primary flex items-center justify-center font-bold">A</div>
+        <div class="flex flex-col">
+          <span class="font-label-sm text-xs text-on-surface-variant">Welcome back,</span>
+          <span class="font-label-md text-on-surface" id="nav-username">Admin</span>
+        </div>
+      </div>
+    </div>
+
+    <nav class="flex-1 px-md space-y-2">
+      <a href="/admin/dashboard.html" class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all">
+        <span class="material-symbols-outlined">dashboard</span>
+        <span class="font-label-md">Dashboard</span>
+      </a>
+      <a href="/admin/bookings.html" class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all">
+        <span class="material-symbols-outlined">calendar_today</span>
+        <span class="font-label-md">Booking</span>
+      </a>
+      <a href="/admin/sessions.html" class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all">
+        <span class="material-symbols-outlined">add_a_photo</span>
+        <span class="font-label-md">Sesi Sortir</span>
+      </a>
+      <a href="/admin/finance.html" class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all">
+        <span class="material-symbols-outlined">payments</span>
+        <span class="font-label-md">Keuangan</span>
+      </a>
+      <a href="/admin/categories.html" class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all">
+        <span class="material-symbols-outlined">category</span>
+        <span class="font-label-md">Kategori</span>
+      </a>
+      <a href="/admin/shortlinks.html" class="flex items-center gap-3 px-4 py-3 rounded-lg transition-all bg-primary/10 text-primary font-semibold" aria-current="page">
+        <span class="material-symbols-outlined">link</span>
+        <span class="font-label-md">Shortlink</span>
+      </a>
+    </nav>
+    <div class="p-lg border-t border-outline-variant/30 flex flex-col gap-2">
+      <button class="flex items-center gap-3 px-4 py-3 rounded-lg text-error hover:bg-error/10 transition-all text-left mt-2" id="btn-logout">
+        <span class="material-symbols-outlined">logout</span>
+        <span class="font-label-md">Keluar</span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- Main Content Wrapper -->
+  <div class="md:pl-72 flex flex-col min-h-screen">
+    <!-- Top Header -->
+    <header class="sticky top-0 h-16 bg-surface-container-lowest/80 backdrop-blur-xl border-b border-outline-variant/20 z-40 flex items-center justify-between px-4 lg:px-8">
+      <div class="flex items-center gap-4">
+        <button class="md:hidden text-on-surface-variant flex items-center" onclick="document.getElementById('sidebar').classList.remove('-translate-x-full')">
+          <span class="material-symbols-outlined">menu</span>
+        </button>
+        <h1 class="font-headline-md text-on-surface hidden sm:block">Shortlink Manager</h1>
+      </div>
+      <div class="flex items-center gap-4">
+        <button class="btn btn-icon text-on-surface-variant hover:bg-surface-container transition-all" onclick="toggleTheme()" aria-label="Ganti tema">
+          <span class="material-symbols-outlined" data-theme-icon>light_mode</span>
+        </button>
+      </div>
+    </header>
+
+    <main class="flex-1 p-4 lg:p-8 flex flex-col gap-6" role="main">
+      <!-- Create Shortlink Section -->
+      <div class="bg-surface-container-lowest rounded-xl border border-outline-variant/30 p-6 shadow-md">
+        <h2 class="font-headline-md text-on-surface mb-4">Buat Shortlink Baru</h2>
+        <form id="form-create-shortlink" class="flex flex-col sm:flex-row gap-4 items-end">
+          <div class="form-group flex-[2] mb-0">
+            <label for="original_url">URL Asli (Tujuan)</label>
+            <input type="url" id="original_url" placeholder="https://example.com/promo" required>
+          </div>
+          <div class="form-group flex-1 mb-0">
+            <label for="custom_code">Custom Alias (Opsional)</label>
+            <input type="text" id="custom_code" placeholder="promo-26" pattern="[a-zA-Z0-9-_]+">
+          </div>
+          <button type="submit" class="btn btn-primary h-[42px]" id="btn-create">
+            <span class="material-symbols-outlined text-[20px]">add_link</span>
+            Buat Link
+          </button>
+        </form>
+        <div id="create-result" class="hidden mt-4 p-4 rounded-lg bg-primary/10 border border-primary/20 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div>
+            <p class="font-label-sm text-on-surface-variant mb-1">Link berhasil dibuat!</p>
+            <a href="#" id="result-link" target="_blank" class="font-body-lg font-semibold text-primary hover:underline break-all"></a>
+          </div>
+          <button id="btn-copy-result" class="btn btn-sm btn-outline border-primary/30 text-primary hover:bg-primary/20 shrink-0">
+            <span class="material-symbols-outlined text-[18px]">content_copy</span> Copy
+          </button>
+        </div>
+      </div>
+
+      <!-- Shortlinks List -->
+      <div class="bg-surface-container-lowest rounded-xl border border-outline-variant/30 shadow-md overflow-hidden flex flex-col">
+        <div class="p-6 border-b border-outline-variant/30 flex items-center justify-between bg-surface-bright">
+          <h2 class="font-headline-md text-on-surface">Daftar Shortlink</h2>
+        </div>
+        <div class="overflow-x-auto">
+          <table id="shortlinks-table">
+            <thead>
+              <tr>
+                <th>Shortlink</th>
+                <th>URL Asli</th>
+                <th>Tgl Dibuat</th>
+                <th class="text-center">Klik</th>
+                <th class="text-right">Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="shortlinks-tbody">
+              <tr><td colspan="5" class="text-center py-8">Memuat data...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Modal Edit Shortlink -->
+  <div class="modal-backdrop" id="modal-edit-link" role="dialog" aria-modal="true">
+    <div class="modal max-w-md">
+      <div class="modal-header">
+        <h3>Edit Shortlink</h3>
+        <button class="btn btn-icon border-none hover:bg-surface-container text-on-surface-variant" onclick="closeModal('modal-edit-link')">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+      <form class="modal-body" id="form-edit-link">
+        <input type="hidden" id="edit-id">
+        <div class="form-group">
+          <label for="edit-original-url">URL Asli (Tujuan)</label>
+          <input type="url" id="edit-original-url" required>
+        </div>
+        <div class="form-group">
+          <label for="edit-short-code">Short Code / Alias</label>
+          <input type="text" id="edit-short-code" required pattern="[a-zA-Z0-9-_]+">
+        </div>
+        <div class="modal-footer mt-4 -mx-6 -mb-6 bg-surface-container-low px-6 py-4">
+          <button type="button" class="btn btn-outline border-none" onclick="closeModal('modal-edit-link')">Batal</button>
+          <button type="submit" class="btn btn-primary" id="btn-save-edit">Simpan</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal Analitik Detail -->
+  <div class="modal-backdrop" id="modal-stats" role="dialog" aria-modal="true">
+    <div class="modal max-w-3xl">
+      <div class="modal-header">
+        <h3 id="stats-title">Analitik Detail</h3>
+        <button class="btn btn-icon border-none hover:bg-surface-container text-on-surface-variant" onclick="closeModal('modal-stats')">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+      <div class="modal-body space-y-6">
+        <div>
+          <h4 class="font-label-md text-on-surface-variant mb-4">Trend Klik (7 Hari)</h4>
+          <div class="relative h-64 w-full">
+            <canvas id="clicksChart"></canvas>
+          </div>
+        </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <h4 class="font-label-md text-on-surface-variant mb-2">Top Referrers</h4>
+            <div class="bg-surface-container-low rounded-lg p-4 max-h-48 overflow-y-auto">
+              <ul id="stats-referrers" class="space-y-2 text-sm"></ul>
+            </div>
+          </div>
+          <div>
+            <h4 class="font-label-md text-on-surface-variant mb-2">Perangkat</h4>
+            <div class="bg-surface-container-low rounded-lg p-4 max-h-48 overflow-y-auto">
+              <ul id="stats-devices" class="space-y-2 text-sm"></ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast-container" role="status" aria-live="polite" class="fixed bottom-4 right-4 z-[200] flex flex-col gap-2"></div>
+  <script src="/js/admin-shortlinks.js?v=2" defer></script>
+</body>
+</html>
