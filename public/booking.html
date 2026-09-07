@@ -172,53 +172,76 @@
 
     /* ========== TIX ID Style Components ========== */
 
-    /* Date Pill Row */
-    .date-picker-wrap {
-      margin-bottom: var(--sp-5);
-    }
+    /* Calendar Modal UI */
+    .date-picker-wrap { margin-bottom: var(--sp-5); }
     .date-picker-label {
       font-size: 0.72rem; font-weight: 700; text-transform: uppercase;
-      letter-spacing: 0.08em; color: var(--text-3);
-      margin-bottom: var(--sp-3);
+      letter-spacing: 0.08em; color: var(--text-3); margin-bottom: var(--sp-3);
     }
-    .date-pill-row {
-      display: flex; gap: var(--sp-2); overflow-x: auto;
-      padding-bottom: var(--sp-2); scrollbar-width: none;
+    .btn-open-calendar {
+      width: 100%; display: flex; align-items: center; justify-content: space-between;
+      padding: 16px; background: var(--bg-2); border: 2px solid var(--border);
+      border-radius: var(--r-lg); cursor: pointer; text-align: left;
+      font-family: 'Outfit', sans-serif; font-size: 1rem; font-weight: 600;
+      color: var(--text-0); transition: all 0.2s;
     }
-    .date-pill-row::-webkit-scrollbar { display: none; }
-    .date-pill {
-      flex-shrink: 0;
-      display: flex; flex-direction: column; align-items: center;
-      padding: var(--sp-3) var(--sp-4);
-      border-radius: var(--r-lg); border: 2px solid var(--border);
-      cursor: pointer; background: var(--bg-2);
-      min-width: 64px;
-      transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
-      user-select: none;
+    .btn-open-calendar:hover { border-color: var(--cat-color, var(--purple)); background: var(--bg-card); }
+    
+    .calendar-modal-overlay {
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.5); backdrop-filter: blur(4px);
+      z-index: 999; display: flex; align-items: flex-end; justify-content: center;
+      opacity: 0; pointer-events: none; transition: opacity 0.3s;
     }
-    .date-pill:hover:not(.disabled) {
-      border-color: var(--cat-color, var(--purple));
-      transform: translateY(-2px);
-      background: var(--bg-card);
+    .calendar-modal-overlay.show { opacity: 1; pointer-events: auto; }
+    .calendar-modal {
+      background: var(--bg-card); width: 100%; max-width: 500px;
+      border-radius: 24px 24px 0 0; padding: var(--sp-6) var(--sp-5);
+      transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+      max-height: 90vh; overflow-y: auto; display: flex; flex-direction: column;
     }
-    .date-pill.active {
-      border-color: var(--cat-color, var(--purple));
-      background: color-mix(in srgb, var(--cat-color, var(--purple)) 12%, transparent);
-      box-shadow: 0 0 0 3px color-mix(in srgb, var(--cat-color, var(--purple)) 20%, transparent);
-      transform: translateY(-2px);
+    .calendar-modal-overlay.show .calendar-modal { transform: translateY(0); }
+    @media (min-width: 520px) {
+      .calendar-modal-overlay { align-items: center; }
+      .calendar-modal { border-radius: var(--r-xl); max-height: 85vh; }
     }
-    .date-pill.disabled { opacity: 0.4; cursor: not-allowed; }
-    .date-pill-day {
-      font-size: 0.68rem; font-weight: 600; color: var(--text-3);
-      text-transform: uppercase; letter-spacing: 0.05em;
+    .calendar-modal-header {
+      display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--sp-5);
     }
-    .date-pill-date {
-      font-family: 'Outfit', sans-serif; font-size: 1.25rem; font-weight: 800;
-      color: var(--text-0); line-height: 1;
+    .calendar-modal-title { font-family: 'Outfit', sans-serif; font-size: 1.2rem; font-weight: 800; }
+    .btn-close-modal {
+      background: var(--bg-2); border: none; width: 32px; height: 32px;
+      border-radius: 50%; display: flex; align-items: center; justify-content: center;
+      cursor: pointer; font-size: 1.2rem; color: var(--text-2);
     }
-    .date-pill.active .date-pill-day,
-    .date-pill.active .date-pill-date { color: var(--cat-color, var(--purple)); }
-    .date-pill-month { font-size: 0.65rem; color: var(--text-3); }
+    .calendar-nav { display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--sp-4); }
+    .calendar-nav button {
+      background: var(--bg-2); border: 1px solid var(--border);
+      border-radius: var(--r-md); padding: 4px 12px; cursor: pointer;
+      font-weight: 600; color: var(--text-1);
+    }
+    .calendar-month-year { font-weight: 700; font-size: 1rem; color: var(--text-0); }
+    .calendar-grid {
+      display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px;
+      text-align: center; margin-bottom: var(--sp-4);
+    }
+    .calendar-day-header {
+      font-size: 0.72rem; font-weight: 700; color: var(--text-3);
+      padding-bottom: 8px; text-transform: uppercase;
+    }
+    .calendar-date {
+      aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
+      font-weight: 600; font-size: 0.9rem; border-radius: 50%;
+      cursor: pointer; color: var(--text-0); border: 2px solid transparent;
+      transition: all 0.2s;
+    }
+    .calendar-date:hover:not(.disabled):not(.empty) { background: var(--bg-2); border-color: var(--border); }
+    .calendar-date.active {
+      background: var(--cat-color, var(--purple)); color: #fff;
+      box-shadow: 0 4px 12px color-mix(in srgb, var(--cat-color, var(--purple)) 30%, transparent);
+    }
+    .calendar-date.disabled { opacity: 0.3; cursor: not-allowed; }
+    .calendar-date.empty { cursor: default; }
 
     /* Slot Time Grid */
     .slot-section {
@@ -494,22 +517,13 @@
         <div class="form-section" id="schedule-section">
           <div class="form-section-title">Pilih Tanggal &amp; Sesi</div>
 
-          <!-- Date Pill Row -->
+          <!-- Date Trigger -->
           <div class="date-picker-wrap">
-            <div class="date-picker-label">📅 Pilih Tanggal</div>
-            <div class="date-pill-row" id="date-pill-row" aria-label="Pilih tanggal acara"></div>
-          </div>
-
-          <!-- Slot Time Grid (appears after date selection) -->
-          <div class="slot-section" id="slot-section" style="display:none;">
-            <div class="date-picker-label">🕐 Pilih Sesi Waktu</div>
-            <div id="slot-content">
-              <div class="slot-loading">
-                <div class="spinner" style="width:16px;height:16px;border-width:2px;"></div>
-                <span>Mengecek ketersediaan sesi...</span>
-              </div>
-            </div>
-            <div class="alert alert-info" id="slot-hint" style="font-size:0.78rem; margin-top:var(--sp-3); display:none;"></div>
+            <div class="date-picker-label">📅 Pilih Tanggal &amp; Sesi</div>
+            <button type="button" class="btn-open-calendar" id="btn-open-calendar" onclick="openCalendarModal()">
+              <span id="calendar-trigger-text">Belum memilih tanggal</span>
+              <span class="icon" aria-hidden="true">📅</span>
+            </button>
           </div>
 
           <!-- Location -->
@@ -615,6 +629,45 @@
         <span class="sticky-chip-value" id="sticky-time">—</span>
       </div>
       <div class="sticky-chip-dp" id="sticky-dp" style="display:none;"></div>
+    </div>
+  </div>  <!-- Calendar Modal -->
+  <div class="calendar-modal-overlay" id="calendar-modal-overlay">
+    <div class="calendar-modal">
+      <div class="calendar-modal-header">
+        <div class="calendar-modal-title">Pilih Tanggal &amp; Sesi</div>
+        <button class="btn-close-modal" onclick="closeCalendarModal()">&times;</button>
+      </div>
+      
+      <div class="calendar-nav">
+        <button type="button" onclick="prevMonth()">&larr; Prev</button>
+        <div class="calendar-month-year" id="calendar-month-year">Bulan Tahun</div>
+        <button type="button" onclick="nextMonth()">Next &rarr;</button>
+      </div>
+      
+      <div class="calendar-grid">
+        <div class="calendar-day-header">Sen</div>
+        <div class="calendar-day-header">Sel</div>
+        <div class="calendar-day-header">Rab</div>
+        <div class="calendar-day-header">Kam</div>
+        <div class="calendar-day-header">Jum</div>
+        <div class="calendar-day-header">Sab</div>
+        <div class="calendar-day-header">Min</div>
+      </div>
+      <div class="calendar-grid" id="calendar-grid-days">
+        <!-- Days generated by JS -->
+      </div>
+      
+      <!-- Slot Time Grid (appears after date selection in modal) -->
+      <div class="slot-section" id="slot-section" style="display:none; margin-top: var(--sp-4);">
+        <div class="date-picker-label">🕐 Pilih Sesi Waktu</div>
+        <div id="slot-content">
+          <div class="slot-loading">
+            <div class="spinner" style="width:16px;height:16px;border-width:2px;"></div>
+            <span>Mengecek ketersediaan sesi...</span>
+          </div>
+        </div>
+        <div class="alert alert-info" id="slot-hint" style="font-size:0.78rem; margin-top:var(--sp-3); display:none;"></div>
+      </div>
     </div>
   </div>
 
@@ -723,7 +776,7 @@
 
       renderDynamicFields(selectedCat.fields || []);
       renderPackages(selectedCat);
-      renderDatePills();
+      updateTriggerDisplay();
 
       // Reset slot section
       document.getElementById('slot-section').style.display = 'none';
@@ -737,38 +790,72 @@
       }, 100);
     }
 
-    /* ── TIX-style: Date Pills ── */
-    function renderDatePills() {
-      const row = document.getElementById('date-pill-row');
+    /* ── TIX-style: Calendar Modal ── */
+    let currentCalendarDate = new Date();
+    currentCalendarDate.setDate(1);
+
+    function openCalendarModal() {
+      document.getElementById('calendar-modal-overlay').classList.add('show');
+      renderCalendarMonth(currentCalendarDate.getFullYear(), currentCalendarDate.getMonth());
+    }
+
+    function closeCalendarModal() {
+      document.getElementById('calendar-modal-overlay').classList.remove('show');
+    }
+
+    function prevMonth() {
+      currentCalendarDate.setMonth(currentCalendarDate.getMonth() - 1);
+      renderCalendarMonth(currentCalendarDate.getFullYear(), currentCalendarDate.getMonth());
+      document.getElementById('slot-section').style.display = 'none';
+    }
+
+    function nextMonth() {
+      currentCalendarDate.setMonth(currentCalendarDate.getMonth() + 1);
+      renderCalendarMonth(currentCalendarDate.getFullYear(), currentCalendarDate.getMonth());
+      document.getElementById('slot-section').style.display = 'none';
+    }
+
+    function renderCalendarMonth(year, month) {
+      document.getElementById('calendar-month-year').textContent = `${MONTH_NAMES[month]} ${year}`;
+      const grid = document.getElementById('calendar-grid-days');
+      
+      const firstDay = new Date(year, month, 1).getDay();
+      const daysInMonth = new Date(year, month + 1, 0).getDate();
+      
+      // Adjust firstDay (0 is Sunday, we want 1=Sen, ..., 7=Min)
+      let startDayOffset = firstDay === 0 ? 6 : firstDay - 1;
+      
       const today = new Date();
       today.setHours(0,0,0,0);
-      const pills = [];
-      for (let i = 0; i < 14; i++) {
-        const d = new Date(today);
-        d.setDate(today.getDate() + i);
-        const dateStr = d.toISOString().slice(0, 10);
-        const dayName = DAY_NAMES[d.getDay()];
-        const dateNum = d.getDate();
-        const monthStr = MONTH_NAMES[d.getMonth()];
-        const isActive = dateStr === selectedDate;
-        pills.push(`
-          <div class="date-pill ${isActive ? 'active' : ''}" 
-               onclick="selectDate('${dateStr}')"
-               role="button" tabindex="0"
-               aria-label="${dayName} ${dateNum} ${monthStr}"
-               aria-pressed="${isActive}">
-            <div class="date-pill-day">${dayName}</div>
-            <div class="date-pill-date">${dateNum}</div>
-            <div class="date-pill-month">${monthStr}</div>
-          </div>`);
+      
+      let html = '';
+      
+      for (let i = 0; i < startDayOffset; i++) {
+        html += `<div class="calendar-date empty"></div>`;
       }
-      row.innerHTML = pills.join('');
-      row.querySelectorAll('.date-pill').forEach(pill => {
-        pill.addEventListener('keydown', e => {
-          const dateStr = pill.getAttribute('onclick').match(/'(.+)'/)?.[1];
-          if ((e.key === 'Enter' || e.key === ' ') && dateStr) selectDate(dateStr);
-        });
-      });
+      
+      for (let day = 1; day <= daysInMonth; day++) {
+        // Build YYYY-MM-DD
+        const monthStr = String(month + 1).padStart(2, '0');
+        const dayStr = String(day).padStart(2, '0');
+        const dateStr = `${year}-${monthStr}-${dayStr}`;
+        const d = new Date(year, month, day);
+        
+        const isPast = d < today;
+        const isActive = dateStr === selectedDate;
+        
+        let cls = 'calendar-date';
+        if (isPast) cls += ' disabled';
+        if (isActive) cls += ' active';
+        
+        html += `
+          <div class="${cls}" 
+               ${!isPast ? `onclick="selectDate('${dateStr}')"` : ''}
+               role="${!isPast ? 'button' : 'presentation'}" tabindex="${!isPast ? '0' : '-1'}">
+            ${day}
+          </div>`;
+      }
+      grid.innerHTML = html;
     }
 
     /* ── TIX-style: Select Date ── */
@@ -777,12 +864,8 @@
       selectedDate = dateStr;
       selectedTime = null;
 
-      // Update pill active state
-      document.querySelectorAll('.date-pill').forEach(p => p.classList.remove('active'));
-      const clickedPills = document.querySelectorAll('.date-pill');
-      clickedPills.forEach(p => {
-        if (p.getAttribute('onclick')?.includes(dateStr)) p.classList.add('active');
-      });
+      // Update calendar active state
+      renderCalendarMonth(currentCalendarDate.getFullYear(), currentCalendarDate.getMonth());
 
       // Show slot section + loading
       const slotSection = document.getElementById('slot-section');
@@ -876,11 +959,30 @@
       // Re-render grid to update active state
       renderSlotGrid(currentSlots);
       updateStickySummary();
+      updateTriggerDisplay();
+      closeCalendarModal();
     }
 
     function selectFreeTime(time) {
       selectedTime = time || null;
       updateStickySummary();
+      if (selectedTime) {
+        updateTriggerDisplay();
+        closeCalendarModal();
+      }
+    }
+
+    function updateTriggerDisplay() {
+      if (selectedDate && selectedTime) {
+        const d = new Date(selectedDate);
+        const dayName = DAY_NAMES[d.getDay()];
+        const dateNum = d.getDate();
+        const monthStr = MONTH_NAMES[d.getMonth()];
+        const year = d.getFullYear();
+        document.getElementById('calendar-trigger-text').innerHTML = `<strong>${dayName}, ${dateNum} ${monthStr} ${year}</strong> &bull; ${selectedTime}`;
+      } else {
+        document.getElementById('calendar-trigger-text').textContent = 'Belum memilih tanggal';
+      }
     }
 
     /* ── Premium Package Stack ── */
