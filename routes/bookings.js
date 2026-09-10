@@ -8,6 +8,15 @@ const https    = require('https');
 const { buildTemplateMsg } = require('../utils/template');
 const { google } = require('googleapis');
 
+// ── Helper to safely extract YYYY-MM-DD from node-postgres DATE ──
+function getLocalDateString(d) {
+  if (!d) return null;
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+}
+
 // ── WhatsApp sender (reuse logic from notify.js) ─────────────────
 function sendWhatsApp(target, message) {
   return new Promise((resolve) => {
@@ -502,7 +511,7 @@ router.put('/admin/:id', auth, async (req, res) => {
     }
 
     // If confirmed & date/time changed, check for slot conflicts
-    const dateChanged = event_date !== (booking.event_date ? booking.event_date.toISOString().slice(0,10) : null);
+    const dateChanged = event_date !== (booking.event_date ? getLocalDateString(booking.event_date) : null);
     const timeChanged = event_time !== booking.event_time;
     if (booking.status === 'confirmed' && (dateChanged || timeChanged) && event_date) {
       const conflictRes = await db.query(
@@ -766,7 +775,7 @@ router.get('/admin/calendar', auth, async (req, res) => {
     // Format untuk FullCalendar
     const STATUS_ALPHA = { confirmed: 'ff', dp_review: 'cc', completed: 'aa', pending_dp: '66' };
     const events = rows.map(r => {
-      const dateStr = r.event_date.toISOString().slice(0, 10);
+      const dateStr = getLocalDateString(r.event_date);
       const baseColor = r.color || '#7c6dfa';
       // dim non-confirmed events
       const alpha = STATUS_ALPHA[r.status] || 'aa';
@@ -848,7 +857,7 @@ router.post('/admin/:id/sync-calendar', auth, async (req, res) => {
     
     // Siapkan data event
     // Format Waktu: event_date + event_time
-    const dateStr = booking.event_date.toISOString().slice(0, 10);
+    const dateStr = getLocalDateString(booking.event_date);
     const timeStr = booking.event_time || '09:00:00';
     const startDateTime = new Date(`${dateStr}T${timeStr}+07:00`);
     

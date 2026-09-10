@@ -1166,7 +1166,16 @@
           <input type="text" data-fd-key="${k}" value="${v}">
         </div>
       `).join('');
-      const eventDateVal = b.event_date ? new Date(b.event_date).toISOString().slice(0, 10) : '';
+      let eventDateVal = '';
+      if (b.event_date) {
+        const dt = new Date(b.event_date);
+        if (!isNaN(dt)) {
+          const yyyy = dt.getFullYear();
+          const mm = String(dt.getMonth() + 1).padStart(2, '0');
+          const dd = String(dt.getDate()).padStart(2, '0');
+          eventDateVal = `${yyyy}-${mm}-${dd}`;
+        }
+      }
       const eventTimeVal = b.event_time ? b.event_time.slice(0, 5) : '';
       document.getElementById('panel-body').innerHTML = `
         <div class="edit-form">
