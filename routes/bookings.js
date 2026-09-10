@@ -922,14 +922,24 @@ router.post('/admin/:id/sync-calendar', auth, async (req, res) => {
   } catch (err) {
     console.error('[bookings] sync-calendar error:', err);
     let errorMessage = 'Gagal sinkronisasi dengan Google Calendar';
+    let isInvalidGrant = (err.message && err.message.includes('invalid_grant'));
+    
     if (err.response && err.response.data && err.response.data.error) {
-       errorMessage = err.response.data.error.message;
-       if(err.code === 401 || err.code === 403) {
-         errorMessage = 'Akses ditolak atau token kadaluarsa. Silakan hubungkan ulang akun Google Calendar Anda.';
-         // Jika invalid_grant atau auth issue, hapus token agar user bisa reconnect
-         if (err.message && err.message.includes('invalid_grant')) {
-           await db.query('DELETE FROM google_oauth_tokens WHERE admin_id = $1', [req.admin.adminId]).catch(e => console.error(e));
-         }
+       if (typeof err.response.data.error === 'string') {
+         errorMessage = err.response.data.error_description || err.response.data.error;
+         if (err.response.data.error === 'invalid_grant') isInvalidGrant = true;
+       } else if (err.response.data.error.message) {
+         errorMessage = err.response.data.error.message;
+       }
+    }
+
+    errorMessage = errorMessage || 'Gagal sinkronisasi dengan Google Calendar';
+    const statusCode = parseInt(err.code || (err.response && err.response.status), 10);
+
+    if (statusCode === 401 || statusCode === 403 || isInvalidGrant) {
+       errorMessage = 'Akses ditolak atau token kadaluarsa. Silakan hubungkan ulang akun Google Calendar Anda.';
+       if (isInvalidGrant) {
+         await db.query('DELETE FROM google_oauth_tokens WHERE admin_id = $1', [req.admin.adminId]).catch(e => console.error(e));
        }
     }
 
