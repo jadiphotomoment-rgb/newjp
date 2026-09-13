@@ -6,7 +6,8 @@ const db       = require('../database');
 const auth     = require('../middleware/auth');
 const https    = require('https');
 const { buildTemplateMsg } = require('../utils/template');
-const { google } = require('googleapis');
+const { google }           = require('googleapis');
+const { getAuthenticatedClient } = require('../utils/googleAuth');
 
 // ── Helper to safely extract YYYY-MM-DD from node-postgres DATE ──
 function getLocalDateString(d) {
@@ -816,31 +817,22 @@ router.post('/admin/:id/sync-calendar', auth, async (req, res) => {
     }
     const tokenData = tokenRes.rows[0];
 
-    const oauth2Client = new google.auth.OAuth2(
-      process.env.GOOGLE_CLIENT_ID,
-      process.env.GOOGLE_CLIENT_SECRET,
-      process.env.GOOGLE_REDIRECT_URI || 'http://localhost:3000/api/google/callback'
-    );
-    oauth2Client.setCredentials({
-      access_token: tokenData.access_token,
-      refresh_token: tokenData.refresh_token,
-      expiry_date: new Date(tokenData.expires_at).getTime()
-    });
-
-    // Handle token refresh otomatis
-    oauth2Client.on('tokens', async (tokens) => {
-      if (tokens.refresh_token) {
-        await db.query(
-          'UPDATE google_oauth_tokens SET access_token = $1, refresh_token = $2, expires_at = $3 WHERE admin_id = $4',
-          [tokens.access_token, tokens.refresh_token, new Date(tokens.expiry_date), req.admin.adminId]
-        );
-      } else {
-        await db.query(
-          'UPDATE google_oauth_tokens SET access_token = $1, expires_at = $2 WHERE admin_id = $3',
-          [tokens.access_token, new Date(tokens.expiry_date), req.admin.adminId]
-        );
+    // Gunakan helper terpusat: proactive refresh + auto-save token baru
+    let oauth2Client;
+    try {
+      oauth2Client = await getAuthenticatedClient(tokenData, db, req.admin.adminId);
+    } catch (authErr) {
+      const isInvalidGrant =
+        (authErr.message && authErr.message.includes('invalid_grant')) ||
+        (authErr.response && authErr.response.data && authErr.response.data.error === 'invalid_grant');
+      if (isInvalidGrant) {
+        return res.status(401).json({
+          error: 'Sesi Google kadaluarsa. Silakan hubungkan ulang akun Google Calendar Anda.',
+          requireReconnect: true,
+        });
       }
-    });
+      throw authErr;
+    }
 
     // 2. Ambil data booking
     const bookRes = await db.query(
