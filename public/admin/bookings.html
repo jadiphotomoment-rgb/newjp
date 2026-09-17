@@ -1077,13 +1077,17 @@
             <span class="font-bold text-on-surface">${fmtMoney(p.amount)}</span>
             <span class="badge badge-${p.status === 'approved' ? 'completed' : p.status === 'rejected' ? 'cancelled' : 'pending_dp'}">${p.status}</span>
           </div>
-          ${p.proof_url ? `
+          ${p.proof_url ? (() => {
+            const secureUrl = '/api/upload/private/payments/' + p.id + '?token=' + (window.TOKEN || localStorage.getItem('sf_token'));
+            const isPdf = (p.proof_filename || p.proof_url).endsWith('.pdf');
+            return `
             <div class="rounded-lg overflow-hidden border border-outline-variant/30 bg-black/5 flex flex-col">
-              ${p.proof_url.endsWith('.pdf')
-            ? `<a href="${p.proof_url}" target="_blank" class="p-3 text-center text-primary font-semibold text-sm hover:bg-black/5">📄 Buka Bukti PDF</a>`
-            : `<img src="${p.proof_url}" alt="Bukti" class="w-full max-h-[200px] object-contain bg-black/10">
-                   <a href="${p.proof_url}" target="_blank" class="p-2 text-center text-primary font-semibold text-xs border-t border-outline-variant/30 hover:bg-black/5">🔍 Lihat Full Size</a>`}
-            </div>` : ''}
+              ${isPdf
+            ? `<a href="${secureUrl}" target="_blank" class="p-3 text-center text-primary font-semibold text-sm hover:bg-black/5">📄 Buka Bukti PDF</a>`
+            : `<img src="${secureUrl}" alt="Bukti" class="w-full max-h-[200px] object-contain bg-black/10">
+                   <a href="${secureUrl}" target="_blank" class="p-2 text-center text-primary font-semibold text-xs border-t border-outline-variant/30 hover:bg-black/5">🔍 Lihat Full Size</a>`}
+            </div>`
+          })() : ''}
           ${p.reject_reason ? `<div class="mt-2 text-xs text-error font-medium bg-error/10 p-2 rounded">Alasan: ${p.reject_reason}</div>` : ''}
         </div>
       `).join('') : '<p class="text-sm text-on-surface-variant">Belum ada pembayaran</p>';
@@ -1488,7 +1492,13 @@
       try {
         const res = await fetch('/api/google/auth', { headers: H });
         if (!res.ok) {
-          toast('Gagal menginisialisasi Google Auth - pastikan Anda sudah login', 'error');
+          let errMsg = 'Gagal menginisialisasi Google Auth';
+          try {
+            const errData = await res.json();
+            if (errData.error) errMsg = errData.error;
+          } catch (_) {}
+          toast(errMsg, 'error');
+          console.error('[connectGoogle] server error:', errMsg);
           return;
         }
         const data = await res.json();

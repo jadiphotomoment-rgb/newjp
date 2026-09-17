@@ -8,9 +8,13 @@ const jwt = require('jsonwebtoken');
  */
 function authMiddleware(req, res, next) {
   const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.startsWith('Bearer ')
+  let token = authHeader && authHeader.startsWith('Bearer ')
     ? authHeader.slice(7)
     : null;
+
+  if (!token && req.query.token) {
+    token = req.query.token;
+  }
 
   if (!token) {
     return res.status(401).json({ error: 'Akses ditolak: token tidak ada' });

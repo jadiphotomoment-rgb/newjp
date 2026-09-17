@@ -863,7 +863,8 @@
       const popup = document.createElement('div');
       popup.className = 'proof-popup';
 
-      const isImg = p.proof_url && !p.proof_url.endsWith('.pdf');
+      const isImg = p.proof_url && !(p.proof_filename || p.proof_url).endsWith('.pdf');
+      const secureUrl = p.proof_url ? '/api/upload/private/payments/' + p.id + '?token=' + TOKEN : '';
       popup.innerHTML = `
         <div class="font-headline-sm text-on-surface mb-4 border-b border-outline-variant/30 pb-2 flex justify-between items-center">
           <span>Bukti Pembayaran</span>
@@ -871,7 +872,8 @@
             <span class="material-symbols-outlined">close</span>
           </button>
         </div>
-        ${isImg ? `<div class="rounded-lg overflow-hidden border border-outline-variant/30 bg-black/5 mb-4 flex items-center justify-center min-h-[150px]"><img src="${p.proof_url}" alt="Bukti Transfer" class="w-full max-h-[300px] object-contain"></div>` : ''}
+        </div>
+        ${isImg ? `<div class="rounded-lg overflow-hidden border border-outline-variant/30 bg-black/5 mb-4 flex items-center justify-center min-h-[150px]"><img src="${secureUrl}" alt="Bukti Transfer" class="w-full max-h-[300px] object-contain"></div>` : ''}
         
         <div class="flex flex-col gap-2 text-sm mb-4 bg-surface-container-low p-4 rounded-lg">
           <div class="flex"><span class="text-on-surface-variant w-24">Klien</span><span class="font-semibold">${p.client_name}</span></div>
@@ -883,7 +885,8 @@
           ${p.reject_reason ? `<div class="flex mt-2 p-2 bg-error/10 text-error rounded"><span class="w-24 font-bold">Alasan Tolak</span><span>${p.reject_reason}</span></div>` : ''}
         </div>
         
-        ${p.proof_url ? `<a href="${p.proof_url}" target="_blank" class="btn btn-outline w-full justify-center mb-4"><span class="material-symbols-outlined text-[18px]">open_in_new</span> Buka File Asli</a>` : ''}
+        
+        ${p.proof_url ? `<a href="${secureUrl}" target="_blank" class="btn btn-outline w-full justify-center mb-4"><span class="material-symbols-outlined text-[18px]">open_in_new</span> Buka File Asli</a>` : ''}
         
         <div class="flex gap-2">
           ${p.status === 'pending' ? `
