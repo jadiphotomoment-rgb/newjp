@@ -481,7 +481,7 @@ router.patch('/admin/:id/set-price', auth, async (req, res) => {
 
 // PUT /api/admin/bookings/:id — edit full booking data
 router.put('/admin/:id', auth, async (req, res) => {
-  const { client_name, client_phone, event_date, event_time, location, package_price, form_data } = req.body;
+  const { client_name, client_phone, event_date, event_time, location, package_price, dp_amount_manual, form_data } = req.body;
 
   if (!client_name || !client_phone || !event_date) {
     return res.status(400).json({ error: 'Nama klien, nomor WA, dan tanggal acara wajib diisi' });
@@ -500,10 +500,13 @@ router.put('/admin/:id', auth, async (req, res) => {
     if (!bookRes.rows[0]) return res.status(404).json({ error: 'Booking tidak ditemukan' });
     const booking = bookRes.rows[0];
 
-    // Recalculate dp_amount if package_price changed
+    // Recalculate dp_amount if package_price changed or dp_amount_manual is provided
     let dpAmount = booking.dp_amount;
     const price = package_price != null ? parseFloat(package_price) : null;
-    if (price != null && !isNaN(price) && price > 0) {
+    
+    if (dp_amount_manual != null && dp_amount_manual !== '') {
+      dpAmount = parseFloat(dp_amount_manual);
+    } else if (price != null && !isNaN(price) && price > 0) {
       if (booking.dp_type === 'percent') {
         dpAmount = (price * parseFloat(booking.dp_value)) / 100;
       } else {
@@ -554,7 +557,7 @@ router.put('/admin/:id', auth, async (req, res) => {
     );
 
     // Sync pending payment amount if dp_amount changed
-    if (price && price !== parseFloat(booking.package_price)) {
+    if (dpAmount !== booking.dp_amount) {
       await dbClient.query(
         `UPDATE payments SET amount = $1
          WHERE booking_id = $2 AND status = 'pending'`,
@@ -717,6 +720,42 @@ router.patch('/admin/:id/reject-dp', auth, async (req, res) => {
     res.status(500).json({ error: 'Database error' });
   } finally {
     if (client) client.release();
+  }
+});
+
+// POST /api/admin/bookings/:id/send-wa-confirmation — kirim WA konfirmasi manual
+router.post('/admin/:id/send-wa-confirmation', auth, async (req, res) => {
+  try {
+    const { rows } = await db.query(
+      `SELECT b.id, b.client_name, b.client_phone, b.event_date, b.event_time, b.status, b.category_id, b.form_data, b.location, b.package_price, b.dp_amount,
+              bc.time_slots, bc.wa_template
+       FROM bookings b 
+       JOIN booking_categories bc ON b.category_id = bc.id
+       WHERE b.id = $1`,
+      [req.params.id]
+    );
+    if (!rows[0]) return res.status(404).json({ error: 'Booking tidak ditemukan' });
+    const booking = rows[0];
+
+    if (!booking.client_phone) {
+      return res.status(400).json({ error: 'Nomor WhatsApp klien tidak tersedia' });
+    }
+
+    let msg = buildTemplateMsg(booking, booking.wa_template);
+    if (!msg) {
+      const eventDateFmt = new Date(booking.event_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+      msg = `✅ *Booking Dikonfirmasi — Jadiphoto.Moment*\n\nHalo ${booking.client_name},\n\nBooking Anda untuk tanggal *${eventDateFmt}* telah dikonfirmasi. DP sudah diterima dan tanggal resmi terkunci.\n\nTerima kasih telah mempercayai Jadiphoto.Moment! 📸`;
+    }
+
+    const waRes = await sendWhatsApp(booking.client_phone, msg);
+    if (waRes && (waRes.status === true || waRes.status === 'true')) {
+       res.json({ message: 'Pesan konfirmasi berhasil dikirim ke WhatsApp klien' });
+    } else {
+       res.status(500).json({ error: 'Gagal mengirim pesan WhatsApp. Cek token Fonnte.' });
+    }
+  } catch (err) {
+    console.error('[bookings] send-wa-confirmation error:', err);
+    res.status(500).json({ error: 'Terjadi kesalahan pada server' });
   }
 });
 

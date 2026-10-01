@@ -684,14 +684,30 @@
       graduation: '🎓',
       wedding: '💍',
       event: '🎉',
-      corporation: '🏢'
+      corporation: '🏢',
     };
+    // Helper: match icon untuk slug area (misal 'wedding-solo' → '💍')
+    function getCatIcon(slug) {
+      if (CATEGORY_ICONS[slug]) return CATEGORY_ICONS[slug];
+      for (const [key, icon] of Object.entries(CATEGORY_ICONS)) {
+        if (slug.startsWith(key)) return icon;
+      }
+      return '📷';
+    }
+
     const CATEGORY_DESCS = {
       graduation: 'Wisuda S1, S2, S3, SMA, SMK, dan jenjang lainnya',
       wedding: 'Akad nikah, resepsi, prewedding, dan honeymoon',
       event: 'Ulang tahun, gathering, seminar, konser, dan acara khusus',
       corporation: 'Foto produk, headshot karyawan, dan event perusahaan'
     };
+    function getCatDesc(slug) {
+      if (CATEGORY_DESCS[slug]) return CATEGORY_DESCS[slug];
+      for (const [key, desc] of Object.entries(CATEGORY_DESCS)) {
+        if (slug.startsWith(key)) return desc;
+      }
+      return '';
+    }
     const DAY_NAMES = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
     const MONTH_NAMES = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Ags','Sep','Okt','Nov','Des'];
 
@@ -707,11 +723,31 @@
 
     /* ── Load categories ── */
     async function loadCategories() {
+      // Deteksi slug dari URL: /booking/wedding-solo → 'wedding-solo'
+      const pathParts = window.location.pathname.replace(/\/+$/, '').split('/');
+      const urlSlug = pathParts[pathParts.length - 1];
+      const isDirectLink = urlSlug && urlSlug !== 'booking';
+
       try {
         const res = await fetch('/api/bookings/categories');
         if (!res.ok) throw new Error('Gagal memuat kategori');
-        categories = await res.json();
+        const allCategories = await res.json();
+
+        // Jika direct link ke slug tertentu, filter hanya tampilkan itu
+        if (isDirectLink) {
+          const matched = allCategories.find(c => c.slug === urlSlug);
+          categories = matched ? [matched] : allCategories;
+        } else {
+          categories = allCategories;
+        }
+
         renderCategories();
+
+        // Auto-select jika direct link
+        if (isDirectLink) {
+          const found = categories.find(c => c.slug === urlSlug);
+          if (found) selectCategory(urlSlug);
+        }
       } catch (e) {
         document.getElementById('category-grid').innerHTML =
           '<div class="empty-state"><span class="empty-icon">⚠️</span><h3>Gagal memuat kategori</h3><p>Silakan refresh halaman</p></div>';
@@ -735,9 +771,9 @@
              style="--cat-color: ${cat.color};"
              onclick="selectCategory('${cat.slug}')" tabindex="0"
              role="button" aria-label="Pilih kategori ${cat.name}">
-          <div class="cat-icon">${CATEGORY_ICONS[cat.slug] || '📷'}</div>
+          <div class="cat-icon">${getCatIcon(cat.slug)}</div>
           <div class="cat-name">${cat.name}</div>
-          <div class="cat-desc">${CATEGORY_DESCS[cat.slug] || ''}</div>
+          <div class="cat-desc">${getCatDesc(cat.slug)}</div>
           <span class="cat-dp-badge">${dpText}</span>
         </div>`;
       }).join('');
@@ -770,7 +806,7 @@
       document.getElementById('step-1').classList.replace('active', 'done');
       document.getElementById('step-2').classList.add('active');
 
-      document.getElementById('form-cat-icon').textContent = CATEGORY_ICONS[slug] || '📷';
+      document.getElementById('form-cat-icon').textContent = getCatIcon(slug);
       document.getElementById('form-cat-name').textContent = `Booking ${selectedCat.name}`;
       document.getElementById('dynamic-section-title').textContent = `Detail ${selectedCat.name}`;
 

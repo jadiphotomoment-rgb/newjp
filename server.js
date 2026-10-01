@@ -49,8 +49,8 @@ app.get('/', (req, res) => {
   res.redirect('/admin/login');
 });
 
-// Booking public pages
-app.get('/booking', (req, res) => {
+// Booking public pages — wildcard slug agar /booking/wedding-solo dll bisa diakses
+app.get('/booking/:slug?', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'booking.html'));
 });
 app.get('/upload-dp', (req, res) => {

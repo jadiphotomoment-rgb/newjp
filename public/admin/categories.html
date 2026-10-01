@@ -513,6 +513,9 @@
         <h1 class="font-headline-md text-on-surface hidden sm:block">Kategori Booking</h1>
       </div>
       <div class="flex items-center gap-4">
+        <button class="btn btn-primary btn-sm" onclick="openAddCategoryModal()">
+          <span class="material-symbols-outlined text-[16px]">add</span> Tambah
+        </button>
         <button class="btn btn-icon text-on-surface-variant hover:bg-surface-container transition-all"
           onclick="toggleTheme()" aria-label="Ganti tema">
           <span class="material-symbols-outlined" data-theme-icon>light_mode</span>
@@ -534,6 +537,26 @@
 
       <div id="categories-container" class="flex flex-col"></div>
     </main>
+  </div>
+
+  <div id="add-category-modal" style="display:none;" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] items-center justify-center p-4">
+    <div class="bg-surface-container-lowest w-full max-w-md rounded-2xl p-6 shadow-xl border border-outline-variant/20">
+      <h3 class="font-headline-sm text-on-surface mb-4">Tambah Kategori Baru</h3>
+      <div class="flex flex-col gap-4">
+        <div class="form-group">
+          <label>Nama Kategori</label>
+          <input type="text" id="new-cat-name" placeholder="Contoh: Wedding Solo" oninput="document.getElementById('new-cat-slug').value = this.value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')">
+        </div>
+        <div class="form-group">
+          <label>Slug (URL)</label>
+          <input type="text" id="new-cat-slug" placeholder="contoh: wedding-solo">
+        </div>
+        <div class="flex justify-end gap-3 mt-4">
+          <button class="btn btn-outline" onclick="closeAddCategoryModal()">Batal</button>
+          <button class="btn btn-primary" onclick="submitNewCategory()">Simpan</button>
+        </div>
+      </div>
+    </div>
   </div>
 
   <div id="toast-container" role="status" aria-live="polite" class="fixed bottom-4 right-4 z-[999] flex flex-col gap-2">
@@ -1000,6 +1023,47 @@
       if (fname) fname.textContent = 'Belum ada folder yang dipilih';
       if (fid) fid.textContent = 'Menggunakan folder global';
       toast('Folder Drive dihapus', 'info');
+    }
+
+    function openAddCategoryModal() {
+      document.getElementById('new-cat-name').value = '';
+      document.getElementById('new-cat-slug').value = '';
+      document.getElementById('add-category-modal').style.display = 'flex';
+      document.getElementById('new-cat-name').focus();
+    }
+
+    function closeAddCategoryModal() {
+      document.getElementById('add-category-modal').style.display = 'none';
+    }
+
+    async function submitNewCategory() {
+      const name = document.getElementById('new-cat-name').value.trim();
+      const slug = document.getElementById('new-cat-slug').value.trim();
+      
+      if (!name || !slug) {
+        toast('Nama dan slug wajib diisi', 'error');
+        return;
+      }
+      
+      try {
+        const res = await fetch('/api/admin/categories', {
+          method: 'POST',
+          headers: H,
+          body: JSON.stringify({ name, slug })
+        });
+        const data = await res.json();
+        
+        if (!res.ok) {
+          toast(data.error || 'Gagal menambahkan kategori', 'error');
+          return;
+        }
+        
+        toast('Kategori baru berhasil ditambahkan!', 'success');
+        closeAddCategoryModal();
+        loadCategories(); // reload list
+      } catch (e) {
+        toast('Terjadi kesalahan jaringan', 'error');
+      }
     }
 
     loadCategories();

@@ -18,6 +18,32 @@ router.get('/', auth, async (req, res) => {
   }
 });
 
+// POST /api/admin/categories — tambah kategori baru
+router.post('/', auth, async (req, res) => {
+  const { name, slug } = req.body;
+  if (!name || !slug) return res.status(400).json({ error: 'Nama dan Slug kategori wajib diisi' });
+  
+  // Format slug to lowercase and alphanumeric with dashes
+  const formattedSlug = slug.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+  if (!formattedSlug) return res.status(400).json({ error: 'Slug tidak valid' });
+
+  try {
+    // Check if slug already exists
+    const check = await db.query('SELECT id FROM booking_categories WHERE slug = $1', [formattedSlug]);
+    if (check.rows.length > 0) return res.status(409).json({ error: 'Slug sudah digunakan oleh kategori lain' });
+
+    const { rows } = await db.query(
+      `INSERT INTO booking_categories (slug, name, fields, packages, dp_type, dp_value, color, is_active)
+       VALUES ($1, $2, '[]', '[]', 'percent', 30, '#7c6dfa', true) RETURNING *`,
+      [formattedSlug, name.trim()]
+    );
+    res.status(201).json({ message: 'Kategori baru berhasil ditambahkan', category: rows[0] });
+  } catch (err) {
+    console.error('[categories] POST error:', err);
+    res.status(500).json({ error: 'Database error' });
+  }
+});
+
 // GET /api/admin/categories/:id — detail satu kategori
 router.get('/:id', auth, async (req, res) => {
   try {

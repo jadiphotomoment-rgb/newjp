@@ -1141,6 +1141,11 @@
               <span class="material-symbols-outlined text-[18px]">link</span> Hubungkan ke Sesi Sortir
             </button>
           ` : ''}
+          ${(b.status === 'confirmed' || b.status === 'completed') ? `
+            <button class="btn btn-outline justify-center w-full text-[#25D366] border-[#25D366]/30 bg-[#25D366]/5 hover:bg-[#25D366]/10 mt-2" onclick="sendWAConfirmation(${b.id})">
+              <span class="material-symbols-outlined text-[18px]">send</span> Kirim Konfirmasi WhatsApp
+            </button>
+          ` : ''}
           
           <div class="border-t border-outline-variant/30 pt-4 mt-2">
             <label class="text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-2 block">Ubah Status Manual</label>
@@ -1196,6 +1201,7 @@
           
           <div class="form-group"><label>Lokasi / Venue</label><input type="text" id="edit-location" value="${b.location || ''}"></div>
           <div class="form-group"><label>Harga Paket (Rp)</label><input type="number" id="edit-package-price" value="${b.package_price || ''}"></div>
+          <div class="form-group"><label>Biaya DP / Booking (Rp)</label><input type="number" id="edit-dp-amount" value="${b.dp_amount || ''}" placeholder="Kosongkan jika sesuai aturan kategori"></div>
           
           ${fdHtml ? `<div class="mt-4"><div class="detail-section-title mb-2">Detail Ekstra</div><div class="flex flex-col gap-4">${fdHtml}</div></div>` : ''}
           
@@ -1215,13 +1221,15 @@
       const location = document.getElementById('edit-location').value.trim() || null;
       const package_price_raw = document.getElementById('edit-package-price').value;
       const package_price = package_price_raw ? parseFloat(package_price_raw) : null;
+      const dp_amount_manual = document.getElementById('edit-dp-amount').value || null;
+      
       if (!client_name || !client_phone || !event_date) { toast('Nama, no WA, dan tanggal wajib diisi', 'error'); return; }
       const form_data = {};
       document.querySelectorAll('[data-fd-key]').forEach(el => form_data[el.dataset.fdKey] = el.value);
       try {
         const res = await fetch(`/api/bookings/admin/${id}`, {
           method: 'PUT', headers: H,
-          body: JSON.stringify({ client_name, client_phone, event_date, event_time, location, package_price, form_data })
+          body: JSON.stringify({ client_name, client_phone, event_date, event_time, location, package_price, dp_amount_manual, form_data })
         });
         const data = await res.json();
         if (!res.ok) { toast(data.error || 'Gagal menyimpan', 'error'); return; }
@@ -1248,6 +1256,16 @@
         loadBookings();
         if (calendar) calendar.refetchEvents();
       } catch (e) { toast('Gagal. Coba lagi.', 'error'); }
+    }
+
+    async function sendWAConfirmation(id) {
+      if (!confirm('Kirim pesan konfirmasi booking ke WhatsApp klien sekarang?')) return;
+      try {
+        const res = await fetch(`/api/bookings/admin/${id}/send-wa-confirmation`, { method: 'POST', headers: H });
+        const data = await res.json();
+        if (!res.ok) { toast(data.error || 'Gagal mengirim WA', 'error'); return; }
+        toast(data.message || 'Pesan konfirmasi terkirim!', 'success');
+      } catch (e) { toast('Gagal menghubungi server.', 'error'); }
     }
 
     async function rejectDP(id, fromPanel = false) {
