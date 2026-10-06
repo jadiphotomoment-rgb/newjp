@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Template Pesan WhatsApp — Jadiphoto.Moment Admin</title>
+  <meta name="description" content="Kelola semua template pesan WhatsApp otomatis: konfirmasi booking, sortir foto, dan pengiriman hasil foto">
+  <meta name="robots" content="noindex, nofollow">
+
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/style.css?v=3">
+  <link rel="stylesheet" href="/css/admin-theme.css?v=1">
+  <script src="/js/theme.js?v=3"></script>
+
+  <style>
+    /* ── Reset ── */
+    html, body { margin: 0; padding: 0; }
+    body { overscroll-behavior: none; }
+    ::-webkit-scrollbar { display: none; }
+    .hidden { display: none !important; }
+
+    /* ── Badge ── */
+    .badge {
+      display: inline-block; padding: 3px 10px; border-radius: 9999px;
+      font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
+    }
+    .badge-booking { background: rgba(99,102,241,.15); color: #818cf8; border: 1px solid rgba(99,102,241,.3); }
+    .badge-sortir  { background: rgba(34,211,238,.15); color: #22d3ee; border: 1px solid rgba(34,211,238,.3); }
+
+    html.light .badge-booking { background: #ede9fe; color: #6d28d9; border-color: rgba(109,40,217,.3); }
+    html.light .badge-sortir  { background: #e0f2fe; color: #0369a1; border-color: rgba(3,105,161,.3); }
+
+    /* ── Buttons ── */
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+      padding: 8px 16px; border-radius: 9px; font-size: 14px; font-weight: 600;
+      transition: all .15s; cursor: pointer; border: none;
+    }
+    .btn-sm { padding: 5px 10px; font-size: 12px; }
+    .btn-primary { background: #6366f1; color: #fff; }
+    .btn-primary:hover { background: #4f46e5; }
+    .btn-success { background: #22c55e; color: #fff; }
+    .btn-success:hover { background: #16a34a; }
+    .btn-danger { background: #ef4444; color: #fff; }
+    .btn-danger:hover { background: #dc2626; }
+    .btn-outline {
+      border: 1px solid var(--color-outline-variant, rgba(255,255,255,.15)) !important;
+      background: transparent; color: var(--color-on-surface-variant, #9ca4c0);
+    }
+    .btn-outline:hover { background: rgba(255,255,255,.07); color: var(--color-on-surface, #d4daf2); }
+    html.light .btn-outline { border-color: #c7c4d7 !important; color: #464554; }
+    html.light .btn-outline:hover { background: #eff4ff; color: #0b1c30; }
+
+    /* ── Form ── */
+    .form-group { display: flex; flex-direction: column; gap: 6px; }
+    .form-group label {
+      font-size: 11px; font-weight: 700; color: var(--color-on-surface-variant, #9ca4c0);
+      text-transform: uppercase; letter-spacing: 0.05em;
+    }
+    .form-group textarea {
+      width: 100%; padding: 12px; border: 1px solid var(--color-outline-variant, rgba(255,255,255,.12));
+      border-radius: 10px; background: var(--color-surface-container-low, #1e2538);
+      color: var(--color-on-surface, #d4daf2); font-size: 14px; font-family: 'Courier New', monospace;
+      line-height: 1.6; resize: vertical; outline: none; transition: border-color .15s;
+      box-sizing: border-box;
+    }
+    .form-group textarea:focus { border-color: #818cf8; box-shadow: 0 0 0 3px rgba(99,102,241,.15); }
+    html.light .form-group textarea { background: #fff; border-color: #c7c4d7; color: #0b1c30; }
+
+    /* ── Template Card ── */
+    .tpl-card {
+      background: var(--color-surface-container-lowest, #1a2030);
+      border: 1px solid var(--color-outline-variant, rgba(255,255,255,.08));
+      border-radius: 16px; overflow: hidden; transition: all .2s;
+    }
+    html.light .tpl-card { background: #fff; border-color: #e2e0ed; }
+
+    .tpl-card-header {
+      padding: 20px 24px; cursor: pointer; display: flex; align-items: center;
+      justify-content: space-between; gap: 12px; user-select: none;
+      transition: background .15s;
+    }
+    .tpl-card-header:hover { background: rgba(255,255,255,.04); }
+    html.light .tpl-card-header:hover { background: #f8f9ff; }
+
+    .tpl-card-body {
+      border-top: 1px solid var(--color-outline-variant, rgba(255,255,255,.08));
+      padding: 24px;
+    }
+    html.light .tpl-card-body { border-color: #e2e0ed; }
+
+    .tpl-info { display: flex; flex-direction: column; gap: 4px; flex: 1; }
+    .tpl-title { font-size: 15px; font-weight: 700; color: var(--color-on-surface, #d4daf2); }
+    html.light .tpl-title { color: #0b1c30; }
+    .tpl-desc { font-size: 13px; color: var(--color-on-surface-variant, #9ca4c0); }
+
+    /* ── Variables chip list ── */
+    .vars-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+    .var-chip {
+      display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px;
+      border-radius: 6px; font-size: 11px; font-weight: 600; font-family: monospace;
+      background: rgba(99,102,241,.15); color: #a5b4fc; border: 1px solid rgba(99,102,241,.25);
+      cursor: pointer; transition: all .15s; user-select: none;
+    }
+    .var-chip:hover { background: rgba(99,102,241,.3); color: #c7d2fe; }
+    html.light .var-chip { background: #ede9fe; color: #6d28d9; border-color: rgba(109,40,217,.25); }
+    html.light .var-chip:hover { background: #ddd6fe; }
+
+    /* ── WA Preview ── */
+    .wa-preview-wrap {
+      background: #0d1117; border-radius: 12px; padding: 16px; margin-top: 16px;
+      border: 1px solid rgba(255,255,255,.08);
+    }
+    html.light .wa-preview-wrap { background: #e5ddd5; border-color: rgba(0,0,0,.1); }
+
+    .wa-bubble {
+      background: #202c33; border-radius: 8px; padding: 12px 14px;
+      font-size: 13px; line-height: 1.6; color: #e9edef;
+      white-space: pre-wrap; word-break: break-word;
+      max-width: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      box-shadow: 0 1px 3px rgba(0,0,0,.3);
+    }
+    html.light .wa-bubble { background: #fff; color: #111b21; box-shadow: 0 1px 3px rgba(0,0,0,.15); }
+
+    .wa-bubble strong, .wa-bubble b { font-weight: 700; }
+    .wa-bubble em, .wa-bubble i { font-style: italic; color: #aaa; }
+
+    /* ── Spinner ── */
+    .spinner {
+      border: 3px solid rgba(0,0,0,.1); border-left-color: #6366f1;
+      border-radius: 50%; width: 28px; height: 28px; animation: spin 1s linear infinite; margin: auto;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Saved indicator ── */
+    .save-indicator {
+      display: inline-flex; align-items: center; gap: 6px;
+      color: #4ade80; font-size: 12px; font-weight: 600; opacity: 0;
+      transition: opacity .3s;
+    }
+    .save-indicator.show { opacity: 1; }
+
+    /* ── Reset/Light ── */
+    html.light body { background-color: #f8f9ff !important; }
+    html.light .tpl-card-header:hover { background: rgba(0,0,0,.02); }
+  </style>
+</head>
+
+<body class="bg-background font-body-md text-on-background">
+
+  <!-- Sidebar -->
+  <aside class="fixed left-0 top-0 h-full w-72 bg-surface-container-lowest border-r border-outline-variant/30 z-50 flex flex-col transition-transform duration-300 transform -translate-x-full md:translate-x-0" id="sidebar">
+    <div class="p-lg flex items-center justify-between gap-sm mb-md border-b border-outline-variant/20 pb-4">
+      <div class="flex items-center gap-2">
+        <img src="/img/Logo warna.webp" alt="Jadiphoto.Moment" class="h-8 w-auto object-contain" />
+      </div>
+      <button class="md:hidden text-on-surface-variant" onclick="document.getElementById('sidebar').classList.add('-translate-x-full')">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+
+    <div class="px-md mb-6">
+      <div class="bg-surface-container rounded-lg p-3 flex items-center gap-3">
+        <div class="w-8 h-8 rounded-full bg-primary/20 text-primary flex items-center justify-center font-bold">A</div>
+        <div class="flex flex-col">
+          <span class="font-label-sm text-xs text-on-surface-variant">Welcome back,</span>
+          <span class="font-label-md text-on-surface" id="nav-username">Admin</span>
+        </div>
+      </div>
+    </div>
+
+    <nav class="flex-1 px-md space-y-2">
+      <a href="/admin/dashboard.html" class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all">
+        <span class="material-symbols-outlined">dashboard</span>
+        <span class="font-label-md">Dashboard</span>
+      </a>
+      <a href="/admin/bookings.html" class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all">
+        <span class="material-symbols-outlined">calendar_today</span>
+        <span class="font-label-md">Booking</span>
+      </a>
+      <a href="/admin/sessions.html" class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all">
+        <span class="material-symbols-outlined">add_a_photo</span>
+        <span class="font-label-md">Sesi Sortir</span>
+      </a>
+      <a href="/admin/finance.html" class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all">
+        <span class="material-symbols-outlined">payments</span>
+        <span class="font-label-md">Keuangan</span>
+      </a>
+      <a href="/admin/categories.html" class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all">
+        <span class="material-symbols-outlined">category</span>
+        <span class="font-label-md">Kategori</span>
+      </a>
+      <a href="/admin/wa-templates.html" class="flex items-center gap-3 px-4 py-3 rounded-lg transition-all bg-primary/10 text-primary font-semibold" aria-current="page">
+        <span class="material-symbols-outlined">chat</span>
+        <span class="font-label-md">Template WA</span>
+      </a>
+      <a href="/admin/shortlinks.html" class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all">
+        <span class="material-symbols-outlined">link</span>
+        <span class="font-label-md">Shortlink</span>
+      </a>
+    </nav>
+
+    <div class="p-lg border-t border-outline-variant/30 flex flex-col gap-2">
+      <button class="flex items-center gap-3 px-4 py-3 rounded-lg text-error hover:bg-error/10 transition-all text-left mt-2" id="btn-logout">
+        <span class="material-symbols-outlined">logout</span>
+        <span class="font-label-md">Keluar</span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- Main Content -->
+  <div class="md:pl-72 flex flex-col min-h-screen">
+    <header class="sticky top-0 h-16 bg-surface-container-lowest/80 backdrop-blur-xl border-b border-outline-variant/20 z-40 flex items-center justify-between px-4 lg:px-8">
+      <div class="flex items-center gap-4">
+        <button class="md:hidden text-on-surface-variant flex items-center" onclick="document.getElementById('sidebar').classList.remove('-translate-x-full')">
+          <span class="material-symbols-outlined">menu</span>
+        </button>
+        <h1 class="font-headline-md text-on-surface hidden sm:block">Template Pesan WhatsApp</h1>
+      </div>
+      <div class="flex items-center gap-3">
+        <button class="btn btn-icon text-on-surface-variant hover:bg-surface-container transition-all" onclick="toggleTheme()" aria-label="Ganti tema">
+          <span class="material-symbols-outlined" data-theme-icon>light_mode</span>
+        </button>
+      </div>
+    </header>
+
+    <main class="flex-1 p-4 lg:p-8 flex flex-col gap-6" role="main">
+
+      <!-- Info banner -->
+      <div class="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-4 flex items-start gap-3 text-sm">
+        <span class="material-symbols-outlined shrink-0" style="color:#4ade80;">tips_and_updates</span>
+        <div>
+          <p class="font-semibold" style="color:#4ade80;">Cara Penggunaan Template</p>
+          <p class="text-on-surface-variant mt-1">Gunakan variabel <code class="bg-white/10 px-1 rounded">{{nama_variabel}}</code> dalam teks untuk diisi otomatis oleh sistem. Klik chip variabel untuk menyalinnya ke clipboard. Perubahan disimpan ke database dan langsung berlaku.</p>
+        </div>
+      </div>
+
+      <!-- Loading state -->
+      <div id="tpl-loading" class="flex items-center justify-center py-20">
+        <div class="flex flex-col items-center gap-4">
+          <div class="spinner"></div>
+          <p class="text-on-surface-variant text-sm">Memuat template...</p>
+        </div>
+      </div>
+
+      <!-- Templates container -->
+      <div id="tpl-container" class="flex flex-col gap-4 hidden"></div>
+
+    </main>
+  </div>
+
+  <!-- Toast container -->
+  <div id="toast-container" role="status" aria-live="polite" class="fixed bottom-4 right-4 z-[999] flex flex-col gap-2"></div>
+
+  <!-- Confirm reset modal -->
+  <div id="modal-reset" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] hidden items-center justify-center p-4">
+    <div class="bg-surface-container-lowest w-full max-w-sm rounded-2xl p-6 shadow-xl border border-outline-variant/20">
+      <div class="flex items-center gap-3 mb-4">
+        <div class="w-10 h-10 rounded-full bg-amber-500/20 flex items-center justify-center">
+          <span class="material-symbols-outlined" style="color:#f59e0b">warning</span>
+        </div>
+        <h3 class="font-headline-sm text-on-surface">Reset Template?</h3>
+      </div>
+      <p class="text-sm text-on-surface-variant mb-6">Template akan dikembalikan ke teks default bawaan sistem. Semua perubahan manual akan hilang.</p>
+      <div class="flex justify-end gap-3">
+        <button class="btn btn-outline" onclick="closeResetModal()">Batal</button>
+        <button class="btn btn-danger" id="btn-confirm-reset">Reset ke Default</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const TOKEN = localStorage.getItem('sf_token');
+    if (!TOKEN) location.href = '/admin/login.html';
+    const H = { 'Authorization': `Bearer ${TOKEN}`, 'Content-Type': 'application/json' };
+
+    // ── Auth info ──────────────────────────────────────────────
+    try {
+      const p = JSON.parse(atob(TOKEN.split('.')[1]));
+      document.getElementById('nav-username').textContent = p.name || p.username || 'Admin';
+    } catch (_) {}
+    document.getElementById('btn-logout').onclick = () => {
+      localStorage.removeItem('sf_token');
+      location.href = '/admin/login.html';
+    };
+
+    // ── Toast ──────────────────────────────────────────────────
+    function toast(msg, type = 'info') {
+      const colors = { success: '#4ade80', error: '#f87171', info: '#818cf8', warning: '#fb923c' };
+      const icons  = { success: 'check_circle', error: 'error', info: 'info', warning: 'warning' };
+      const el = document.createElement('div');
+      el.className = 'flex items-center gap-3 px-4 py-3 rounded-xl shadow-2xl text-white text-sm font-medium transition-all';
+      el.style.cssText = `background:#1e2538;border:1px solid rgba(255,255,255,.12);min-width:260px;max-width:380px;animation:slideIn .25s ease`;
+      el.innerHTML = `<span class="material-symbols-outlined text-[18px]" style="color:${colors[type]}">${icons[type]}</span><span class="flex-1">${msg}</span>`;
+      document.getElementById('toast-container').appendChild(el);
+      setTimeout(() => { el.style.opacity = '0'; setTimeout(() => el.remove(), 300); }, 3500);
+    }
+
+    // ── WA markdown → HTML preview ────────────────────────────
+    function waMarkdownToHtml(text) {
+      if (!text) return '';
+      let html = text
+        .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+        .replace(/\*([^*\n]+)\*/g, '<strong>$1</strong>')
+        .replace(/_([^_\n]+)_/g, '<em>$1</em>')
+        .replace(/\n/g, '<br>');
+      return html;
+    }
+
+    // ── Category labels ────────────────────────────────────────
+    const catLabel = { booking: 'Booking', sortir: 'Sortir Foto' };
+    const catClass = { booking: 'badge-booking', sortir: 'badge-sortir' };
+
+    // ── Open/close card body ───────────────────────────────────
+    function toggleCard(key) {
+      const body = document.getElementById(`body-${key}`);
+      const icon = document.getElementById(`chevron-${key}`);
+      if (body.classList.contains('hidden')) {
+        body.classList.remove('hidden');
+        icon.textContent = 'expand_less';
+      } else {
+        body.classList.add('hidden');
+        icon.textContent = 'expand_more';
+      }
+    }
+
+    // ── Insert variable into textarea ──────────────────────────
+    function insertVar(key, variable) {
+      const ta = document.getElementById(`ta-${key}`);
+      if (!ta) return;
+      const start = ta.selectionStart, end = ta.selectionEnd;
+      const before = ta.value.substring(0, start);
+      const after  = ta.value.substring(end);
+      ta.value = `${before}{{${variable}}}${after}`;
+      ta.selectionStart = ta.selectionEnd = start + variable.length + 4;
+      ta.focus();
+      updatePreview(key);
+      // also copy to clipboard
+      navigator.clipboard.writeText(`{{${variable}}}`).then(() => toast(`{{${variable}}} disalin ke clipboard!`, 'info'));
+    }
+
+    // ── Update live preview ────────────────────────────────────
+    function updatePreview(key) {
+      const ta = document.getElementById(`ta-${key}`);
+      const preview = document.getElementById(`preview-${key}`);
+      if (!ta || !preview) return;
+      preview.innerHTML = waMarkdownToHtml(ta.value);
+    }
+
+    // ── Save template ──────────────────────────────────────────
+    async function saveTemplate(key) {
+      const ta = document.getElementById(`ta-${key}`);
+      const btn = document.getElementById(`btn-save-${key}`);
+      const indicator = document.getElementById(`indicator-${key}`);
+      if (!ta) return;
+      btn.disabled = true;
+      btn.innerHTML = `<span class="material-symbols-outlined text-[16px] animate-spin">progress_activity</span> Menyimpan...`;
+      try {
+        const r = await fetch(`/api/wa-templates/${key}`, {
+          method: 'PATCH', headers: H,
+          body: JSON.stringify({ template: ta.value }),
+        });
+        const data = await r.json();
+        if (!r.ok) throw new Error(data.error || 'Gagal menyimpan');
+        toast('Template berhasil disimpan!', 'success');
+        indicator.classList.add('show');
+        setTimeout(() => indicator.classList.remove('show'), 2500);
+      } catch (err) {
+        toast(err.message, 'error');
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = `<span class="material-symbols-outlined text-[16px]">save</span> Simpan`;
+      }
+    }
+
+    // ── Reset modal ────────────────────────────────────────────
+    let pendingResetKey = null;
+    function openResetModal(key) {
+      pendingResetKey = key;
+      const modal = document.getElementById('modal-reset');
+      modal.style.display = 'flex';
+      modal.classList.remove('hidden');
+    }
+    function closeResetModal() {
+      pendingResetKey = null;
+      const modal = document.getElementById('modal-reset');
+      modal.style.display = 'none';
+    }
+    document.getElementById('btn-confirm-reset').onclick = async () => {
+      if (!pendingResetKey) return;
+      const key = pendingResetKey;
+      closeResetModal();
+      try {
+        const r = await fetch(`/api/wa-templates/${key}/reset`, { method: 'POST', headers: H });
+        const data = await r.json();
+        if (!r.ok) throw new Error(data.error || 'Gagal mereset');
+        // Update textarea value
+        const ta = document.getElementById(`ta-${key}`);
+        if (ta && data.template) {
+          ta.value = data.template.template;
+          updatePreview(key);
+        }
+        toast('Template berhasil direset ke default!', 'success');
+      } catch (err) {
+        toast(err.message, 'error');
+      }
+    };
+
+    // ── Render template cards ──────────────────────────────────
+    function renderTemplates(templates) {
+      const container = document.getElementById('tpl-container');
+      container.innerHTML = '';
+
+      // Group by category
+      const groups = {};
+      for (const tpl of templates) {
+        if (!groups[tpl.category]) groups[tpl.category] = [];
+        groups[tpl.category].push(tpl);
+      }
+
+      for (const [cat, tpls] of Object.entries(groups)) {
+        // Group header
+        const groupHeader = document.createElement('div');
+        groupHeader.className = 'flex items-center gap-3';
+        groupHeader.innerHTML = `
+          <span class="badge ${catClass[cat] || 'badge-booking'}">${catLabel[cat] || cat}</span>
+          <div class="flex-1 h-px" style="background:var(--color-outline-variant,rgba(255,255,255,.08))"></div>
+          <span class="text-xs text-on-surface-variant">${tpls.length} template</span>`;
+        container.appendChild(groupHeader);
+
+        for (const tpl of tpls) {
+          const vars = tpl.variables ? tpl.variables.split(',').map(v => v.trim()).filter(Boolean) : [];
+          const updatedAt = tpl.updated_at
+            ? new Date(tpl.updated_at).toLocaleString('id-ID', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' })
+            : '-';
+
+          const card = document.createElement('div');
+          card.className = 'tpl-card';
+          card.id = `card-${tpl.key}`;
+          card.innerHTML = `
+            <!-- Card Header -->
+            <div class="tpl-card-header" onclick="toggleCard('${tpl.key}')" id="header-${tpl.key}">
+              <div class="tpl-info">
+                <div class="flex items-center gap-2 flex-wrap">
+                  <span class="tpl-title">${tpl.label}</span>
+                  <span class="badge ${catClass[cat] || 'badge-booking'}">${catLabel[cat] || cat}</span>
+                </div>
+                <span class="tpl-desc">${tpl.description || ''}</span>
+                <span style="font-size:11px;color:var(--color-on-surface-variant);margin-top:2px">
+                  <span class="material-symbols-outlined" style="font-size:13px;vertical-align:middle">schedule</span>
+                  Terakhir diperbarui: ${updatedAt}
+                </span>
+              </div>
+              <span class="material-symbols-outlined text-on-surface-variant shrink-0" id="chevron-${tpl.key}">expand_more</span>
+            </div>
+
+            <!-- Card Body (collapsed) -->
+            <div class="tpl-card-body hidden" id="body-${tpl.key}">
+
+              <!-- Variables -->
+              ${vars.length > 0 ? `
+              <div class="mb-4">
+                <p class="text-xs text-on-surface-variant font-semibold mb-2 uppercase tracking-wider">Variabel tersedia — klik untuk sisipkan</p>
+                <div class="vars-list">
+                  ${vars.map(v => `<button class="var-chip" onclick="insertVar('${tpl.key}', '${v}')" title="Klik untuk sisipkan atau salin">
+                    <span class="material-symbols-outlined" style="font-size:11px">add</span>{{${v}}}</button>`).join('')}
+                </div>
+              </div>` : ''}
+
+              <!-- Textarea -->
+              <div class="form-group mb-4">
+                <label>Isi Template Pesan</label>
+                <textarea
+                  id="ta-${tpl.key}"
+                  rows="12"
+                  placeholder="Tulis template pesan WhatsApp di sini..."
+                  oninput="updatePreview('${tpl.key}')"
+                >${tpl.template || ''}</textarea>
+                <p class="text-xs text-on-surface-variant mt-1">
+                  Gunakan <code style="background:rgba(255,255,255,.1);padding:1px 5px;border-radius:4px">*teks*</code> untuk <strong>bold</strong>, 
+                  <code style="background:rgba(255,255,255,.1);padding:1px 5px;border-radius:4px">_teks_</code> untuk <em>italic</em> (format WhatsApp).
+                </p>
+              </div>
+
+              <!-- Action bar -->
+              <div class="flex items-center justify-between flex-wrap gap-3 mb-6">
+                <span class="save-indicator" id="indicator-${tpl.key}">
+                  <span class="material-symbols-outlined text-[16px]">check_circle</span> Tersimpan
+                </span>
+                <div class="flex items-center gap-2">
+                  <button class="btn btn-outline btn-sm" onclick="openResetModal('${tpl.key}')">
+                    <span class="material-symbols-outlined text-[15px]">restart_alt</span> Reset Default
+                  </button>
+                  <button class="btn btn-primary btn-sm" id="btn-save-${tpl.key}" onclick="saveTemplate('${tpl.key}')">
+                    <span class="material-symbols-outlined text-[16px]">save</span> Simpan
+                  </button>
+                </div>
+              </div>
+
+              <!-- Live Preview -->
+              <div>
+                <p class="text-xs text-on-surface-variant font-semibold mb-2 uppercase tracking-wider flex items-center gap-2">
+                  <span class="material-symbols-outlined text-[15px]">visibility</span> Preview Tampilan WhatsApp
+                </p>
+                <div class="wa-preview-wrap">
+                  <div class="flex items-end gap-2 mb-2">
+                    <div class="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0" style="background:#25d366">JP</div>
+                    <div class="text-xs" style="color:#8696a0">Jadiphoto.Moment • Bot</div>
+                  </div>
+                  <div class="wa-bubble" id="preview-${tpl.key}"></div>
+                </div>
+              </div>
+
+            </div>
+          `;
+          container.appendChild(card);
+
+          // Initialize preview
+          setTimeout(() => updatePreview(tpl.key), 0);
+        }
+      }
+    }
+
+    // ── Load templates ─────────────────────────────────────────
+    async function loadTemplates() {
+      document.getElementById('tpl-loading').classList.remove('hidden');
+      document.getElementById('tpl-container').classList.add('hidden');
+      try {
+        const r = await fetch('/api/wa-templates', { headers: H });
+        if (!r.ok) throw new Error('Gagal memuat template');
+        const templates = await r.json();
+        renderTemplates(templates);
+        document.getElementById('tpl-loading').classList.add('hidden');
+        document.getElementById('tpl-container').classList.remove('hidden');
+      } catch (err) {
+        document.getElementById('tpl-loading').innerHTML = `
+          <div class="flex flex-col items-center gap-3 text-center">
+            <span class="material-symbols-outlined text-4xl text-error">error</span>
+            <p class="text-on-surface-variant">${err.message}</p>
+            <button class="btn btn-outline btn-sm" onclick="loadTemplates()">Coba Lagi</button>
+          </div>`;
+      }
+    }
+
+    loadTemplates();
+  </script>
+
+  <style>
+    @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .animate-spin { animation: spin .8s linear infinite; display:inline-block; }
+  </style>
+</body>
+</html>

@@ -6,6 +6,7 @@ const https   = require('https');
 const { v4: uuidv4 } = require('uuid');
 const db   = require('../database');
 const auth = require('../middleware/auth');
+const { getWaTemplate } = require('../utils/template');
 
 // ── Helper: WhatsApp sender via Fonnte ─────────────────────────
 function sendWhatsApp(target, message) {
@@ -287,18 +288,26 @@ router.patch('/:uuid/status', auth, async (req, res) => {
 
     if (editStatus === 'done' && sendWa !== false && targetPhone) {
       const noteSection = editNote && editNote.trim() ? `\n\n📝 *Catatan Fotografer:*\n${editNote.trim()}` : '';
-      const msg = [
-        `📸 *Hasil Foto Selesai Diedit — Jadiphoto.Moment*`,
-        ``,
-        `Halo *${session.client_name}*,`,
-        `Kabar gembira! Foto-foto pilihan Anda telah selesai diedit dan siap untuk diunduh. 🎉`,
-        ``,
-        `📁 *Link Google Drive:*`,
-        `${finalDriveUrl}`,
-        noteSection,
-        ``,
-        `Terima kasih telah mempercayai layanan fotografi Jadiphoto.Moment! Silakan beri tahu kami jika ada pertanyaan atau kendala unduhan. 📸✨`
-      ].filter(l => l !== undefined).join('\n');
+      // Coba ambil template dari DB, fallback ke hardcode jika tidak ada
+      let msg = await getWaTemplate('foto_selesai_edit', {
+        client_name: session.client_name,
+        drive_url: finalDriveUrl,
+        note_section: noteSection,
+      });
+      if (!msg) {
+        msg = [
+          `📸 *Hasil Foto Selesai Diedit — Jadiphoto.Moment*`,
+          ``,
+          `Halo *${session.client_name}*,`,
+          `Kabar gembira! Foto-foto pilihan Anda telah selesai diedit dan siap untuk diunduh. 🎉`,
+          ``,
+          `📁 *Link Google Drive:*`,
+          `${finalDriveUrl}`,
+          noteSection,
+          ``,
+          `Terima kasih telah mempercayai layanan fotografi Jadiphoto.Moment! Silakan beri tahu kami jika ada pertanyaan atau kendala unduhan. 📸✨`
+        ].filter(l => l !== undefined).join('\n');
+      }
 
       const waRes = await sendWhatsApp(targetPhone, msg);
       waSent = waRes.status === true || waRes.status === 'true';
@@ -353,18 +362,26 @@ router.post('/:uuid/notify-done', auth, async (req, res) => {
     `, [targetPhone, finalDriveUrl, finalNote || null, session.id]);
 
     const noteSection = finalNote && finalNote.trim() ? `\n\n📝 *Catatan Fotografer:*\n${finalNote.trim()}` : '';
-    const msg = [
-      `📸 *Hasil Foto Selesai Diedit — Jadiphoto.Moment*`,
-      ``,
-      `Halo *${session.client_name}*,`,
-      `Kabar gembira! Foto-foto pilihan Anda telah selesai diedit dan siap untuk diunduh. 🎉`,
-      ``,
-      `📁 *Link Google Drive:*`,
-      `${finalDriveUrl}`,
-      noteSection,
-      ``,
-      `Terima kasih telah mempercayai layanan fotografi Jadiphoto.Moment! Silakan beri tahu kami jika ada pertanyaan atau kendala unduhan. 📸✨`
-    ].filter(l => l !== undefined).join('\n');
+    // Coba ambil template dari DB, fallback ke hardcode jika tidak ada
+    let msg = await getWaTemplate('foto_selesai_edit', {
+      client_name: session.client_name,
+      drive_url: finalDriveUrl,
+      note_section: noteSection,
+    });
+    if (!msg) {
+      msg = [
+        `📸 *Hasil Foto Selesai Diedit — Jadiphoto.Moment*`,
+        ``,
+        `Halo *${session.client_name}*,`,
+        `Kabar gembira! Foto-foto pilihan Anda telah selesai diedit dan siap untuk diunduh. 🎉`,
+        ``,
+        `📁 *Link Google Drive:*`,
+        `${finalDriveUrl}`,
+        noteSection,
+        ``,
+        `Terima kasih telah mempercayai layanan fotografi Jadiphoto.Moment! Silakan beri tahu kami jika ada pertanyaan atau kendala unduhan. 📸✨`
+      ].filter(l => l !== undefined).join('\n');
+    }
 
     const waRes = await sendWhatsApp(targetPhone, msg);
     const waOk = waRes.status === true || waRes.status === 'true';
@@ -384,14 +401,29 @@ router.post('/:uuid/notify-done', auth, async (req, res) => {
 router.patch('/:uuid/expire', auth, async (req, res) => {
   try {
     const { rows } = await db.query(
-      'SELECT id FROM sessions WHERE uuid = $1 AND admin_id = $2',
+      `SELECT s.id, s.client_name, COALESCE(s.client_phone, b.client_phone) AS active_phone 
+       FROM sessions s
+       LEFT JOIN bookings b ON b.session_id = s.id
+       WHERE s.uuid = $1 AND s.admin_id = $2`,
       [req.params.uuid, req.admin.adminId]
     );
     const session = rows[0];
     if (!session) return res.status(404).json({ error: 'Sesi tidak ditemukan' });
 
     await db.query("UPDATE sessions SET status = 'expired' WHERE id = $1", [session.id]);
-    res.json({ message: 'Sesi telah dinonaktifkan' });
+    
+    // Notifikasi WhatsApp
+    if (session.active_phone) {
+      let msg = await getWaTemplate('session_expired', {
+        client_name: session.client_name
+      });
+      if (!msg) {
+        msg = `⚠️ *Pemberitahuan: Sesi Sortir Foto Kadaluarsa*\n\nHalo *${session.client_name}*,\n\nMohon maaf, batas waktu untuk pemilihan foto Anda telah habis dan sesi sortir saat ini telah dinonaktifkan.\n\nJika Anda masih ingin melanjutkan proses pemilihan foto, silakan hubungi admin Jadiphoto.Moment untuk membuka kembali akses galeri Anda.\n\nTerima kasih. 🙏`;
+      }
+      sendWhatsApp(session.active_phone, msg).catch(() => {});
+    }
+
+    res.json({ message: 'Sesi telah dinonaktifkan dan notifikasi dikirim' });
   } catch (err) {
     console.error('[sessions] PATCH expire error:', err);
     res.status(500).json({ error: 'Database error' });

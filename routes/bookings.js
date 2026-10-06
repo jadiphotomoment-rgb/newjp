@@ -5,7 +5,7 @@ const router   = express.Router();
 const db       = require('../database');
 const auth     = require('../middleware/auth');
 const https    = require('https');
-const { buildTemplateMsg } = require('../utils/template');
+const { getWaTemplate } = require('../utils/template');
 const { google }           = require('googleapis');
 const { getAuthenticatedClient } = require('../utils/googleAuth');
 
@@ -351,7 +351,13 @@ router.post('/:id/upload-dp', async (req, res) => {
     // Notifikasi WhatsApp ke admin
     const adminPhone = process.env.ADMIN_WHATSAPP;
     if (adminPhone) {
-      const msg = `📸 *Booking Baru (Jadiphoto.Moment) — DP Masuk!*\n\nKlien: *${booking.client_name}*\nNo. HP: ${booking.client_phone}\n\nBukti transfer sudah diupload dan menunggu verifikasi Anda.\n\nCek dashboard admin untuk approve/reject.`;
+      let msg = await getWaTemplate('dp_uploaded_admin', {
+        client_name: booking.client_name,
+        client_phone: booking.client_phone
+      });
+      if (!msg) {
+        msg = `📸 *Booking Baru (Jadiphoto.Moment) — DP Masuk!*\n\nKlien: *${booking.client_name}*\nNo. HP: ${booking.client_phone}\n\nBukti transfer sudah diupload dan menunggu verifikasi Anda.\n\nCek dashboard admin untuk approve/reject.`;
+      }
       sendWhatsApp(adminPhone, msg).catch(() => {});
     }
 
@@ -591,7 +597,7 @@ router.patch('/admin/:id/approve-dp', auth, async (req, res) => {
   try {
     const bookRes = await db.query(
       `SELECT b.id, b.client_name, b.client_phone, b.event_date, b.event_time, b.status, b.category_id, b.form_data, b.location, b.package_price, b.dp_amount,
-              bc.time_slots, bc.wa_template
+              bc.time_slots
        FROM bookings b 
        JOIN booking_categories bc ON b.category_id = bc.id
        WHERE b.id = $1`,
@@ -657,9 +663,16 @@ router.patch('/admin/:id/approve-dp', auth, async (req, res) => {
     await client.query('COMMIT');
 
     // Notifikasi WA ke klien
-    let msg = buildTemplateMsg(booking, booking.wa_template);
+    const eventDateFmt = new Date(booking.event_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+    let msg = await getWaTemplate('booking_confirmed', {
+      client_name: booking.client_name,
+      event_date: eventDateFmt,
+      event_time: booking.event_time ? booking.event_time.slice(0, 5) : '-',
+      location: booking.location || '-',
+      package_price: booking.package_price ? 'Rp ' + Number(booking.package_price).toLocaleString('id-ID') : '-',
+      dp_amount: booking.dp_amount ? 'Rp ' + Number(booking.dp_amount).toLocaleString('id-ID') : '-',
+    });
     if (!msg) {
-      const eventDateFmt = new Date(booking.event_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
       msg = `✅ *Booking Dikonfirmasi — Jadiphoto.Moment*\n\nHalo ${booking.client_name},\n\nBooking Anda untuk tanggal *${eventDateFmt}* telah dikonfirmasi. DP sudah diterima dan tanggal resmi terkunci.\n\nTerima kasih telah mempercayai Jadiphoto.Moment! 📸`;
     }
     if (booking.client_phone) sendWhatsApp(booking.client_phone, msg).catch(() => {});
@@ -710,7 +723,14 @@ router.patch('/admin/:id/reject-dp', auth, async (req, res) => {
 
     // Notifikasi WA ke klien
     const reasonText = reason ? `\n\nAlasan: _${reason}_` : '';
-    const msg = `❌ *Bukti Transfer Ditolak*\n\nHalo ${booking.client_name},\n\nBukti transfer DP Anda tidak dapat diverifikasi.${reasonText}\n\nSilakan upload ulang bukti transfer yang valid. Terima kasih.`;
+    // Coba template dari DB (dp_rejected)
+    let msg = await getWaTemplate('dp_rejected', {
+      client_name: booking.client_name,
+      reason_text: reason ? `\n\nAlasan: _${reason}_` : '',
+    });
+    if (!msg) {
+      msg = `❌ *Bukti Transfer Ditolak*\n\nHalo ${booking.client_name},\n\nBukti transfer DP Anda tidak dapat diverifikasi.${reasonText}\n\nSilakan upload ulang bukti transfer yang valid. Terima kasih.`;
+    }
     if (booking.client_phone) sendWhatsApp(booking.client_phone, msg).catch(() => {});
 
     res.json({ message: 'DP ditolak. Klien perlu upload ulang.' });
@@ -728,7 +748,7 @@ router.post('/admin/:id/send-wa-confirmation', auth, async (req, res) => {
   try {
     const { rows } = await db.query(
       `SELECT b.id, b.client_name, b.client_phone, b.event_date, b.event_time, b.status, b.category_id, b.form_data, b.location, b.package_price, b.dp_amount,
-              bc.time_slots, bc.wa_template
+              bc.time_slots
        FROM bookings b 
        JOIN booking_categories bc ON b.category_id = bc.id
        WHERE b.id = $1`,
@@ -741,9 +761,16 @@ router.post('/admin/:id/send-wa-confirmation', auth, async (req, res) => {
       return res.status(400).json({ error: 'Nomor WhatsApp klien tidak tersedia' });
     }
 
-    let msg = buildTemplateMsg(booking, booking.wa_template);
+    const eventDateFmt = new Date(booking.event_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+    let msg = await getWaTemplate('booking_confirmed', {
+      client_name: booking.client_name,
+      event_date: eventDateFmt,
+      event_time: booking.event_time ? booking.event_time.slice(0, 5) : '-',
+      location: booking.location || '-',
+      package_price: booking.package_price ? 'Rp ' + Number(booking.package_price).toLocaleString('id-ID') : '-',
+      dp_amount: booking.dp_amount ? 'Rp ' + Number(booking.dp_amount).toLocaleString('id-ID') : '-',
+    });
     if (!msg) {
-      const eventDateFmt = new Date(booking.event_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
       msg = `✅ *Booking Dikonfirmasi — Jadiphoto.Moment*\n\nHalo ${booking.client_name},\n\nBooking Anda untuk tanggal *${eventDateFmt}* telah dikonfirmasi. DP sudah diterima dan tanggal resmi terkunci.\n\nTerima kasih telah mempercayai Jadiphoto.Moment! 📸`;
     }
 

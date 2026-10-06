@@ -1,34 +1,32 @@
-function buildTemplateMsg(booking, template) {
-  if (!template) return null; // fallback will be used
+'use strict';
 
-  let msg = template;
-  const eventDateFmt = new Date(booking.event_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
-  
-  // Standard variables
-  const data = {
-    client_name: booking.client_name || '',
-    event_date: eventDateFmt,
-    event_time: booking.event_time ? booking.event_time.slice(0,5) : '-',
-    location: booking.location || '-',
-    package_price: booking.package_price ? 'Rp ' + Number(booking.package_price).toLocaleString('id-ID') : '-',
-    dp_amount: booking.dp_amount ? 'Rp ' + Number(booking.dp_amount).toLocaleString('id-ID') : '-'
-  };
+const db = require('../database');
 
-  // Form variables
-  if (booking.form_data && typeof booking.form_data === 'object') {
-    Object.assign(data, booking.form_data);
+// ── Fetch template from DB by key, apply variables ─────────────
+async function getWaTemplate(key, variables = {}) {
+  try {
+    const { rows } = await db.query(
+      `SELECT template, is_active FROM wa_templates WHERE key = $1`,
+      [key]
+    );
+    if (!rows[0] || !rows[0].is_active) return null;
+
+    let msg = rows[0].template;
+
+    // Replace all {{key}} placeholders
+    for (const [k, v] of Object.entries(variables)) {
+      const regex = new RegExp(`{{${k}}}`, 'g');
+      msg = msg.replace(regex, v !== null && v !== undefined ? String(v) : '-');
+    }
+
+    // Clean up any remaining {{xxx}} that didn't match
+    msg = msg.replace(/{{[^}]+}}/g, '-');
+
+    return msg;
+  } catch (err) {
+    console.error('[template] getWaTemplate error:', err);
+    return null;
   }
-
-  // Replace {{key}}
-  for (const [key, val] of Object.entries(data)) {
-    const regex = new RegExp(`{{${key}}}`, 'g');
-    msg = msg.replace(regex, val);
-  }
-
-  // Clean up any remaining {{xxx}} that didn't match
-  msg = msg.replace(/{{[^}]+}}/g, '-');
-
-  return msg;
 }
 
-module.exports = { buildTemplateMsg };
+module.exports = { getWaTemplate };

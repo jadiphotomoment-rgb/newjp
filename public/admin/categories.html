@@ -482,7 +482,12 @@
         aria-current="page">
         <span class="material-symbols-outlined">category</span>
         <span class="font-label-md">Kategori</span>
+      </a>      <a href="/admin/wa-templates.html"
+        class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all">
+        <span class="material-symbols-outlined">chat</span>
+        <span class="font-label-md">Template WA</span>
       </a>
+
           <a href="/admin/shortlinks.html"
         class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all">
         <span class="material-symbols-outlined">link</span>
@@ -706,24 +711,6 @@
               ${cat.drive_folder_id ? `<button type="button" class="text-xs text-red-500 hover:bg-red-500/10 px-2 py-1 rounded" onclick="clearDriveFolder(${cat.id})">Hapus</button>` : ''}
             </div>
           </div>
-
-          <div class="editor-panel-title mt-8">Template Pesan WhatsApp (Approve DP)</div>
-          <div class="form-group">
-            <textarea id="cat-wa-${cat.id}" rows="6" class="font-mono text-sm" placeholder="Kosongkan untuk menggunakan template bawaan sistem...">${cat.wa_template || ''}</textarea>
-            
-            <div class="mt-3 p-3 bg-surface-container-lowest border border-outline-variant/30 rounded-lg">
-              <div class="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant mb-2">📌 Variabel Standar</div>
-              <div class="flex flex-wrap gap-1.5 mb-3">
-                ${['client_name', 'event_date', 'event_time', 'location', 'package_price', 'dp_amount']
-          .map(v => `<button type="button" class="var-chip-btn" onclick="insertVar('cat-wa-${cat.id}','{{${v}}}')">+ {{${v}}}</button>`).join('')}
-              </div>
-              
-              ${cat.fields.length ? `
-              <div class="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant mb-2">🗂️ Variabel Form</div>
-              <div class="flex flex-wrap gap-1.5">
-                ${cat.fields.map(f => `<button type="button" class="var-chip-btn chip-form" onclick="insertVar('cat-wa-${cat.id}','{{${f.key}}}')">+ {{${f.key}}}</button>`).join('')}
-              </div>` : ''}
-            </div>
           </div>
 
           <div class="flex flex-col sm:flex-row gap-3 mt-8 pt-4 border-t border-outline-variant/30">
@@ -962,8 +949,6 @@
         });
       });
 
-      const wa_template = document.getElementById(`cat-wa-${catId}`).value.trim();
-
       const driveUrlEl = document.getElementById(`drive-url-${catId}`);
       let drive_folder_id = null;
       let drive_folder_name = null;
@@ -977,7 +962,7 @@
         const res = await fetch(`/api/admin/categories/${catId}`, {
           method: 'PUT',
           headers: H,
-          body: JSON.stringify({ name, fields, packages, dp_type: dpType, dp_value: dpValue, color, time_slots, wa_template, drive_folder_id, drive_folder_name })
+          body: JSON.stringify({ name, fields, packages, dp_type: dpType, dp_value: dpValue, color, time_slots, drive_folder_id, drive_folder_name })
         });
         const data = await res.json();
         if (!res.ok) { toast(data.error || 'Gagal simpan', 'error'); return; }

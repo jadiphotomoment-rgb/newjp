@@ -5,7 +5,7 @@ const router  = express.Router();
 const db      = require('../database');
 const auth    = require('../middleware/auth');
 const https   = require('https');
-const { buildTemplateMsg } = require('../utils/template');
+const { getWaTemplate } = require('../utils/template');
 
 // ── WhatsApp sender ──────────────────────────────────────────────
 function sendWhatsApp(target, message) {
@@ -158,7 +158,7 @@ router.patch('/payments/:id/approve', auth, async (req, res) => {
   let client;
   try {
     const payRes = await db.query(
-      `SELECT p.*, b.status AS booking_status, b.id AS bid, b.client_name, b.client_phone, b.event_date, b.event_time, b.category_id, b.form_data, b.location, b.package_price, b.dp_amount, bc.time_slots, bc.wa_template
+      `SELECT p.*, b.status AS booking_status, b.id AS bid, b.client_name, b.client_phone, b.event_date, b.event_time, b.category_id, b.form_data, b.location, b.package_price, b.dp_amount, bc.time_slots
        FROM payments p 
        JOIN bookings b ON p.booking_id = b.id
        JOIN booking_categories bc ON b.category_id = bc.id
@@ -216,17 +216,26 @@ router.patch('/payments/:id/approve', auth, async (req, res) => {
     await client.query('COMMIT');
 
     // Notifikasi WhatsApp
-    const eventDateFmt = new Date(payment.event_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
-    let msg = `✅ *Pembayaran Disetujui!*\n\nHalo ${payment.client_name},\n\nPembayaran Anda sebesar Rp ${Number(payment.amount).toLocaleString('id-ID')} telah kami terima dan diverifikasi.`;
+    let msg;
     if (payment.payment_type === 'dp' && payment.booking_status === 'dp_review') {
-      const templateMsg = buildTemplateMsg(payment, payment.wa_template);
-      if (templateMsg) {
-        msg = templateMsg;
-      } else {
+      const eventDateFmt = new Date(payment.event_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+      // Coba template dari DB (booking_confirmed)
+      msg = await getWaTemplate('booking_confirmed', {
+        client_name: payment.client_name,
+        event_date: eventDateFmt,
+        event_time: payment.event_time ? payment.event_time.slice(0, 5) : '-',
+        location: payment.location || '-',
+        package_price: payment.package_price ? 'Rp ' + Number(payment.package_price).toLocaleString('id-ID') : '-',
+        dp_amount: payment.dp_amount ? 'Rp ' + Number(payment.dp_amount).toLocaleString('id-ID') : '-',
+      });
+      // Fallback
+      if (!msg) {
+        msg = `✅ *Pembayaran Disetujui!*\n\nHalo ${payment.client_name},\n\nPembayaran Anda sebesar Rp ${Number(payment.amount).toLocaleString('id-ID')} telah kami terima dan diverifikasi.`;
         msg += `\n\nBooking Anda untuk tanggal *${eventDateFmt}* telah dikonfirmasi dan tanggal resmi terkunci.`;
         msg += `\n\nTerima kasih telah mempercayai layanan kami! 📸`;
       }
     } else {
+      msg = `✅ *Pembayaran Disetujui!*\n\nHalo ${payment.client_name},\n\nPembayaran Anda sebesar Rp ${Number(payment.amount).toLocaleString('id-ID')} telah kami terima dan diverifikasi.`;
       msg += `\n\nTerima kasih telah mempercayai layanan kami! 📸`;
     }
     
@@ -260,7 +269,17 @@ router.patch('/payments/:id/reject', auth, async (req, res) => {
     if (bookRes.rows[0]) {
       const b = bookRes.rows[0];
       const reasonText = reason ? `\n\nAlasan: _${reason}_` : '';
-      const msg = `❌ *Bukti Transfer Ditolak*\n\nHalo ${b.client_name},\n\nMohon maaf, bukti transfer pembayaran Anda tidak dapat diverifikasi.${reasonText}\n\nSilakan upload ulang bukti transfer yang valid. Terima kasih.`;
+      
+      // Coba template dari DB (dp_rejected)
+      let msg = await getWaTemplate('dp_rejected', {
+        client_name: b.client_name,
+        reason_text: reasonText,
+      });
+      
+      if (!msg) {
+        msg = `❌ *Bukti Transfer Ditolak*\n\nHalo ${b.client_name},\n\nMohon maaf, bukti transfer pembayaran Anda tidak dapat diverifikasi.${reasonText}\n\nSilakan upload ulang bukti transfer yang valid. Terima kasih.`;
+      }
+      
       if (b.client_phone) sendWhatsApp(b.client_phone, msg).catch(() => {});
     }
 

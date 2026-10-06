@@ -262,6 +262,133 @@ const db = {
         CREATE INDEX IF NOT EXISTS idx_shortlink_clicks_link_id ON shortlink_clicks(shortlink_id);
       `);
 
+      // ── Create wa_templates table ──────────────────────────────
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS wa_templates (
+          id          SERIAL PRIMARY KEY,
+          key         VARCHAR(60) UNIQUE NOT NULL,
+          label       VARCHAR(150) NOT NULL,
+          description TEXT,
+          template    TEXT NOT NULL,
+          variables   TEXT,
+          category    VARCHAR(40) NOT NULL DEFAULT 'booking',
+          is_active   BOOLEAN NOT NULL DEFAULT true,
+          updated_at  TIMESTAMP DEFAULT now()
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_wa_templates_key ON wa_templates(key);
+      `);
+
+      // ── Seed default WA templates ──────────────────────────────
+      const defaultTemplates = [
+        {
+          key: 'booking_confirmed',
+          label: 'Konfirmasi Booking (DP Disetujui)',
+          description: 'Dikirim otomatis ke klien saat admin menyetujui DP booking',
+          template: `✅ *Booking Dikonfirmasi — Jadiphoto.Moment*
+
+Halo {{client_name}},
+
+Booking Anda untuk tanggal *{{event_date}}* pukul *{{event_time}}* telah dikonfirmasi. DP sebesar *{{dp_amount}}* sudah kami terima dan tanggal resmi terkunci. 🎉
+
+📍 *Lokasi:* {{location}}
+💰 *Total Paket:* {{package_price}}
+
+Terima kasih telah mempercayai Jadiphoto.Moment! Kami siap mengabadikan momen terbaik Anda. 📸`,
+          variables: 'client_name, event_date, event_time, location, package_price, dp_amount',
+          category: 'booking',
+        },
+        {
+          key: 'dp_rejected',
+          label: 'DP Ditolak / Bukti Transfer Tidak Valid',
+          description: 'Dikirim ke klien saat bukti transfer DP tidak bisa diverifikasi',
+          template: `❌ *Bukti Transfer Ditolak*
+
+Halo {{client_name}},
+
+Bukti transfer DP Anda tidak dapat diverifikasi.{{reason_text}}
+
+Silakan upload ulang bukti transfer yang valid melalui link yang telah dikirimkan sebelumnya.
+
+Terima kasih atas pengertiannya. 🙏`,
+          variables: 'client_name, reason_text',
+          category: 'booking',
+        },
+        {
+          key: 'sortir_selesai_admin',
+          label: 'Notifikasi Sortir Foto Selesai (ke Admin)',
+          description: 'Dikirim ke Admin/WhatsApp bisnis saat klien selesai memilih foto',
+          template: `📸 *NOTIFIKASI SORTIR FOTO BARU — JADIPHOTO.MOMENT*
+------------------------------------
+*Nama Klien / Folder:* {{client_name}}
+*Tanggal Seleksi:* {{selection_date}}
+*Total Foto Dipilih:* {{total_selected}} Foto (Limit Maks: {{photo_limit}})
+
+*DAFTAR FILE FOTO:*
+{{file_list}}
+------------------------------------
+_Pesan ini dikirim otomatis oleh System Jadiphoto.Moment._`,
+          variables: 'client_name, selection_date, total_selected, photo_limit, file_list',
+          category: 'sortir',
+        },
+        {
+          key: 'foto_selesai_edit',
+          label: 'Hasil Foto Selesai Diedit (ke Klien)',
+          description: 'Dikirim ke klien saat foto sudah selesai diedit dan siap diunduh',
+          template: `📸 *Hasil Foto Selesai Diedit — Jadiphoto.Moment*
+
+Halo *{{client_name}}*,
+Kabar gembira! Foto-foto pilihan Anda telah selesai diedit dan siap untuk diunduh. 🎉
+
+📁 *Link Google Drive:*
+{{drive_url}}
+{{note_section}}
+Terima kasih telah mempercayai layanan fotografi Jadiphoto.Moment! Silakan beri tahu kami jika ada pertanyaan atau kendala unduhan. 📸✨`,
+          variables: 'client_name, drive_url, note_section',
+          category: 'sortir',
+        },
+        {
+          key: 'dp_uploaded_admin',
+          label: 'Notifikasi DP Masuk (ke Admin)',
+          description: 'Dikirim ke admin saat klien mengunggah bukti transfer DP',
+          template: `📸 *Booking Baru (Jadiphoto.Moment) — DP Masuk!*
+
+Klien: *{{client_name}}*
+No. HP: {{client_phone}}
+
+Bukti transfer sudah diupload dan menunggu verifikasi Anda.
+
+Cek dashboard admin untuk approve/reject.`,
+          variables: 'client_name, client_phone',
+          category: 'booking',
+        },
+        {
+          key: 'session_expired',
+          label: 'Notifikasi Sesi Sortir Kadaluarsa',
+          description: 'Dikirim ke klien saat masa sortir foto telah habis/dinonaktifkan oleh admin',
+          template: `⚠️ *Pemberitahuan: Sesi Sortir Foto Kadaluarsa*
+
+Halo *{{client_name}}*,
+
+Mohon maaf, batas waktu untuk pemilihan foto Anda telah habis dan sesi sortir saat ini telah dinonaktifkan.
+
+Jika Anda masih ingin melanjutkan proses pemilihan foto, silakan hubungi admin Jadiphoto.Moment untuk membuka kembali akses galeri Anda.
+
+Terima kasih. 🙏`,
+          variables: 'client_name',
+          category: 'sortir',
+        },
+      ];
+
+      for (const tpl of defaultTemplates) {
+        await pool.query(
+          `INSERT INTO wa_templates (key, label, description, template, variables, category)
+           VALUES ($1, $2, $3, $4, $5, $6)
+           ON CONFLICT (key) DO NOTHING`,
+          [tpl.key, tpl.label, tpl.description, tpl.template, tpl.variables, tpl.category]
+        );
+      }
+
       // ── Seed default booking categories ──────────────────────────
       const { rows: catRows } = await pool.query('SELECT COUNT(*) AS cnt FROM booking_categories');
       if (parseInt(catRows[0].cnt, 10) === 0) {

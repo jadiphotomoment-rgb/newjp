@@ -61,7 +61,7 @@ router.get('/:id', auth, async (req, res) => {
 
 // PUT /api/admin/categories/:id — update kategori (form-builder & paket harga)
 router.put('/:id', auth, async (req, res) => {
-  const { name, fields, packages, dp_type, dp_value, color, time_slots, wa_template, drive_folder_id, drive_folder_name } = req.body;
+  const { name, fields, packages, dp_type, dp_value, color, time_slots, drive_folder_id, drive_folder_name } = req.body;
 
   if (!name) return res.status(400).json({ error: 'Nama kategori wajib diisi' });
   if (!['percent', 'fixed'].includes(dp_type)) {
@@ -96,9 +96,9 @@ router.put('/:id', auth, async (req, res) => {
   try {
     const { rows } = await db.query(
       `UPDATE booking_categories
-       SET name = $1, fields = $2, dp_type = $3, dp_value = $4, color = $5, time_slots = $6, wa_template = $7, packages = $8,
-           drive_folder_id = $9, drive_folder_name = $10
-       WHERE id = $11
+       SET name = $1, fields = $2, dp_type = $3, dp_value = $4, color = $5, time_slots = $6, packages = $7,
+           drive_folder_id = $8, drive_folder_name = $9
+       WHERE id = $10
        RETURNING *`,
       [
         name.trim(),
@@ -107,7 +107,6 @@ router.put('/:id', auth, async (req, res) => {
         parseFloat(dp_value),
         color || '#7c6dfa',
         JSON.stringify(time_slots || []),
-        wa_template || null,
         JSON.stringify(validPackages),
         drive_folder_id ? drive_folder_id.trim() : null,
         drive_folder_name ? drive_folder_name.trim() : null,

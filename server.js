@@ -42,6 +42,7 @@ app.use('/api/admin/categories',     require('./routes/categories'));
 app.use('/api/finance',              require('./routes/finance'));
 app.use('/api/google',               require('./routes/google'));
 app.use('/api/shortlinks',           require('./routes/shortlinks'));
+app.use('/api/wa-templates',         require('./routes/wa-templates'));
 
 // ── Page Routes ──────────────────────────────────────────────
 // Root → redirect to admin login

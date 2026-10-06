@@ -4,6 +4,7 @@ const express = require('express');
 const router  = express.Router();
 const https   = require('https');
 const db      = require('../database');
+const { getWaTemplate } = require('../utils/template');
 
 // ── Send message via Fonnte API ───────────────────────────────
 function sendWhatsApp(target, message) {
@@ -114,7 +115,6 @@ router.post('/', async (req, res) => {
     if (client) client.release();
   }
 
-  // ── Build WhatsApp message ────────────────────────────────
   const fileList = selectedFiles
     .map((f, i) => {
       let line = `${f.name}`;
@@ -123,18 +123,29 @@ router.post('/', async (req, res) => {
     })
     .join('\n');
 
-  const message = [
-    '*NOTIFIKASI SORTIR FOTO BARU — JADIPHOTO.MOMENT*',
-    '------------------------------------',
-    `*Nama Klien / Folder:* ${session.client_name}`,
-    `*Tanggal Seleksi:* ${formatDateWIB()}`,
-    `*Total Foto Dipilih:* ${selectedFiles.length} Foto (Limit Maks: ${session.photo_limit})`,
-    '',
-    '*DAFTAR FILE FOTO:*',
-    fileList,
-    '------------------------------------',
-    '_Pesan ini dikirim otomatis oleh System Jadiphoto.Moment._',
-  ].join('\n');
+  // Coba ambil template dari DB, fallback ke hardcode jika tidak ada
+  let message = await getWaTemplate('sortir_selesai_admin', {
+    client_name: session.client_name,
+    selection_date: formatDateWIB(),
+    total_selected: selectedFiles.length,
+    photo_limit: session.photo_limit,
+    file_list: fileList,
+  });
+
+  if (!message) {
+    message = [
+      '*NOTIFIKASI SORTIR FOTO BARU — JADIPHOTO.MOMENT*',
+      '------------------------------------',
+      `*Nama Klien / Folder:* ${session.client_name}`,
+      `*Tanggal Seleksi:* ${formatDateWIB()}`,
+      `*Total Foto Dipilih:* ${selectedFiles.length} Foto (Limit Maks: ${session.photo_limit})`,
+      '',
+      '*DAFTAR FILE FOTO:*',
+      fileList,
+      '------------------------------------',
+      '_Pesan ini dikirim otomatis oleh System Jadiphoto.Moment._',
+    ].join('\n');
+  }
 
   // ── Send WhatsApp (skip if not configured) ────────────────
   const token  = process.env.FONNTE_TOKEN;
