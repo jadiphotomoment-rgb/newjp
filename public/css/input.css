@@ -854,3 +854,251 @@ td {
 
 /* ── Gallery page wrapper ─────────────────────────────────── */
 #gallery-page { padding-bottom: 80px; }
+
+/* ── Order Progress Tracker ───────────────────────────────── */
+.tracker-card {
+  width: 100%;
+  max-width: 520px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--r-xl);
+  padding: var(--sp-8) var(--sp-6);
+  box-shadow: var(--shadow-lg), var(--shadow-glow);
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+  backdrop-filter: blur(12px);
+  animation: fadeIn 0.4s ease;
+}
+
+.tracker-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 4px;
+  background: var(--grad);
+}
+
+.tracker-header {
+  margin-bottom: var(--sp-6);
+}
+
+.tracker-icon-big {
+  font-size: 3.2rem;
+  margin-bottom: var(--sp-3);
+  animation: popIn 0.5s ease;
+}
+
+.tracker-title {
+  font-size: 1.5rem;
+  font-weight: 800;
+  font-family: 'Outfit', sans-serif;
+  color: var(--text-0);
+  margin-bottom: var(--sp-2);
+}
+
+.tracker-subtitle {
+  font-size: 0.9rem;
+  color: var(--text-2);
+  line-height: 1.5;
+}
+
+.tracker-steps {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: var(--sp-6) 0;
+  padding: 0 var(--sp-2);
+  position: relative;
+}
+
+.tracker-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-2);
+  z-index: 2;
+  flex: 1;
+}
+
+.tracker-dot {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  font-weight: 700;
+  background: var(--bg-2);
+  border: 2px solid var(--border);
+  color: var(--text-3);
+  transition: all 0.3s ease;
+}
+
+.tracker-step-done .tracker-dot {
+  background: rgba(34, 211, 116, 0.15);
+  border-color: var(--green);
+  color: var(--green);
+}
+
+.tracker-step-active .tracker-dot {
+  background: var(--grad);
+  border-color: var(--purple-2);
+  color: #fff;
+  box-shadow: 0 0 16px rgba(124, 109, 250, 0.45);
+  transform: scale(1.12);
+}
+
+.tracker-step-pending .tracker-dot {
+  opacity: 0.4;
+}
+
+.tracker-step-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-2);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.tracker-step-active .tracker-step-label {
+  color: var(--purple-2);
+  font-weight: 700;
+}
+
+.tracker-step-done .tracker-step-label {
+  color: var(--green);
+}
+
+.tracker-line {
+  flex: 1;
+  height: 3px;
+  background: var(--border);
+  margin: 0 -8px 22px;
+  z-index: 1;
+  transition: background 0.3s ease;
+}
+
+.tracker-desc {
+  font-size: 0.92rem;
+  color: var(--text-1);
+  margin-bottom: var(--sp-4);
+  line-height: 1.5;
+}
+
+.tracker-note {
+  background: var(--bg-input);
+  border-left: 3px solid var(--purple);
+  border-radius: 0 var(--r) var(--r) 0;
+  padding: var(--sp-3) var(--sp-4);
+  text-align: left;
+  font-size: 0.85rem;
+  color: var(--text-1);
+  margin-bottom: var(--sp-5);
+  word-break: break-word;
+}
+
+/* ── Tracker Drive Box (Highlighted Action) ──────────────── */
+.tracker-drive-box {
+  background: linear-gradient(135deg, rgba(124, 109, 250, 0.10) 0%, rgba(168, 85, 247, 0.08) 100%);
+  border: 1px solid rgba(124, 109, 250, 0.30);
+  border-radius: var(--r-lg);
+  padding: var(--sp-5);
+  margin: var(--sp-5) 0;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-3);
+  position: relative;
+  box-shadow: 0 4px 20px rgba(124, 109, 250, 0.12);
+}
+
+.tracker-drive-box-done {
+  background: linear-gradient(135deg, rgba(34, 211, 116, 0.12) 0%, rgba(160, 185, 129, 0.08) 100%);
+  border-color: rgba(34, 211, 116, 0.35);
+  box-shadow: 0 4px 20px rgba(34, 211, 116, 0.15);
+}
+
+.tracker-drive-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: var(--r-full);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  background: rgba(124, 109, 250, 0.18);
+  color: var(--purple-2);
+}
+
+.tracker-drive-box-done .tracker-drive-badge {
+  background: rgba(34, 211, 116, 0.20);
+  color: var(--green);
+}
+
+.tracker-drive-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-0);
+  margin: 0;
+}
+
+.tracker-drive-desc {
+  font-size: 0.85rem;
+  color: var(--text-2);
+  line-height: 1.5;
+  margin: 0;
+  max-width: 420px;
+}
+
+.btn-drive-large {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  max-width: 360px;
+  padding: 12px 24px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  border-radius: var(--r-lg);
+  text-decoration: none;
+  background: var(--grad);
+  color: #fff;
+  box-shadow: 0 4px 16px rgba(124, 109, 250, 0.35);
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.btn-drive-large:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 24px rgba(124, 109, 250, 0.50);
+  color: #fff;
+}
+
+.tracker-drive-box-done .btn-drive-large {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  box-shadow: 0 4px 16px rgba(16, 185, 129, 0.35);
+}
+
+.tracker-drive-box-done .btn-drive-large:hover {
+  box-shadow: 0 6px 24px rgba(16, 185, 129, 0.50);
+}
+
+.tracker-refresh-hint {
+  font-size: 0.78rem;
+  color: var(--text-3);
+  margin: var(--sp-4) 0 var(--sp-3);
+}
+
+.tracker-actions {
+  display: flex;
+  gap: var(--sp-3);
+  justify-content: center;
+  flex-wrap: wrap;
+}
+

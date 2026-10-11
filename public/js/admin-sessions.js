@@ -164,11 +164,16 @@ function actionButtons(s) {
   const btns = [];
   btns.push(`<button class="btn btn-outline btn-sm" onclick="showShareLink('${s.uuid}', '${s.short_slug || ''}')" title="Link galeri" aria-label="Bagikan link">🔗 Link</button>`);
   
+  const driveUrl = s.result_drive_url || s.folder_url;
+  if (driveUrl) {
+    btns.push(`<a href="${escHtml(driveUrl)}" target="_blank" rel="noopener noreferrer" class="btn btn-outline btn-sm" title="${s.result_drive_url ? 'Buka Google Drive Hasil Edit' : 'Buka Google Drive Mentahan'}">📁 Drive</a>`);
+  }
+
   if (s.status === 'completed') {
-    btns.push(`<button class="btn btn-outline btn-sm" onclick="viewSelections('${s.uuid}')" title="Lihat pilihan foto" aria-label="Lihat seleksi">👁 Seleksi & Status</button>`);
+    btns.push(`<button class="btn btn-outline btn-sm" onclick="viewSelections('${s.uuid}')" title="Lihat pilihan foto & status pengerjaan" aria-label="Lihat seleksi">👁 Seleksi & Status</button>`);
   }
   
-  btns.push(`<button class="btn btn-outline btn-sm" onclick="openEditSessionModal('${s.uuid}')" title="Edit Data Sesi" aria-label="Edit Sesi">✏️ Edit</button>`);
+  btns.push(`<button class="btn btn-outline btn-sm" onclick="openEditSessionModal('${s.uuid}')" title="Edit Data Sesi (Nama, Drive, Limit)" aria-label="Edit Sesi">✏️ Edit</button>`);
 
   if (s.status !== 'active') {
     btns.push(`<button class="btn btn-outline btn-sm" onclick="reopenSession('${s.uuid}')" title="Buka kembali" aria-label="Buka kembali sesi">♻️</button>`);
@@ -187,8 +192,11 @@ function renderTable(data) {
     <tr data-uuid="${s.uuid}">
       <td class="td-name">
         ${escHtml(s.client_name)}
-        ${s.short_slug ? `<br><span class="short-link-chip" onclick="copyText('${location.origin}/s/${s.short_slug}')" title="Salin Short Link">🔗 /s/${s.short_slug}</span>` : ''}
-        <span>${escHtml(s.folder_id)}</span>
+        <div style="display:flex; flex-wrap:wrap; gap:4px; margin-top:3px;">
+          ${s.short_slug ? `<span class="short-link-chip" onclick="copyText('${location.origin}/s/${s.short_slug}')" title="Salin Short Link">🔗 /s/${s.short_slug}</span>` : ''}
+          ${s.result_drive_url ? `<span class="short-link-chip" style="border-color:rgba(34,211,116,0.3); color:#10b981;" onclick="copyText('${s.result_drive_url}')" title="Salin Link Drive Hasil Edit">📁 Hasil Drive</span>` : ''}
+        </div>
+        <span style="font-size:11px; opacity:0.6;">${escHtml(s.folder_id)}</span>
       </td>
       <td>${s.photo_limit} foto</td>
       <td>${s.photo_count} / ${s.photo_limit}</td>
@@ -208,7 +216,10 @@ function renderCards(data) {
         <div>
           <div class="session-card-name">
             ${escHtml(s.client_name)}
-            ${s.short_slug ? `<br><span class="short-link-chip" style="margin-top:4px;" onclick="copyText('${location.origin}/s/${s.short_slug}')" title="Salin Short Link">🔗 /s/${s.short_slug}</span>` : ''}
+            <div style="display:flex; flex-wrap:wrap; gap:4px; margin-top:4px;">
+              ${s.short_slug ? `<span class="short-link-chip" onclick="copyText('${location.origin}/s/${s.short_slug}')" title="Salin Short Link">🔗 /s/${s.short_slug}</span>` : ''}
+              ${s.result_drive_url ? `<span class="short-link-chip" style="border-color:rgba(34,211,116,0.3); color:#10b981;" onclick="copyText('${s.result_drive_url}')" title="Salin Link Drive Hasil Edit">📁 Hasil Drive</span>` : ''}
+            </div>
           </div>
           <div class="session-card-meta">${formatDate(s.created_at)}</div>
         </div>
@@ -264,9 +275,42 @@ function showShareLink(uuid, shortSlug) {
   const url = galleryUrl(uuid, shortSlug);
   document.getElementById('gallery-link-input').value = url;
   document.getElementById('btn-open-gallery').href = url;
+
+  // Direct Drive redirect link
+  const driveDirectInput = document.getElementById('direct-drive-link-input');
+  if (driveDirectInput) {
+    const directUrl = shortSlug ? `${location.origin}/s/${shortSlug}/drive` : `${location.origin}/api/sessions/${uuid}/drive`;
+    driveDirectInput.value = directUrl;
+  }
+
   openModal('modal-created');
 }
 window.showShareLink = showShareLink;
+
+function copyDriveDirect() {
+  const driveDirectInput = document.getElementById('direct-drive-link-input');
+  if (driveDirectInput && driveDirectInput.value) {
+    copyText(driveDirectInput.value);
+  }
+}
+window.copyDriveDirect = copyDriveDirect;
+
+// ── Test Drive Button in Status Modal ────────────────────────────
+function updateTestDriveBtn() {
+  const urlInput = document.getElementById('update-result-drive-url');
+  const btnTest = document.getElementById('btn-test-drive-link');
+  if (!urlInput || !btnTest) return;
+  const val = urlInput.value.trim();
+  if (val && /^https?:\/\//i.test(val)) {
+    btnTest.href = val;
+    btnTest.classList.remove('hidden');
+    btnTest.style.display = 'inline-flex';
+  } else {
+    btnTest.classList.add('hidden');
+    btnTest.style.display = 'none';
+  }
+}
+window.updateTestDriveBtn = updateTestDriveBtn;
 
 // ── View selections modal ─────────────────────────────────────────
 async function viewSelections(uuid) {
@@ -316,6 +360,7 @@ async function viewSelections(uuid) {
       document.getElementById('update-client-phone').value = session.active_phone || session.client_phone || '';
       document.getElementById('update-result-drive-url').value = session.result_drive_url || session.folder_url || '';
       
+      updateTestDriveBtn();
       toggleDoneFields();
 
       const btnUpdate = document.getElementById('btn-update-status');
@@ -512,10 +557,11 @@ document.getElementById('form-new-session').addEventListener('submit', async (e)
   const btnText   = document.getElementById('btn-create-text');
   const spinner   = document.getElementById('btn-create-spinner');
 
-  const clientName  = document.getElementById('client-name').value.trim();
-  const clientPhone = document.getElementById('client-phone').value.trim();
-  const folderUrl   = document.getElementById('folder-url').value.trim();
-  const photoLimit  = document.getElementById('photo-limit').value;
+  const clientName     = document.getElementById('client-name').value.trim();
+  const clientPhone    = document.getElementById('client-phone').value.trim();
+  const folderUrl      = document.getElementById('folder-url').value.trim();
+  const resultDriveUrl = document.getElementById('new-result-drive-url')?.value.trim() || '';
+  const photoLimit     = document.getElementById('photo-limit').value;
 
   alertEl.classList.add('hidden');
 
@@ -532,7 +578,7 @@ document.getElementById('form-new-session').addEventListener('submit', async (e)
   try {
     const res  = await apiFetch('/api/sessions', {
       method: 'POST',
-      body:   JSON.stringify({ clientName, clientPhone, folderUrl, photoLimit }),
+      body:   JSON.stringify({ clientName, clientPhone, folderUrl, photoLimit, resultDriveUrl }),
     });
     const data = await res.json();
 
@@ -543,9 +589,7 @@ document.getElementById('form-new-session').addEventListener('submit', async (e)
     }
 
     closeAllModals();
-    document.getElementById('gallery-link-input').value = data.galleryUrl;
-    document.getElementById('btn-open-gallery').href    = data.galleryUrl;
-    openModal('modal-created');
+    showShareLink(data.uuid, data.shortSlug);
 
     loadSessions(); loadStats();
     showToast('Sesi berhasil dibuat!', 'success');
@@ -569,6 +613,7 @@ function openEditSessionModal(uuid) {
   document.getElementById('edit-client-name').value = session.client_name || '';
   document.getElementById('edit-client-phone').value = session.active_phone || session.client_phone || '';
   document.getElementById('edit-folder-url').value = session.folder_url || '';
+  document.getElementById('edit-result-drive-url').value = session.result_drive_url || '';
   document.getElementById('edit-photo-limit').value = session.photo_limit || 10;
   
   document.getElementById('modal-edit-alert').classList.add('hidden');
@@ -584,11 +629,12 @@ document.getElementById('form-edit-session').addEventListener('submit', async (e
   const btnText   = document.getElementById('btn-update-session-text');
   const spinner   = document.getElementById('btn-update-session-spinner');
 
-  const uuid        = document.getElementById('edit-session-uuid').value;
-  const clientName  = document.getElementById('edit-client-name').value.trim();
-  const clientPhone = document.getElementById('edit-client-phone').value.trim();
-  const folderUrl   = document.getElementById('edit-folder-url').value.trim();
-  const photoLimit  = document.getElementById('edit-photo-limit').value;
+  const uuid           = document.getElementById('edit-session-uuid').value;
+  const clientName     = document.getElementById('edit-client-name').value.trim();
+  const clientPhone    = document.getElementById('edit-client-phone').value.trim();
+  const folderUrl      = document.getElementById('edit-folder-url').value.trim();
+  const resultDriveUrl = document.getElementById('edit-result-drive-url').value.trim();
+  const photoLimit     = document.getElementById('edit-photo-limit').value;
 
   alertEl.classList.add('hidden');
 
@@ -605,7 +651,7 @@ document.getElementById('form-edit-session').addEventListener('submit', async (e
   try {
     const res  = await apiFetch(`/api/sessions/${uuid}`, {
       method: 'PATCH',
-      body:   JSON.stringify({ clientName, clientPhone, folderUrl, photoLimit }),
+      body:   JSON.stringify({ clientName, clientPhone, folderUrl, photoLimit, resultDriveUrl }),
     });
     const data = await res.json();
 

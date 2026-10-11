@@ -131,7 +131,7 @@ router.get('/stats', auth, async (req, res) => {
 router.get('/slug/:slug', async (req, res) => {
   try {
     const { rows } = await db.query(`
-      SELECT id, uuid, short_slug, client_name, folder_id, photo_limit, status,
+      SELECT id, uuid, short_slug, client_name, folder_id, folder_url, photo_limit, status,
              edit_status, edit_note, result_drive_url, created_at, completed_at
       FROM sessions WHERE short_slug = $1
     `, [req.params.slug]);
@@ -190,7 +190,7 @@ router.get('/:uuid/selections', auth, async (req, res) => {
 
 // ── POST /api/sessions — create new session (admin) ──────────
 router.post('/', auth, async (req, res) => {
-  const { clientName, clientPhone, folderUrl, photoLimit } = req.body;
+  const { clientName, clientPhone, folderUrl, photoLimit, resultDriveUrl } = req.body;
 
   if (!clientName || !folderUrl || !photoLimit) {
     return res.status(400).json({ error: 'clientName, folderUrl, dan photoLimit wajib diisi' });
@@ -220,14 +220,15 @@ router.post('/', auth, async (req, res) => {
 
   try {
     await db.query(`
-      INSERT INTO sessions (uuid, short_slug, client_name, client_phone, folder_url, folder_id, photo_limit, admin_id)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      INSERT INTO sessions (uuid, short_slug, client_name, client_phone, folder_url, result_drive_url, folder_id, photo_limit, admin_id)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
     `, [
       uuid,
       shortSlug,
       clientName.trim(),
       clientPhone ? clientPhone.trim() : null,
       folderUrl.trim(),
+      resultDriveUrl ? resultDriveUrl.trim() : null,
       folderId,
       limit,
       req.admin.adminId
@@ -460,9 +461,27 @@ router.patch('/:uuid/reopen', auth, async (req, res) => {
   }
 });
 
+// ── GET /api/sessions/:uuid/drive — direct redirect to Drive URL (public) ─
+router.get('/:uuid/drive', async (req, res) => {
+  try {
+    const { rows } = await db.query(
+      'SELECT folder_url, result_drive_url FROM sessions WHERE uuid = $1',
+      [req.params.uuid]
+    );
+    const session = rows[0];
+    if (!session) return res.status(404).send('<h1>Sesi tidak ditemukan</h1>');
+    const targetUrl = session.result_drive_url || session.folder_url;
+    if (targetUrl) return res.redirect(targetUrl);
+    return res.redirect(`/gallery?session=${req.params.uuid}`);
+  } catch (err) {
+    console.error('[sessions] direct drive error:', err);
+    res.status(500).send('<h1>Server error</h1>');
+  }
+});
+
 // ── PATCH /api/sessions/:uuid — update session details (admin) ─────
 router.patch('/:uuid', auth, async (req, res) => {
-  const { clientName, clientPhone, folderUrl, photoLimit } = req.body;
+  const { clientName, clientPhone, folderUrl, photoLimit, resultDriveUrl } = req.body;
 
   if (!clientName || !folderUrl || !photoLimit) {
     return res.status(400).json({ error: 'clientName, folderUrl, dan photoLimit wajib diisi' });
@@ -480,17 +499,21 @@ router.patch('/:uuid', auth, async (req, res) => {
 
   try {
     const sessionRes = await db.query(
-      'SELECT id FROM sessions WHERE uuid = $1 AND admin_id = $2',
+      'SELECT id, result_drive_url FROM sessions WHERE uuid = $1 AND admin_id = $2',
       [req.params.uuid, req.admin.adminId]
     );
     const session = sessionRes.rows[0];
     if (!session) return res.status(404).json({ error: 'Sesi tidak ditemukan' });
 
+    const driveUrlToSave = resultDriveUrl !== undefined 
+      ? (resultDriveUrl ? resultDriveUrl.trim() : null) 
+      : session.result_drive_url;
+
     await db.query(
-      'UPDATE sessions SET client_name = $1, client_phone = $2, folder_url = $3, folder_id = $4, photo_limit = $5 WHERE id = $6',
-      [clientName.trim(), clientPhone ? clientPhone.trim() : null, folderUrl.trim(), folderId, limit, session.id]
+      'UPDATE sessions SET client_name = $1, client_phone = $2, folder_url = $3, folder_id = $4, photo_limit = $5, result_drive_url = $6 WHERE id = $7',
+      [clientName.trim(), clientPhone ? clientPhone.trim() : null, folderUrl.trim(), folderId, limit, driveUrlToSave, session.id]
     );
-    res.json({ message: 'Sesi berhasil diperbarui' });
+    res.json({ message: 'Sesi berhasil diperbarui', resultDriveUrl: driveUrlToSave });
   } catch (err) {
     console.error('[sessions] PATCH update error:', err);
     res.status(500).json({ error: 'Database error' });

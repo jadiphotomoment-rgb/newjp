@@ -518,6 +518,11 @@
             melihat"</small>
         </div>
         <div class="form-group">
+          <label for="new-result-drive-url">Link Google Drive Hasil Edit (Opsional)</label>
+          <input type="url" id="new-result-drive-url" placeholder="https://drive.google.com/drive/folders/...">
+          <small class="text-xs text-on-surface-variant mt-1">Bisa dikosongkan dan diisi nanti saat proses edit atau setelah selesai.</small>
+        </div>
+        <div class="form-group">
           <label for="photo-limit">Batas Maksimal Foto yang Boleh Dipilih</label>
           <input type="number" id="photo-limit" value="10" min="1" max="500" required>
         </div>
@@ -561,6 +566,11 @@
           <input type="url" id="edit-folder-url" required>
         </div>
         <div class="form-group">
+          <label for="edit-result-drive-url">Link Google Drive Hasil Edit / Final (Opsional)</label>
+          <input type="url" id="edit-result-drive-url" placeholder="https://drive.google.com/drive/folders/...">
+          <small class="text-xs text-on-surface-variant mt-1">Klien dapat langsung mengakses link ini di galeri walaupun status masih dalam proses edit atau sudah selesai.</small>
+        </div>
+        <div class="form-group">
           <label for="edit-photo-limit">Batas Maksimal Foto</label>
           <input type="number" id="edit-photo-limit" min="1" max="500" required>
         </div>
@@ -596,12 +606,28 @@
           foto.</p>
 
         <div
-          class="flex items-center gap-2 bg-surface-container rounded-lg p-1.5 mb-6 border border-outline-variant/30">
+          class="flex items-center gap-2 bg-surface-container rounded-lg p-1.5 mb-3 border border-outline-variant/30">
           <input type="text" id="gallery-link-input" readonly
             class="flex-1 bg-transparent border-none focus:ring-0 text-sm px-3 text-on-surface font-mono"
             aria-label="Link galeri klien">
           <button id="btn-copy-link" class="btn btn-primary py-1.5 px-3 text-sm h-auto"
             aria-label="Salin link">Salin</button>
+        </div>
+
+        <div class="text-left mb-4 p-2.5 rounded-lg bg-surface-container-low border border-outline-variant/20">
+          <div class="flex items-center justify-between text-xs text-on-surface-variant mb-1">
+            <span class="font-medium flex items-center gap-1">
+              <span class="material-symbols-outlined text-[15px] text-primary">folder_shared</span>
+              Direct Link Google Drive (Langsung Redirect)
+            </span>
+          </div>
+          <div class="flex items-center gap-2">
+            <input type="text" id="direct-drive-link-input" readonly
+              class="flex-1 bg-surface-container border border-outline-variant/30 rounded px-2 py-1 text-xs text-on-surface font-mono"
+              aria-label="Direct link Google Drive">
+            <button id="btn-copy-drive-direct" type="button" class="btn btn-outline py-1 px-2 text-xs h-auto"
+              onclick="copyDriveDirect()">Salin</button>
+          </div>
         </div>
 
         <div class="flex gap-3">
@@ -645,6 +671,20 @@
           </select>
         </div>
 
+        <div class="form-group mb-3">
+          <div class="flex items-center justify-between mb-1">
+            <label for="update-result-drive-url" class="mb-0">Link Google Drive (Hasil Edit / Sesi)</label>
+            <a id="btn-test-drive-link" href="#" target="_blank" rel="noopener noreferrer"
+               class="text-xs text-primary hover:underline flex items-center gap-1 hidden">
+              <span>Buka Drive</span>
+              <span class="material-symbols-outlined text-[14px]">open_in_new</span>
+            </a>
+          </div>
+          <input type="url" id="update-result-drive-url" class="form-control bg-surface-container-lowest"
+            placeholder="https://drive.google.com/drive/folders/..." oninput="updateTestDriveBtn()">
+          <small class="text-xs text-on-surface-variant mt-1">Klien dapat langsung mengakses link ini di galeri walaupun status masih dalam proses edit atau sudah selesai.</small>
+        </div>
+
         <div id="done-wa-panel" class="hidden bg-primary/5 border border-primary/20 rounded-lg p-4 mb-4">
           <div class="font-label-sm text-primary mb-3 flex items-center gap-2">
             <span class="material-symbols-outlined text-[18px]">chat</span> Notifikasi WhatsApp Klien
@@ -653,11 +693,6 @@
             <label for="update-client-phone">Nomor WhatsApp Klien</label>
             <input type="tel" id="update-client-phone" class="form-control bg-surface-container-lowest"
               placeholder="Contoh: 08123456789 atau 628123456789">
-          </div>
-          <div class="form-group mb-3">
-            <label for="update-result-drive-url">Link Google Drive Hasil Edit</label>
-            <input type="url" id="update-result-drive-url" class="form-control bg-surface-container-lowest"
-              placeholder="https://drive.google.com/drive/folders/...">
           </div>
           <label class="flex items-center gap-2 cursor-pointer mt-2 text-sm text-on-surface">
             <input type="checkbox" id="update-send-wa" checked

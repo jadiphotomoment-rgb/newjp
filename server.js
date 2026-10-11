@@ -77,6 +77,26 @@ app.get('/s/:slug', async (req, res) => {
   }
 });
 
+// ── Short Link Drive redirect: /s/:slug/drive → Direct to Google Drive ─
+app.get('/s/:slug/drive', async (req, res) => {
+  try {
+    const db = require('./database');
+    const { rows } = await db.query(
+      'SELECT uuid, folder_url, result_drive_url FROM sessions WHERE short_slug = $1',
+      [req.params.slug]
+    );
+    if (!rows[0]) return res.status(404).send('<h1>Link tidak ditemukan</h1>');
+    const targetUrl = rows[0].result_drive_url || rows[0].folder_url;
+    if (targetUrl) {
+      return res.redirect(targetUrl);
+    }
+    res.redirect(`/gallery?session=${rows[0].uuid}`);
+  } catch (err) {
+    console.error('[shortlink drive] error:', err);
+    res.status(500).send('<h1>Server Error</h1>');
+  }
+});
+
 // ── General Short Link redirect: /l/:code ────────────────────
 app.get('/l/:code', async (req, res) => {
   try {

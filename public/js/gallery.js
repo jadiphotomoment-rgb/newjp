@@ -505,6 +505,40 @@ function showTracker(session) {
     ? `<div class="tracker-note"><strong>Catatan dari Fotografer:</strong><br>${escHtml(session.edit_note)}</div>`
     : '';
 
+  const driveUrl = session.result_drive_url || session.folder_url;
+  let driveBoxHtml = '';
+  if (driveUrl) {
+    const isDone = current === 'done';
+    const isEditing = current === 'editing';
+
+    const badgeText = isDone ? '🎉 Siap Diunduh' : isEditing ? '🎨 Sedang Diedit' : '📁 Google Drive';
+    const titleText = isDone 
+      ? 'Hasil Foto Google Drive' 
+      : (session.result_drive_url ? 'Link Google Drive Hasil Sesi' : 'Folder Google Drive Sesi');
+    const descText = isDone
+      ? 'Foto-foto pilihan Anda telah selesai diedit dan siap untuk diunduh melalui folder Google Drive di bawah ini.'
+      : isEditing
+        ? (session.result_drive_url
+            ? 'Fotografer telah menambahkan link Google Drive untuk sesi Anda. Anda dapat langsung membuka folder tersebut meskipun foto masih dalam proses edit.'
+            : 'Sesi foto Anda sedang dalam tahap proses pengeditan. Anda tetap dapat mengakses folder Google Drive melalui tautan di bawah.')
+        : 'Pilihan foto Anda telah tersimpan. Anda dapat mengakses folder Google Drive sesi ini kapan saja.';
+    const btnText = isDone
+      ? '📁 Unduh / Buka Hasil Foto (Google Drive)'
+      : (isEditing ? '📁 Buka Google Drive (Sedang Diedit)' : '📁 Buka Google Drive');
+
+    driveBoxHtml = `
+      <div class="tracker-drive-box ${isDone ? 'tracker-drive-box-done' : ''}">
+        <div class="tracker-drive-badge">${badgeText}</div>
+        <h3 class="tracker-drive-title">${titleText}</h3>
+        <p class="tracker-drive-desc">${descText}</p>
+        <a href="${escHtml(driveUrl)}" target="_blank" rel="noopener noreferrer" class="btn-drive-large" id="btn-tracker-drive">
+          <span>${btnText}</span>
+          <span style="font-size:1.1em;line-height:1;">↗</span>
+        </a>
+      </div>
+    `;
+  }
+
   stateTracker.innerHTML = `
     <div class="tracker-card">
       <div class="tracker-header">
@@ -514,9 +548,12 @@ function showTracker(session) {
       </div>
       <div class="tracker-steps">${stepsHtml}</div>
       <p class="tracker-desc">${info.desc}</p>
+      ${driveBoxHtml}
       ${editNoteHtml}
-      <p class="tracker-refresh">Status ini diperbarui oleh fotografer secara langsung. Muat ulang halaman ini untuk melihat update terbaru.</p>
-      <button class="btn btn-outline" onclick="location.reload()">🔄 Refresh Status</button>
+      <p class="tracker-refresh-hint">Status ini diperbarui oleh fotografer secara langsung. Muat ulang halaman untuk update terbaru.</p>
+      <div class="tracker-actions">
+        <button class="btn btn-outline" onclick="location.reload()">🔄 Refresh Status</button>
+      </div>
     </div>
   `;
   showState('tracker');
@@ -582,8 +619,9 @@ async function init() {
     });
 
     const btnDriveLink = document.getElementById('btn-drive-link');
-    if (btnDriveLink && sessionData.folder_url) {
-      btnDriveLink.href = sessionData.folder_url;
+    const driveUrl = sessionData.result_drive_url || sessionData.folder_url;
+    if (btnDriveLink && driveUrl) {
+      btnDriveLink.href = driveUrl;
       btnDriveLink.style.display = 'inline-flex';
     }
   }
