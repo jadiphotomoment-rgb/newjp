@@ -50,10 +50,36 @@ router.get('/sumber-informasi', auth, async (req, res) => {
   const whereClause = conditions.length > 0 ? 'WHERE ' + conditions.join(' AND ') : '';
 
   try {
+    const sumberExpr = `
+      COALESCE(
+        NULLIF(TRIM(LOWER(b.sumber_informasi)), ''),
+        CASE
+          WHEN LOWER(COALESCE(b.form_data->>'source', b.form_data->>'infokontak', '')) LIKE '%instagram%' THEN 'instagram'
+          WHEN LOWER(COALESCE(b.form_data->>'source', b.form_data->>'infokontak', '')) LIKE '%tiktok%' THEN 'tiktok'
+          WHEN LOWER(COALESCE(b.form_data->>'source', b.form_data->>'infokontak', '')) LIKE '%google%' THEN 'google'
+          WHEN LOWER(COALESCE(b.form_data->>'source', b.form_data->>'infokontak', '')) LIKE '%teman%' 
+            OR LOWER(COALESCE(b.form_data->>'source', b.form_data->>'infokontak', '')) LIKE '%keluarga%' 
+            OR LOWER(COALESCE(b.form_data->>'source', b.form_data->>'infokontak', '')) LIKE '%rekomendasi%' 
+            OR LOWER(COALESCE(b.form_data->>'source', b.form_data->>'infokontak', '')) LIKE '%referral%' THEN 'referral'
+          WHEN LOWER(COALESCE(b.form_data->>'source', b.form_data->>'infokontak', '')) LIKE '%event%' 
+            OR LOWER(COALESCE(b.form_data->>'source', b.form_data->>'infokontak', '')) LIKE '%pameran%' THEN 'event'
+          WHEN NULLIF(TRIM(COALESCE(b.form_data->>'source', b.form_data->>'infokontak', '')), '') IS NOT NULL THEN 'lainnya'
+          ELSE 'tidak_diketahui'
+        END
+      )
+    `;
+
+    const detailExpr = `
+      COALESCE(
+        NULLIF(TRIM(b.sumber_informasi_detail), ''),
+        NULLIF(TRIM(COALESCE(b.form_data->>'infokontak', b.form_data->>'source_detail', '')), '')
+      )
+    `;
+
     // 1. Distribusi per Sumber Informasi
     const distQuery = `
       SELECT 
-        COALESCE(NULLIF(TRIM(LOWER(b.sumber_informasi)), ''), 'tidak_diketahui') AS sumber,
+        ${sumberExpr} AS sumber,
         COUNT(*)::int AS count,
         COALESCE(SUM(b.package_price), 0)::numeric AS total_revenue,
         COALESCE(AVG(b.package_price), 0)::numeric AS avg_revenue,
@@ -62,7 +88,7 @@ router.get('/sumber-informasi', auth, async (req, res) => {
       FROM bookings b
       JOIN booking_categories bc ON b.category_id = bc.id
       ${whereClause}
-      GROUP BY COALESCE(NULLIF(TRIM(LOWER(b.sumber_informasi)), ''), 'tidak_diketahui')
+      GROUP BY ${sumberExpr}
       ORDER BY count DESC
     `;
     const distRes = await db.query(distQuery, params);
@@ -99,13 +125,13 @@ router.get('/sumber-informasi', auth, async (req, res) => {
     const trendQuery = `
       SELECT 
         to_char(b.event_date, 'YYYY-MM') AS month_str,
-        COALESCE(NULLIF(TRIM(LOWER(b.sumber_informasi)), ''), 'tidak_diketahui') AS sumber,
+        ${sumberExpr} AS sumber,
         COUNT(*)::int AS count
       FROM bookings b
       JOIN booking_categories bc ON b.category_id = bc.id
       WHERE b.deleted_at IS NULL 
         AND b.event_date >= (CURRENT_DATE - INTERVAL '6 months')
-      GROUP BY to_char(b.event_date, 'YYYY-MM'), COALESCE(NULLIF(TRIM(LOWER(b.sumber_informasi)), ''), 'tidak_diketahui')
+      GROUP BY to_char(b.event_date, 'YYYY-MM'), ${sumberExpr}
       ORDER BY month_str ASC
     `;
     const trendRes = await db.query(trendQuery);
@@ -130,13 +156,15 @@ router.get('/sumber-informasi', auth, async (req, res) => {
     // 3. Catatan Detail / Rekomendasi Terbaru
     const refQuery = `
       SELECT 
-        b.id, b.client_name, b.sumber_informasi, b.sumber_informasi_detail,
+        b.id, b.client_name, 
+        ${sumberExpr} AS sumber_informasi, 
+        ${detailExpr} AS sumber_informasi_detail,
         b.event_date, b.package_price, b.status, bc.name AS category_name
       FROM bookings b
       JOIN booking_categories bc ON b.category_id = bc.id
       WHERE b.deleted_at IS NULL 
-        AND b.sumber_informasi_detail IS NOT NULL 
-        AND TRIM(b.sumber_informasi_detail) <> ''
+        AND ${detailExpr} IS NOT NULL 
+        AND TRIM(${detailExpr}) <> ''
       ORDER BY b.created_at DESC
       LIMIT 12
     `;
