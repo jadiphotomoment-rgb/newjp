@@ -12,7 +12,7 @@
 ## Status Fase
 - [x] Fase 0: Pemetaan (MAP.md) - Selesai
 - [x] Fase 1: Migrasi Database - Selesai
-- [ ] Fase 2: Autentikasi & Otorisasi
+- [x] Fase 2: Autentikasi & Otorisasi - Selesai
 - [ ] Fase 3: Layanan Audit Log
 - [ ] Fase 4: Approval Engine
 - [ ] Fase 5: Terapkan ke Endpoint yang Ada
@@ -20,10 +20,12 @@
 - [ ] Fase 7: Test & Kinerja
 - [ ] Fase 8: Review Keamanan & Rilis
 
-## Catatan Fase 1
-- File yang dibuat/disentuh: `migrations/001_rbac_and_approvals.sql`, `migrations/001_rbac_and_approvals_down.sql`, `scripts/migrate.js`, `scripts/create-owner.js`, `scripts/test_migration.js`, `PROGRESS.md`.
-- Hasil uji: `node scripts/test_migration.js` lulus 100%. Siklus UP -> DOWN -> UP berhasil; trigger append-only audit_log terbukti menolak UPDATE & DELETE; akun Owner otomatis ter-seed & data lama ter-backfill.
-- Keputusan: Menggunakan database branch Neon saat ini untuk pengujian migrasi UP->DOWN->UP yang terisolasi dan terverifikasi.
+## Catatan Fase 2
+- File yang dibuat/disentuh: `constants/permissions.js`, `utils/tokenVersionCache.js`, `middleware/auth.js`, `routes/auth.js`, `tests/phase2_auth.test.js`, `PROGRESS.md`.
+- Fitur auth: login dengan rate limiter & lockout (5x gagal -> 15 min lock), access token 15 menit, refresh token 7 hari di cookie HttpOnly dengan rotasi & deteksi pemakaian ulang (chain revocation), logout, ganti password wajib (min 10 karakter).
+- Hasil uji: `node tests/phase2_auth.test.js` lulus 100% (login sukses, login gagal seragam, lockout 429, RBAC per-role, refresh rotation, reuse detection, nonaktifkan user -> 401).
+- Keputusan: Middleware auth mempertahankan `req.admin` selain `req.user` untuk backward compatibility mulus dengan controller yang belum dimigrasi.
+
 
 
 
