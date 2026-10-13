@@ -593,8 +593,8 @@ async function handleEditBooking(req, res) {
     dbClient = await db.getClient();
     await dbClient.query('BEGIN');
 
-    // Update booking
-    await dbClient.query(
+    // Update booking dengan atomic compare-and-swap (Optimistic Concurrency Control)
+    const updateResult = await dbClient.query(
       `UPDATE bookings SET
          client_name   = $1,
          client_phone  = $2,
@@ -606,7 +606,7 @@ async function handleEditBooking(req, res) {
          form_data     = COALESCE($8, form_data),
          updated_by    = $9,
          version       = version + 1
-       WHERE id = $10`,
+       WHERE id = $10 AND ($11::int IS NULL OR version = $11)`,
       [
         client_name.trim(),
         client_phone.trim(),
@@ -617,9 +617,15 @@ async function handleEditBooking(req, res) {
         dpAmount,
         form_data ? JSON.stringify(form_data) : null,
         req.user.id,
-        booking.id
+        booking.id,
+        expectedVersion
       ]
     );
+
+    if (updateResult.rowCount === 0) {
+      await dbClient.query('ROLLBACK');
+      return res.status(409).json({ error: 'Data telah diubah oleh pengguna lain. Silakan refresh.' });
+    }
 
     // Sync pending payment amount if dp_amount changed
     if (dpAmount !== booking.dp_amount) {
