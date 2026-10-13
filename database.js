@@ -118,6 +118,21 @@ const db = {
           IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='bookings' AND column_name='calendar_sync_status') THEN
             ALTER TABLE bookings ADD COLUMN calendar_sync_status VARCHAR(20) DEFAULT 'not_synced';
           END IF;
+
+          -- ── FASE 0: Scale Pelunasan ─────────────────────────────────
+          IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='bookings' AND column_name='sumber_informasi') THEN
+            ALTER TABLE bookings ADD COLUMN sumber_informasi VARCHAR(20);
+            -- instagram | tiktok | google | referral | event | lainnya
+          END IF;
+          IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='bookings' AND column_name='sumber_informasi_detail') THEN
+            ALTER TABLE bookings ADD COLUMN sumber_informasi_detail TEXT;
+          END IF;
+          IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='bookings' AND column_name='deleted_at') THEN
+            ALTER TABLE bookings ADD COLUMN deleted_at TIMESTAMP NULL;
+          END IF;
+          IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='bookings' AND column_name='package_name') THEN
+            ALTER TABLE bookings ADD COLUMN package_name VARCHAR(150);
+          END IF;
         END
         $$;
 
@@ -262,6 +277,67 @@ const db = {
         CREATE INDEX IF NOT EXISTS idx_shortlink_clicks_link_id ON shortlink_clicks(shortlink_id);
       `);
 
+      // ── FASE 0: Tabel pelunasan, payment_settings, bank_accounts ──
+      await pool.query(`
+        -- Tagihan pelunasan dengan token unik per booking
+        CREATE TABLE IF NOT EXISTS pelunasan (
+          id                SERIAL PRIMARY KEY,
+          booking_id        INT NOT NULL REFERENCES bookings(id) ON DELETE RESTRICT,
+          token             VARCHAR(64) UNIQUE NOT NULL,
+          total_tagihan     BIGINT NOT NULL,
+          dp_terbayar       BIGINT NOT NULL,
+          sisa_kekurangan   BIGINT NOT NULL,
+          catatan           TEXT,
+          status            VARCHAR(25) NOT NULL DEFAULT 'sent',
+          -- sent | menunggu_verifikasi | lunas | rejected | cancelled
+          bukti_file_url    TEXT,
+          bukti_blob_key    TEXT,
+          bukti_filename    TEXT,
+          reject_reason     TEXT,
+          sent_to_wa        VARCHAR(25),
+          sent_at           TIMESTAMP,
+          send_count        SMALLINT NOT NULL DEFAULT 1,
+          paid_at           TIMESTAMP,
+          verified_by       INT REFERENCES admins(id) NULL,
+          verified_at       TIMESTAMP,
+          created_by        INT REFERENCES admins(id) NULL,
+          created_at        TIMESTAMP DEFAULT now()
+        );
+
+        -- Pengaturan QRIS statis (satu baris aktif)
+        CREATE TABLE IF NOT EXISTS payment_settings (
+          id              SERIAL PRIMARY KEY,
+          qris_image_url  TEXT,
+          qris_blob_key   TEXT,
+          updated_at      TIMESTAMP DEFAULT now()
+        );
+
+        -- Daftar rekening bank (multi-rekening, soft disable)
+        CREATE TABLE IF NOT EXISTS bank_accounts (
+          id          SERIAL PRIMARY KEY,
+          nama_bank   VARCHAR(50) NOT NULL,
+          no_rekening VARCHAR(40) NOT NULL,
+          atas_nama   VARCHAR(100) NOT NULL,
+          is_active   BOOLEAN NOT NULL DEFAULT true,
+          sort_order  SMALLINT NOT NULL DEFAULT 0,
+          created_at  TIMESTAMP DEFAULT now()
+        );
+
+        -- Indexes pelunasan
+        CREATE INDEX IF NOT EXISTS idx_pelunasan_booking  ON pelunasan(booking_id);
+        CREATE INDEX IF NOT EXISTS idx_pelunasan_token    ON pelunasan(token);
+        CREATE INDEX IF NOT EXISTS idx_pelunasan_status   ON pelunasan(status);
+        CREATE INDEX IF NOT EXISTS idx_bookings_deleted   ON bookings(deleted_at);
+        CREATE INDEX IF NOT EXISTS idx_bookings_sumber    ON bookings(sumber_informasi);
+      `);
+
+      // Seed payment_settings default row jika belum ada
+      await pool.query(`
+        INSERT INTO payment_settings (id, qris_image_url)
+        VALUES (1, NULL)
+        ON CONFLICT (id) DO NOTHING;
+      `);
+
       // ── Create wa_templates table ──────────────────────────────
       await pool.query(`
         CREATE TABLE IF NOT EXISTS wa_templates (
@@ -381,6 +457,78 @@ Terima kasih. 🙏`,
       ];
 
       for (const tpl of defaultTemplates) {
+        await pool.query(
+          `INSERT INTO wa_templates (key, label, description, template, variables, category)
+           VALUES ($1, $2, $3, $4, $5, $6)
+           ON CONFLICT (key) DO NOTHING`,
+          [tpl.key, tpl.label, tpl.description, tpl.template, tpl.variables, tpl.category]
+        );
+      }
+
+      // ── Seed WA templates pelunasan (ON CONFLICT DO NOTHING = aman) ──
+      const pelunasanTemplates = [
+        {
+          key: 'pelunasan_tagihan',
+          label: 'Tagihan Pelunasan (ke Klien)',
+          description: 'Dikirim ke klien saat admin membuat tagihan pelunasan baru',
+          template: `💰 *Tagihan Pelunasan — Jadiphoto.Moment*
+
+Halo {{client_name}},
+
+Berikut rincian pelunasan booking Anda:
+
+📦 *Paket:* {{package_name}}
+📅 *Tanggal Acara:* {{event_date}}
+💵 *Total Tagihan:* Rp{{total_tagihan}}
+✅ *DP Terbayar:* Rp{{dp_terbayar}}
+🔴 *Sisa Kekurangan: Rp{{sisa_kekurangan}}*
+{{catatan_section}}
+Silakan selesaikan pembayaran melalui link berikut:
+🔗 {{link_pelunasan}}
+
+Terima kasih 🙏`,
+          variables: 'client_name, package_name, event_date, total_tagihan, dp_terbayar, sisa_kekurangan, catatan_section, link_pelunasan',
+          category: 'pelunasan',
+        },
+        {
+          key: 'pelunasan_lunas',
+          label: 'Pelunasan Diterima / Lunas (ke Klien)',
+          description: 'Dikirim ke klien saat admin menyetujui bukti bayar pelunasan',
+          template: `✅ *Pembayaran Diterima — Jadiphoto.Moment*
+
+Halo {{client_name}},
+
+Pembayaran pelunasan Anda untuk paket *{{package_name}}* sudah kami terima dan booking Anda kini berstatus *LUNAS*. 🎉
+
+📅 *Tanggal Acara:* {{event_date}}
+💰 *Jumlah Diterima:* Rp{{sisa_kekurangan}}
+
+Terima kasih telah mempercayai Jadiphoto.Moment! Kami siap mengabadikan momen terbaik Anda. 📸`,
+          variables: 'client_name, package_name, event_date, sisa_kekurangan',
+          category: 'pelunasan',
+        },
+        {
+          key: 'pelunasan_rejected',
+          label: 'Bukti Pelunasan Ditolak (ke Klien)',
+          description: 'Dikirim ke klien saat admin menolak bukti bayar pelunasan, disertai alasan & link upload ulang',
+          template: `❌ *Bukti Pembayaran Ditolak — Jadiphoto.Moment*
+
+Halo {{client_name}},
+
+Mohon maaf, bukti pembayaran pelunasan Anda tidak dapat kami verifikasi.
+
+📝 *Alasan:* {{reject_reason}}
+
+Silakan upload ulang bukti pembayaran yang valid melalui link yang sama:
+🔗 {{link_pelunasan}}
+
+Terima kasih atas pengertiannya. 🙏`,
+          variables: 'client_name, reject_reason, link_pelunasan',
+          category: 'pelunasan',
+        },
+      ];
+
+      for (const tpl of pelunasanTemplates) {
         await pool.query(
           `INSERT INTO wa_templates (key, label, description, template, variables, category)
            VALUES ($1, $2, $3, $4, $5, $6)

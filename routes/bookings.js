@@ -208,9 +208,24 @@ router.post('/:categorySlug', async (req, res) => {
       }
     }
 
+    // Normalisasi sumber informasi (marketing lead channel)
+    const rawSrc = req.body.sumberInformasi || (formData && (formData.sumber_informasi || formData.source)) || '';
+    let sumberInfo = String(rawSrc).toLowerCase().trim();
+    if (sumberInfo.includes('instagram')) sumberInfo = 'instagram';
+    else if (sumberInfo.includes('tiktok')) sumberInfo = 'tiktok';
+    else if (sumberInfo.includes('google')) sumberInfo = 'google';
+    else if (sumberInfo.includes('rekomendasi') || sumberInfo.includes('referral') || sumberInfo.includes('teman')) sumberInfo = 'referral';
+    else if (sumberInfo.includes('event') || sumberInfo.includes('pameran')) sumberInfo = 'event';
+    else if (sumberInfo === 'lainnya') sumberInfo = 'lainnya';
+    else if (sumberInfo) sumberInfo = 'lainnya';
+    else sumberInfo = null;
+
+    const rawDetail = req.body.sumberInformasiDetail || (formData && (formData.sumber_informasi_detail || formData.source_detail)) || null;
+    const sumberDetail = rawDetail ? String(rawDetail).trim() : null;
+
     const { rows } = await db.query(
-      `INSERT INTO bookings (category_id, client_name, client_phone, event_date, event_time, location, form_data, package_price, dp_amount)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
+      `INSERT INTO bookings (category_id, client_name, client_phone, event_date, event_time, location, form_data, package_price, dp_amount, sumber_informasi, sumber_informasi_detail)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id`,
       [
         category.id,
         clientName.trim(),
@@ -220,7 +235,9 @@ router.post('/:categorySlug', async (req, res) => {
         location ? location.trim() : null,
         JSON.stringify(fullFormData),
         finalPackagePrice > 0 ? finalPackagePrice : null,
-        dpAmount > 0 ? dpAmount : null
+        dpAmount > 0 ? dpAmount : null,
+        sumberInfo,
+        sumberDetail
       ]
     );
 
@@ -375,11 +392,16 @@ router.post('/:id/upload-dp', async (req, res) => {
 // ADMIN ENDPOINTS (butuh JWT)
 // ═══════════════════════════════════════════════════════════════
 
-// GET /api/admin/bookings — daftar booking dengan filter
-router.get('/admin/list', auth, async (req, res) => {
-  const { category, status, month } = req.query;
+// Helper function for admin booking list
+async function handleAdminList(req, res) {
+  const { category, status, month, search, sumber_informasi, include_deleted } = req.query;
   const params = [];
   const conditions = [];
+
+  // Exclude soft-deleted bookings by default
+  if (include_deleted !== 'true') {
+    conditions.push('b.deleted_at IS NULL');
+  }
 
   if (category) { params.push(category); conditions.push(`bc.slug = $${params.length}`); }
   if (status)   { params.push(status);   conditions.push(`b.status = $${params.length}`); }
@@ -388,6 +410,14 @@ router.get('/admin/list', auth, async (req, res) => {
     params.push(month + '-31');
     conditions.push(`b.event_date BETWEEN $${params.length - 1} AND $${params.length}`);
   }
+  if (search && search.trim()) {
+    params.push(`%${search.trim()}%`);
+    conditions.push(`(b.client_name ILIKE $${params.length} OR b.client_phone ILIKE $${params.length})`);
+  }
+  if (sumber_informasi) {
+    params.push(sumber_informasi);
+    conditions.push(`b.sumber_informasi = $${params.length}`);
+  }
 
   const where = conditions.length > 0 ? 'WHERE ' + conditions.join(' AND ') : '';
 
@@ -395,10 +425,11 @@ router.get('/admin/list', auth, async (req, res) => {
     const { rows } = await db.query(
       `SELECT b.id, b.client_name, b.client_phone, b.event_date, b.event_time,
               b.location, b.form_data, b.package_price, b.dp_amount, b.status,
-              b.created_at, b.session_id,
-              b.google_event_id, b.calendar_sync_status,
+              b.created_at, b.session_id, b.sumber_informasi, b.sumber_informasi_detail,
+              b.deleted_at, b.google_event_id, b.calendar_sync_status,
               bc.name AS category_name, bc.slug AS category_slug, bc.color,
-              (SELECT COUNT(*) FROM payments WHERE booking_id = b.id AND status = 'pending') AS pending_payments
+              (SELECT COUNT(*) FROM payments WHERE booking_id = b.id AND status = 'pending') AS pending_payments,
+              (SELECT COUNT(*) FROM pelunasan WHERE booking_id = b.id AND status = 'menunggu_verifikasi') AS pending_pelunasan
        FROM bookings b
        JOIN booking_categories bc ON b.category_id = bc.id
        ${where}
@@ -410,10 +441,14 @@ router.get('/admin/list', auth, async (req, res) => {
     console.error('[bookings] admin list error:', err);
     res.status(500).json({ error: 'Database error' });
   }
-});
+}
+
+// GET /api/admin/bookings — daftar booking dengan filter
+router.get('/admin/list', auth, handleAdminList);
+router.get('/', auth, handleAdminList);
 
 // GET /api/admin/bookings/:id — detail booking (admin)
-router.get('/admin/detail/:id', auth, async (req, res) => {
+async function handleAdminDetail(req, res) {
   try {
     const { rows } = await db.query(
       `SELECT b.*, bc.name AS category_name, bc.slug AS category_slug,
@@ -426,29 +461,42 @@ router.get('/admin/detail/:id', auth, async (req, res) => {
     if (!rows[0]) return res.status(404).json({ error: 'Booking tidak ditemukan' });
 
     const booking = rows[0];
-    const payRes = await db.query(
-      `SELECT p.*, a.name AS approved_by_name
-       FROM payments p
-       LEFT JOIN admins a ON p.approved_by = a.id
-       WHERE p.booking_id = $1 ORDER BY p.created_at DESC`,
-      [booking.id]
-    );
-    booking.payments = payRes.rows;
+    const [payRes, attachRes, pelRes] = await Promise.all([
+      db.query(
+        `SELECT p.*, a.name AS approved_by_name
+         FROM payments p
+         LEFT JOIN admins a ON p.approved_by = a.id
+         WHERE p.booking_id = $1 ORDER BY p.created_at DESC`,
+        [booking.id]
+      ),
+      db.query(
+        `SELECT id, file_url, blob_key, file_name, file_type, mime_type, file_size, created_at
+         FROM attachments
+         WHERE booking_id = $1 ORDER BY created_at DESC`,
+        [booking.id]
+      ),
+      db.query(
+        `SELECT p.*, a_verif.name AS verified_by_name, a_create.name AS created_by_name
+         FROM pelunasan p
+         LEFT JOIN admins a_verif  ON p.verified_by = a_verif.id
+         LEFT JOIN admins a_create ON p.created_by  = a_create.id
+         WHERE p.booking_id = $1 ORDER BY p.created_at DESC`,
+        [booking.id]
+      ),
+    ]);
 
-    const attachRes = await db.query(
-      `SELECT id, file_url, blob_key, file_name, file_type, mime_type, file_size, created_at
-       FROM attachments
-       WHERE booking_id = $1 ORDER BY created_at DESC`,
-      [booking.id]
-    );
+    booking.payments = payRes.rows;
     booking.attachments = attachRes.rows;
+    booking.pelunasan = pelRes.rows;
 
     res.json(booking);
   } catch (err) {
     console.error('[bookings] admin detail error:', err);
     res.status(500).json({ error: 'Database error' });
   }
-});
+}
+
+router.get('/admin/detail/:id', auth, handleAdminDetail);
 
 // PATCH /api/admin/bookings/:id/set-price — set harga paket & dp_amount (legacy, kept for compat)
 router.patch('/admin/:id/set-price', auth, async (req, res) => {
@@ -486,7 +534,7 @@ router.patch('/admin/:id/set-price', auth, async (req, res) => {
 });
 
 // PUT /api/admin/bookings/:id — edit full booking data
-router.put('/admin/:id', auth, async (req, res) => {
+async function handleEditBooking(req, res) {
   const { client_name, client_phone, event_date, event_time, location, package_price, dp_amount_manual, form_data } = req.body;
 
   if (!client_name || !client_phone || !event_date) {
@@ -589,7 +637,10 @@ router.put('/admin/:id', auth, async (req, res) => {
   } finally {
     if (dbClient) dbClient.release();
   }
-});
+}
+
+router.put('/admin/:id', auth, handleEditBooking);
+router.put('/:id', auth, handleEditBooking);
 
 // PATCH /api/admin/bookings/:id/approve-dp — approve DP
 router.patch('/admin/:id/approve-dp', auth, async (req, res) => {
@@ -789,7 +840,7 @@ router.post('/admin/:id/send-wa-confirmation', auth, async (req, res) => {
 // PATCH /api/admin/bookings/:id/status — ubah status manual
 router.patch('/admin/:id/status', auth, async (req, res) => {
   const { status } = req.body;
-  const VALID = ['pending_dp', 'dp_review', 'confirmed', 'completed', 'cancelled'];
+  const VALID = ['pending_dp', 'dp_review', 'confirmed', 'menunggu_pelunasan', 'pelunasan_review', 'lunas', 'completed', 'cancelled'];
   if (!VALID.includes(status)) return res.status(400).json({ error: 'Status tidak valid' });
 
   try {
@@ -800,6 +851,81 @@ router.patch('/admin/:id/status', auth, async (req, res) => {
     res.status(500).json({ error: 'Database error' });
   }
 });
+
+// DELETE /api/admin/bookings/:id — soft delete booking
+async function handleSoftDelete(req, res) {
+  const id = parseInt(req.params.id, 10);
+  if (isNaN(id)) return res.status(400).json({ error: 'ID booking tidak valid' });
+
+  try {
+    const { rows } = await db.query(
+      `UPDATE bookings
+       SET deleted_at = now(), status = 'cancelled'
+       WHERE id = $1 AND deleted_at IS NULL
+       RETURNING id, client_name, status, deleted_at`,
+      [id]
+    );
+
+    if (!rows[0]) {
+      const check = await db.query('SELECT id, deleted_at FROM bookings WHERE id = $1', [id]);
+      if (!check.rows[0]) return res.status(404).json({ error: 'Booking tidak ditemukan' });
+      return res.status(409).json({ error: 'Booking ini sudah dihapus (soft-deleted)' });
+    }
+
+    res.json({ message: 'Booking berhasil dibatalkan dan dihapus (soft delete)', booking: rows[0] });
+  } catch (err) {
+    console.error('[bookings] DELETE error:', err);
+    res.status(500).json({ error: 'Database error' });
+  }
+}
+
+router.delete('/admin/:id', auth, handleSoftDelete);
+router.delete('/:id', auth, handleSoftDelete);
+
+// POST /api/admin/bookings/create — admin manual booking input
+async function handleAdminCreateBooking(req, res) {
+  const { category_id, client_name, client_phone, event_date, event_time, location, package_price, dp_amount, form_data, status, sumber_informasi, sumber_informasi_detail } = req.body;
+
+  if (!category_id || !client_name || !client_phone || !event_date) {
+    return res.status(400).json({ error: 'Kategori, nama klien, no HP/WA, dan tanggal acara wajib diisi' });
+  }
+
+  try {
+    const catRes = await db.query('SELECT id, name FROM booking_categories WHERE id = $1', [category_id]);
+    if (!catRes.rows[0]) return res.status(404).json({ error: 'Kategori tidak ditemukan' });
+
+    const price = package_price ? parseFloat(package_price) : null;
+    const dp = dp_amount ? parseFloat(dp_amount) : null;
+
+    const { rows } = await db.query(
+      `INSERT INTO bookings (category_id, client_name, client_phone, event_date, event_time, location, package_price, dp_amount, form_data, status, sumber_informasi, sumber_informasi_detail)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+       RETURNING *`,
+      [
+        category_id,
+        client_name.trim(),
+        client_phone.trim(),
+        event_date,
+        event_time || null,
+        location ? location.trim() : null,
+        price,
+        dp,
+        form_data ? JSON.stringify(form_data) : '{}',
+        status || 'confirmed',
+        sumber_informasi || null,
+        sumber_informasi_detail || null
+      ]
+    );
+
+    res.status(201).json({ message: 'Booking berhasil dibuat manual oleh admin', booking: rows[0] });
+  } catch (err) {
+    console.error('[bookings] admin create error:', err);
+    res.status(500).json({ error: 'Gagal membuat booking' });
+  }
+}
+
+router.post('/admin/create', auth, handleAdminCreateBooking);
+router.post('/admin', auth, handleAdminCreateBooking);
 
 // PATCH /api/admin/bookings/:id/link-session — hubungkan ke sesi sortir
 router.patch('/admin/:id/link-session', auth, async (req, res) => {
@@ -834,13 +960,14 @@ router.get('/admin/calendar', auth, async (req, res) => {
               bc.name AS category_name, bc.color
        FROM bookings b
        JOIN booking_categories bc ON b.category_id = bc.id
-       WHERE b.status IN ('confirmed', 'dp_review', 'completed', 'pending_dp') ${dateFilter}
+       WHERE b.status IN ('confirmed', 'dp_review', 'completed', 'pending_dp', 'menunggu_pelunasan', 'pelunasan_review', 'lunas')
+         AND b.deleted_at IS NULL ${dateFilter}
        ORDER BY b.event_date, b.event_time`,
       params
     );
 
     // Format untuk FullCalendar
-    const STATUS_ALPHA = { confirmed: 'ff', dp_review: 'cc', completed: 'aa', pending_dp: '66' };
+    const STATUS_ALPHA = { confirmed: 'ff', lunas: 'ff', completed: 'aa', dp_review: 'cc', pelunasan_review: 'dd', menunggu_pelunasan: 'cc', pending_dp: '66' };
     const events = rows.map(r => {
       const dateStr = getLocalDateString(r.event_date);
       const baseColor = r.color || '#7c6dfa';

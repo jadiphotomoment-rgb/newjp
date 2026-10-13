@@ -214,6 +214,24 @@
       border: 1px solid rgba(248, 113, 113, 0.3);
     }
 
+    .badge-menunggu_pelunasan {
+      background: rgba(245, 158, 11, 0.15);
+      color: #fbbf24;
+      border: 1px solid rgba(245, 158, 11, 0.3);
+    }
+
+    .badge-pelunasan_review {
+      background: rgba(14, 165, 233, 0.15);
+      color: #38bdf8;
+      border: 1px solid rgba(14, 165, 233, 0.3);
+    }
+
+    .badge-lunas {
+      background: rgba(16, 185, 129, 0.15);
+      color: #34d399;
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+
     html.light .badge-pending_dp {
       background: #fff7ed;
       color: #ea580c;
@@ -242,6 +260,24 @@
       background: #fff1f2;
       color: #dc2626;
       border-color: rgba(220, 38, 38, 0.3);
+    }
+
+    html.light .badge-menunggu_pelunasan {
+      background: #fffbeb;
+      color: #d97706;
+      border-color: rgba(217, 119, 6, 0.3);
+    }
+
+    html.light .badge-pelunasan_review {
+      background: #f0f9ff;
+      color: #0284c7;
+      border-color: rgba(2, 132, 199, 0.3);
+    }
+
+    html.light .badge-lunas {
+      background: #ecfdf5;
+      color: #059669;
+      border-color: rgba(5, 150, 105, 0.3);
     }
 
     /* ── Detail side panel ── */
@@ -665,12 +701,17 @@
               class="border border-outline-variant rounded-lg px-3 py-1.5 text-sm bg-surface-container-low text-on-surface focus:ring-1 focus:ring-primary focus:outline-none">
               <option value="">Semua Kategori</option>
             </select>
+            <input type="text" id="filter-search" placeholder="Cari nama / WA..." aria-label="Cari nama atau nomor WA"
+              class="border border-outline-variant rounded-lg px-3 py-1.5 text-sm bg-surface-container-low text-on-surface placeholder:text-on-surface-variant/60 focus:ring-1 focus:ring-primary focus:outline-none min-w-[160px]">
             <select id="filter-status" aria-label="Filter status"
               class="border border-outline-variant rounded-lg px-3 py-1.5 text-sm bg-surface-container-low text-on-surface focus:ring-1 focus:ring-primary focus:outline-none">
               <option value="">Semua Status</option>
               <option value="pending_dp">Menunggu DP</option>
               <option value="dp_review">Review DP</option>
               <option value="confirmed">Dikonfirmasi</option>
+              <option value="menunggu_pelunasan">Menunggu Pelunasan</option>
+              <option value="pelunasan_review">Review Pelunasan</option>
+              <option value="lunas">Lunas</option>
               <option value="completed">Selesai</option>
               <option value="cancelled">Dibatalkan</option>
             </select>
@@ -678,6 +719,9 @@
               class="border border-outline-variant rounded-lg px-3 py-1.5 text-sm bg-surface-container-low text-on-surface focus:ring-1 focus:ring-primary focus:outline-none">
             <button class="btn btn-primary btn-sm px-4" id="btn-filter">Filter</button>
             <button class="btn btn-outline btn-sm px-4" id="btn-reset-filter">Reset</button>
+            <button class="btn btn-primary btn-sm px-4 ml-auto flex items-center gap-1.5" onclick="window.AdminPelunasan ? window.AdminPelunasan.openCreateBookingModal() : null">
+              <span class="material-symbols-outlined text-[16px]">add</span> Tambah Booking Manual
+            </button>
           </div>
 
           <div id="bookings-loading" class="loading-overlay h-64">
@@ -876,6 +920,7 @@
 
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js"></script>
+  <script src="/js/admin-pelunasan.js"></script>
   <script>
     const TOKEN = localStorage.getItem('sf_token');
     if (!TOKEN) location.href = '/admin/login.html';
@@ -895,7 +940,8 @@
     function fmtMoney(n) { return n ? 'Rp ' + Number(n).toLocaleString('id-ID') : '—'; }
     const STATUS_LABELS = {
       pending_dp: 'Menunggu DP', dp_review: 'Review DP',
-      confirmed: 'Dikonfirmasi', completed: 'Selesai', cancelled: 'Dibatalkan'
+      confirmed: 'Dikonfirmasi', completed: 'Selesai', cancelled: 'Dibatalkan',
+      menunggu_pelunasan: 'Menunggu Pelunasan', pelunasan_review: 'Review Pelunasan', lunas: 'Lunas'
     };
 
     document.getElementById('btn-logout').addEventListener('click', () => {
@@ -932,7 +978,13 @@
       const category = document.getElementById('filter-category').value;
       const status = document.getElementById('filter-status').value;
       const month = document.getElementById('filter-month').value;
-      const qs = new URLSearchParams({ ...(category && { category }), ...(status && { status }), ...(month && { month }) });
+      const search = document.getElementById('filter-search')?.value?.trim();
+      const qs = new URLSearchParams({
+        ...(category && { category }),
+        ...(status && { status }),
+        ...(month && { month }),
+        ...(search && { search })
+      });
 
       document.getElementById('bookings-loading').classList.remove('hidden');
       document.getElementById('bookings-empty').classList.add('hidden');
@@ -955,8 +1007,8 @@
     function updateStats(list) {
       document.getElementById('stat-total').textContent = list.length;
       document.getElementById('stat-pending').textContent = list.filter(b => b.status === 'pending_dp').length;
-      document.getElementById('stat-review').textContent = list.filter(b => b.status === 'dp_review').length;
-      document.getElementById('stat-confirmed').textContent = list.filter(b => b.status === 'confirmed').length;
+      document.getElementById('stat-review').textContent = list.filter(b => b.status === 'dp_review' || b.status === 'pelunasan_review').length;
+      document.getElementById('stat-confirmed').textContent = list.filter(b => b.status === 'confirmed' || b.status === 'lunas').length;
     }
 
     function renderBookings(list) {
@@ -970,7 +1022,10 @@
         <tr>
           <td>
             <div class="font-semibold text-on-surface">${b.client_name}</div>
-            <div class="text-xs text-on-surface-variant">${b.client_phone}</div>
+            <div class="text-xs text-on-surface-variant flex items-center gap-1.5 flex-wrap">
+              <span>${b.client_phone}</span>
+              ${b.sumber_informasi ? `<span class="text-[10px] bg-surface-container px-1.5 py-0.5 rounded text-on-surface-variant">via ${b.sumber_informasi}</span>` : ''}
+            </div>
           </td>
           <td><span class="badge" style="background:color-mix(in srgb,${b.color} 15%,transparent);color:${b.color};">${b.category_name}</span></td>
           <td>
@@ -995,10 +1050,15 @@
             </div>
           </td>
           <td class="text-right">
-            <div class="flex justify-end gap-2">
+            <div class="flex justify-end gap-2 flex-wrap">
               <button class="btn btn-outline btn-sm bg-surface-container-lowest" onclick="openPanel(${b.id})">👁 Detail</button>
               ${b.status === 'dp_review' ? `
-                <button class="btn btn-primary btn-sm" onclick="approveDP(${b.id})">Approve</button>
+                <button class="btn btn-primary btn-sm" onclick="approveDP(${b.id})">Approve DP</button>
+              ` : ''}
+              ${Number(b.pending_pelunasan || 0) > 0 ? `
+                <button class="btn btn-primary btn-sm bg-sky-600 hover:bg-sky-700 text-white flex items-center gap-1" onclick="openPanel(${b.id})" title="Review Bukti Pelunasan">
+                  <span class="material-symbols-outlined text-[14px]">payments</span> Review Pelunasan
+                </button>
               ` : ''}
             </div>
           </td>
@@ -1011,7 +1071,10 @@
           <div class="flex justify-between items-start mb-3">
             <div>
               <div class="font-bold text-on-surface">${b.client_name}</div>
-              <div class="text-xs text-on-surface-variant">${b.client_phone} · ${b.category_name}</div>
+              <div class="text-xs text-on-surface-variant flex items-center gap-1.5 flex-wrap">
+                <span>${b.client_phone} · ${b.category_name}</span>
+                ${b.sumber_informasi ? `<span class="text-[10px] bg-surface-container px-1.5 py-0.5 rounded text-on-surface-variant">via ${b.sumber_informasi}</span>` : ''}
+              </div>
             </div>
             <span class="badge badge-${b.status}">${STATUS_LABELS[b.status] || b.status}</span>
           </div>
@@ -1034,7 +1097,12 @@
           <div class="flex gap-2">
             <button class="btn btn-outline btn-sm flex-1" onclick="openPanel(${b.id})">Detail</button>
             ${b.status === 'dp_review' ? `
-              <button class="btn btn-primary btn-sm flex-1" onclick="approveDP(${b.id})">Approve</button>
+              <button class="btn btn-primary btn-sm flex-1" onclick="approveDP(${b.id})">Approve DP</button>
+            ` : ''}
+            ${Number(b.pending_pelunasan || 0) > 0 ? `
+              <button class="btn btn-primary btn-sm flex-1 bg-sky-600 hover:bg-sky-700 text-white flex items-center justify-center gap-1" onclick="openPanel(${b.id})">
+                <span class="material-symbols-outlined text-[14px]">payments</span> Review Pelunasan
+              </button>
             ` : ''}
           </div>
         </div>
@@ -1055,6 +1123,7 @@
         const res = await fetch(`/api/bookings/admin/detail/${id}`, { headers: H });
         const b = await res.json();
         currentBookingData = b;
+        window.currentBookingData = b;
         renderPanel(b);
       } catch (e) {
         document.getElementById('panel-body').innerHTML = '<p class="text-error p-4">Gagal memuat detail</p>';
@@ -1112,6 +1181,14 @@
           <div class="detail-row"><span class="dk">Tanggal</span><span class="dv">${fmtDate(b.event_date)}</span></div>
           <div class="detail-row"><span class="dk">Jam</span><span class="dv">${b.event_time ? b.event_time.slice(0, 5) : '—'}</span></div>
           <div class="detail-row"><span class="dk">Lokasi</span><span class="dv">${b.location || '—'}</span></div>
+          ${b.sumber_informasi ? `
+            <div class="detail-row">
+              <span class="dk">Sumber Info</span>
+              <span class="dv capitalize font-semibold text-primary">
+                ${b.sumber_informasi}${b.sumber_informasi_detail ? ` <span class="text-xs text-on-surface-variant font-normal">(${b.sumber_informasi_detail})</span>` : ''}
+              </span>
+            </div>
+          ` : ''}
         </div>
         
         ${formDataRows ? `<div class="bg-surface-container-lowest border border-outline-variant/30 p-4 rounded-lg"><div class="detail-section-title">Detail ${b.category_name}</div>${formDataRows}</div>` : ''}
@@ -1128,9 +1205,12 @@
         </div>
         
         <div>
-          <div class="detail-section-title mt-2">Riwayat Pembayaran</div>
+          <div class="detail-section-title mt-2">Riwayat Pembayaran DP</div>
           ${paymentsHtml}
         </div>
+
+        <!-- Integrasi Tagihan & Pelunasan -->
+        ${window.AdminPelunasan ? window.AdminPelunasan.renderSection(b) : ''}
         
         <div class="flex flex-col gap-3 mt-4">
           ${b.status === 'dp_review' ? `
@@ -1146,7 +1226,7 @@
               <span class="material-symbols-outlined text-[18px]">link</span> Hubungkan ke Sesi Sortir
             </button>
           ` : ''}
-          ${(b.status === 'confirmed' || b.status === 'completed') ? `
+          ${(b.status === 'confirmed' || b.status === 'completed' || b.status === 'lunas') ? `
             <button class="btn btn-outline justify-center w-full text-[#25D366] border-[#25D366]/30 bg-[#25D366]/5 hover:bg-[#25D366]/10 mt-2" onclick="sendWAConfirmation(${b.id})">
               <span class="material-symbols-outlined text-[18px]">send</span> Kirim Konfirmasi WhatsApp
             </button>
@@ -1160,6 +1240,9 @@
                 <option value="pending_dp">Menunggu DP</option>
                 <option value="dp_review">Review DP</option>
                 <option value="confirmed">Dikonfirmasi</option>
+                <option value="menunggu_pelunasan">Menunggu Pelunasan</option>
+                <option value="pelunasan_review">Review Pelunasan</option>
+                <option value="lunas">Lunas</option>
                 <option value="completed">Selesai</option>
                 <option value="cancelled">Dibatalkan</option>
               </select>
@@ -1475,8 +1558,25 @@
       document.getElementById('filter-category').value = '';
       document.getElementById('filter-status').value = '';
       document.getElementById('filter-month').value = '';
+      const searchEl = document.getElementById('filter-search');
+      if (searchEl) searchEl.value = '';
       loadBookings();
     });
+
+    const searchInput = document.getElementById('filter-search');
+    if (searchInput) {
+      let debounceTimer = null;
+      searchInput.addEventListener('input', () => {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(loadBookings, 350);
+      });
+      searchInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          clearTimeout(debounceTimer);
+          loadBookings();
+        }
+      });
+    }
 
     const adminData = JSON.parse(localStorage.getItem('sf_admin') || '{}');
     if (adminData.name) document.getElementById('nav-username').textContent = adminData.name;
@@ -1569,9 +1669,18 @@
       }
     }
 
-    // Expose globally for onclick handlers in template strings
+    // Expose globally for onclick handlers in template strings & modular modules
     window.connectGoogle = connectGoogle;
     window.syncCalendar = syncCalendar;
+    window.loadBookings = loadBookings;
+    window.openPanel = openPanel;
+    window.closePanel = closePanel;
+    window.approveDP = approveDP;
+    window.rejectDP = rejectDP;
+    window.sendWAConfirmation = sendWAConfirmation;
+    window.changeStatus = changeStatus;
+    window.toast = toast;
+    window.currentBookingData = currentBookingData;
 
     // Check URL parameters for OAuth redirect feedback (runs immediately since script is at end of body)
     (function checkOAuthRedirectParams() {

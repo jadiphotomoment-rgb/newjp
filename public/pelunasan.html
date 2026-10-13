@@ -1,0 +1,862 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tagihan Pelunasan — Jadiphoto.Moment</title>
+  <meta name="description" content="Selesaikan pembayaran pelunasan booking foto Anda di Jadiphoto.Moment.">
+  <meta name="robots" content="noindex, nofollow">
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Jadiphoto.Moment">
+  <meta property="og:title" content="Tagihan Pelunasan — Jadiphoto.Moment">
+  <meta property="og:description" content="Selesaikan pembayaran pelunasan booking foto Anda.">
+  <meta property="og:image" content="/og-preview.png">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css?v=3">
+  <script src="/js/theme.js?v=3"></script>
+
+  <style>
+    /* ── Layout ─────────────────────────────────────────────── */
+    .pel-page {
+      min-height: 100vh;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: flex-start;
+      padding: 0 var(--sp-4) var(--sp-12);
+    }
+    .pel-wrap { width: 100%; max-width: 560px; }
+
+    /* ── Summary card ───────────────────────────────────────── */
+    .booking-summary {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--r-xl);
+      padding: var(--sp-6);
+      margin-bottom: var(--sp-4);
+      animation: fadeUp 0.3s ease;
+    }
+    .booking-summary-header {
+      display: flex; align-items: center; gap: var(--sp-3);
+      margin-bottom: var(--sp-4);
+    }
+    .cat-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+    .cat-label { font-size: 0.73rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; }
+    .summary-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-4);
+    }
+    .summary-item .s-label { font-size: 0.71rem; color: var(--text-3); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 3px; }
+    .summary-item .s-value { font-size: 0.92rem; font-weight: 600; color: var(--text-0); }
+
+    /* ── Nominal card ───────────────────────────────────────── */
+    .nominal-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--r-xl);
+      padding: var(--sp-5);
+      margin-bottom: var(--sp-4);
+      animation: fadeUp 0.35s ease;
+    }
+    .nominal-card h3 {
+      font-size: 0.78rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.06em; color: var(--text-2); margin-bottom: var(--sp-4);
+    }
+    .nominal-row {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: var(--sp-2) 0;
+    }
+    .nominal-row + .nominal-row { border-top: 1px solid var(--border); }
+    .nominal-row .nr-label { font-size: 0.87rem; color: var(--text-2); }
+    .nominal-row .nr-val   { font-size: 0.92rem; font-weight: 600; color: var(--text-0); }
+    .nominal-divider { border: none; border-top: 2px solid var(--border); margin: var(--sp-3) 0; }
+
+    .sisa-banner {
+      background: linear-gradient(135deg, rgba(239,68,68,0.1), rgba(239,68,68,0.04));
+      border: 1.5px solid rgba(239,68,68,0.3);
+      border-radius: var(--r-lg);
+      padding: var(--sp-4) var(--sp-5);
+      display: flex; align-items: center; justify-content: space-between;
+      margin-top: var(--sp-4);
+    }
+    .sisa-banner .sisa-label { font-size: 0.82rem; font-weight: 700; color: var(--red, #ef4444); }
+    .sisa-banner .sisa-amount {
+      font-family: 'Outfit', sans-serif; font-size: 1.65rem; font-weight: 900;
+      color: var(--red, #ef4444); letter-spacing: -0.02em;
+    }
+    .catatan-box {
+      background: rgba(124,109,250,0.07);
+      border: 1px solid rgba(124,109,250,0.2);
+      border-radius: var(--r);
+      padding: var(--sp-3) var(--sp-4);
+      font-size: 0.83rem; color: var(--text-1);
+      margin-top: var(--sp-4);
+      display: none;
+    }
+
+    /* ── Payment method panel ───────────────────────────────── */
+    .payment-panel {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--r-xl);
+      padding: var(--sp-5);
+      margin-bottom: var(--sp-4);
+      animation: fadeUp 0.4s ease;
+    }
+    .payment-panel h3 {
+      font-size: 0.78rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.06em; color: var(--text-2); margin-bottom: var(--sp-4);
+    }
+
+    /* Method tabs (hanya tampil jika ada kedua metode) */
+    .method-tabs {
+      display: flex; gap: var(--sp-2); margin-bottom: var(--sp-4);
+    }
+    .method-tab {
+      flex: 1; padding: var(--sp-2) var(--sp-3); border-radius: var(--r);
+      border: 1.5px solid var(--border); background: transparent;
+      font-size: 0.82rem; font-weight: 600; color: var(--text-2);
+      cursor: pointer; transition: all 0.2s;
+    }
+    .method-tab.active {
+      border-color: var(--purple); background: rgba(124,109,250,0.1);
+      color: var(--purple);
+    }
+
+    /* QRIS section */
+    .qris-wrap { text-align: center; }
+    .qris-frame {
+      display: inline-block; background: #fff;
+      border-radius: 16px; padding: 12px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.15);
+      margin: var(--sp-3) auto;
+    }
+    .qris-frame img { width: 200px; height: 200px; object-fit: contain; display: block; }
+    .qris-nominal-hint {
+      background: rgba(239,68,68,0.08); border: 1.5px solid rgba(239,68,68,0.25);
+      border-radius: var(--r); padding: var(--sp-3) var(--sp-4);
+      margin: var(--sp-3) 0; text-align: left;
+    }
+    .qris-nominal-hint .qnh-label { font-size: 0.72rem; color: var(--red,#ef4444); font-weight: 700; margin-bottom: 4px; }
+    .qris-nominal-hint .qnh-amount { font-family: 'Outfit',sans-serif; font-size: 1.4rem; font-weight: 900; color: var(--red,#ef4444); }
+    .qnh-copy-row { display: flex; align-items: center; gap: var(--sp-2); margin-top: var(--sp-2); }
+    .qnh-copy-row .qnh-number { font-family: monospace; font-size: 1.05rem; font-weight: 700; color: var(--text-0); }
+    .btn-copy-nominal {
+      background: var(--bg-2); border: 1px solid var(--border); border-radius: var(--r);
+      padding: 4px 10px; font-size: 0.75rem; font-weight: 600;
+      color: var(--text-1); cursor: pointer; transition: all 0.2s; white-space: nowrap;
+    }
+    .btn-copy-nominal:hover { background: var(--purple); color: #fff; border-color: var(--purple); }
+
+    /* Bank section */
+    .bank-list { display: flex; flex-direction: column; gap: var(--sp-3); }
+    .bank-item {
+      background: var(--bg-2); border: 1px solid var(--border); border-radius: var(--r-lg);
+      padding: var(--sp-4);
+    }
+    .bank-name { font-size: 0.78rem; font-weight: 700; color: var(--text-2); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
+    .bank-no-row { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
+    .bank-no { font-family: monospace; font-size: 1.1rem; font-weight: 800; color: var(--text-0); letter-spacing: 0.05em; }
+    .btn-salin {
+      background: var(--bg-card); border: 1.5px solid var(--purple);
+      color: var(--purple); border-radius: var(--r);
+      padding: 4px 12px; font-size: 0.78rem; font-weight: 700;
+      cursor: pointer; transition: all 0.2s;
+    }
+    .btn-salin:hover { background: var(--purple); color: #fff; }
+    .btn-salin.copied { background: var(--green,#22c55e); border-color: var(--green,#22c55e); color: #fff; }
+    .bank-atas-nama { font-size: 0.8rem; color: var(--text-3); margin-top: 4px; }
+    .empty-bank {
+      padding: var(--sp-4); text-align: center;
+      color: var(--text-3); font-size: 0.85rem;
+    }
+
+    /* ── Upload section ─────────────────────────────────────── */
+    .upload-card {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: var(--r-xl); padding: var(--sp-6);
+      animation: fadeUp 0.45s ease;
+    }
+    .upload-card h2 {
+      font-family: 'Outfit',sans-serif; font-weight: 800; font-size: 1.05rem;
+      margin-bottom: var(--sp-2);
+    }
+    .upload-card > p { font-size: 0.84rem; color: var(--text-2); margin-bottom: var(--sp-5); line-height: 1.6; }
+
+    .dropzone {
+      border: 2px dashed var(--border); border-radius: var(--r-lg);
+      padding: var(--sp-8); text-align: center; cursor: pointer;
+      transition: all 0.25s ease; position: relative;
+    }
+    .dropzone:hover, .dropzone.drag-over {
+      border-color: var(--purple); background: rgba(124,109,250,0.06);
+    }
+    .dropzone input[type=file] {
+      position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+    }
+    .dropzone-icon { font-size: 2.2rem; margin-bottom: var(--sp-2); }
+    .dropzone-text { font-weight: 600; color: var(--text-1); margin-bottom: var(--sp-1); font-size: 0.9rem; }
+    .dropzone-hint { font-size: 0.76rem; color: var(--text-3); }
+
+    .file-preview {
+      display: none; align-items: center; gap: var(--sp-4);
+      padding: var(--sp-4); background: rgba(124,109,250,0.06);
+      border: 1px solid rgba(124,109,250,0.25); border-radius: var(--r-lg);
+      margin-top: var(--sp-4);
+    }
+    .file-preview.show { display: flex; }
+    .file-preview-thumb {
+      width: 52px; height: 52px; border-radius: var(--r);
+      object-fit: cover; background: var(--bg-2); flex-shrink: 0;
+    }
+    .file-preview-info { flex: 1; min-width: 0; }
+    .file-preview-name { font-size: 0.84rem; font-weight: 600; color: var(--text-0); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .file-preview-size { font-size: 0.73rem; color: var(--text-3); }
+    .btn-remove { background: none; border: none; color: var(--red,#ef4444); font-size: 1.1rem; flex-shrink: 0; cursor: pointer; padding: 4px; }
+
+    .progress-wrap { display: none; margin-top: var(--sp-4); }
+    .progress-wrap.show { display: block; }
+    .progress-bar-bg { background: var(--bg-2); border-radius: 999px; height: 6px; overflow: hidden; margin-bottom: var(--sp-2); }
+    .progress-bar-fill {
+      height: 100%; background: linear-gradient(90deg, var(--purple), var(--green,#22c55e));
+      border-radius: 999px; transition: width 0.3s ease;
+    }
+    .progress-label { font-size: 0.76rem; color: var(--text-3); text-align: center; }
+
+    /* ── Status banners ─────────────────────────────────────── */
+    .status-banner {
+      padding: var(--sp-5) var(--sp-6); border-radius: var(--r-xl);
+      margin-bottom: var(--sp-4); animation: fadeUp 0.3s ease;
+    }
+    .status-banner .sb-icon { font-size: 2.5rem; margin-bottom: var(--sp-3); }
+    .status-banner .sb-title {
+      font-family: 'Outfit',sans-serif; font-weight: 800; font-size: 1.15rem; margin-bottom: var(--sp-2);
+    }
+    .status-banner p { font-size: 0.86rem; line-height: 1.65; color: var(--text-2); }
+    .status-banner.review {
+      background: linear-gradient(135deg, rgba(234,179,8,0.1), rgba(234,179,8,0.04));
+      border: 1.5px solid rgba(234,179,8,0.35);
+    }
+    .status-banner.review .sb-title { color: #a16207; }
+    .status-banner.lunas {
+      background: linear-gradient(135deg, rgba(34,197,94,0.1), rgba(34,197,94,0.04));
+      border: 1.5px solid rgba(34,197,94,0.35);
+    }
+    .status-banner.lunas .sb-title { color: #15803d; }
+    .status-banner.rejected {
+      background: linear-gradient(135deg, rgba(239,68,68,0.1), rgba(239,68,68,0.04));
+      border: 1.5px solid rgba(239,68,68,0.3);
+    }
+    .status-banner.rejected .sb-title { color: #b91c1c; }
+    .rejected-reason {
+      background: var(--bg-2); border: 1px solid var(--border);
+      border-radius: var(--r); padding: var(--sp-3) var(--sp-4);
+      font-size: 0.84rem; margin-top: var(--sp-3);
+      color: var(--text-1);
+    }
+    .rejected-reason strong { color: var(--red,#ef4444); display: block; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
+
+    /* ── State screens ──────────────────────────────────────── */
+    .state-screen {
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; min-height: 50vh; text-align: center;
+      gap: var(--sp-3); padding: var(--sp-6);
+    }
+    .state-icon { font-size: 3.5rem; }
+    .state-title { font-family: 'Outfit',sans-serif; font-size: 1.3rem; font-weight: 800; }
+    .state-desc { font-size: 0.88rem; color: var(--text-2); line-height: 1.6; max-width: 340px; }
+
+    /* spinner override */
+    .spinner {
+      border: 2.5px solid rgba(0,0,0,0.1);
+      border-left-color: var(--purple,#7c6dfa);
+      border-radius: 50%; width: 20px; height: 20px;
+      animation: spin 0.8s linear infinite; display: inline-block;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <div class="bg-mesh" aria-hidden="true"></div>
+
+  <!-- Nav -->
+  <nav class="admin-nav" role="navigation" aria-label="Navigasi utama">
+    <div class="admin-nav-inner">
+      <div class="nav-brand">
+        <div class="nav-brand-icon" aria-hidden="true">📷</div>
+        <span>Jadiphoto.Moment</span>
+      </div>
+      <div class="nav-actions">
+        <button class="btn btn-outline btn-sm" id="btn-toggle-theme" onclick="toggleTheme()" aria-label="Ganti tema">
+          <span class="theme-icon">☀️</span>
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <main class="pel-page" role="main" id="main-content">
+
+    <!-- ─── Loading ───────────────────────────────────────── -->
+    <div id="state-loading" class="state-screen pel-wrap" aria-live="polite">
+      <div class="spinner" style="width:40px;height:40px;border-width:3px;" aria-hidden="true"></div>
+      <p style="color:var(--text-2);">Memuat detail tagihan...</p>
+    </div>
+
+    <!-- ─── Error (token tidak valid / tidak ditemukan) ───── -->
+    <div id="state-error" class="state-screen pel-wrap hidden">
+      <div class="state-icon">⚠️</div>
+      <h1 class="state-title">Tagihan Tidak Ditemukan</h1>
+      <p class="state-desc">Link tagihan tidak valid atau sudah kadaluarsa. Silakan hubungi admin Jadiphoto.Moment.</p>
+    </div>
+
+    <!-- ─── Main content ──────────────────────────────────── -->
+    <div id="main-wrap" class="pel-wrap hidden" style="margin-top: var(--sp-6);">
+
+      <!-- Status: Menunggu Verifikasi -->
+      <div id="banner-review" class="status-banner review hidden" role="status">
+        <div class="sb-icon">⏳</div>
+        <div class="sb-title">Bukti Bayar Terkirim</div>
+        <p>Bukti pembayaran Anda sedang kami tinjau. Admin akan menghubungi Anda via WhatsApp setelah diverifikasi (maks. 1×24 jam).</p>
+      </div>
+
+      <!-- Status: Lunas -->
+      <div id="banner-lunas" class="status-banner lunas hidden" role="status">
+        <div class="sb-icon">🎉</div>
+        <div class="sb-title">Tagihan Telah Lunas!</div>
+        <p>Pembayaran Anda sudah dikonfirmasi. Booking Anda kini berstatus <strong>LUNAS</strong>. Kami akan menghubungi Anda menjelang hari H. Terima kasih! 📸</p>
+      </div>
+
+      <!-- Status: Rejected -->
+      <div id="banner-rejected" class="status-banner rejected hidden" role="alert">
+        <div class="sb-icon">❌</div>
+        <div class="sb-title">Bukti Bayar Ditolak</div>
+        <p>Mohon maaf, bukti pembayaran Anda tidak dapat kami verifikasi. Silakan upload ulang di bawah ini.</p>
+        <div class="rejected-reason hidden" id="rejected-reason-box">
+          <strong>Alasan Penolakan</strong>
+          <span id="rejected-reason-text">—</span>
+        </div>
+      </div>
+
+      <!-- ── Kartu Ringkasan Booking ─────────────────────── -->
+      <div class="booking-summary" id="booking-summary">
+        <div class="booking-summary-header">
+          <div class="cat-dot" id="cat-dot"></div>
+          <span class="cat-label" id="cat-label">—</span>
+          <span style="font-size:0.73rem;color:var(--text-3);margin-left:auto;">Booking #<span id="booking-id-display">—</span></span>
+        </div>
+        <div class="summary-grid">
+          <div class="summary-item">
+            <div class="s-label">Nama Klien</div>
+            <div class="s-value" id="sum-name">—</div>
+          </div>
+          <div class="summary-item">
+            <div class="s-label">Tanggal Acara</div>
+            <div class="s-value" id="sum-date">—</div>
+          </div>
+          <div class="summary-item" style="grid-column: 1/-1;">
+            <div class="s-label">Paket</div>
+            <div class="s-value" id="sum-package">—</div>
+          </div>
+          <div class="summary-item" style="grid-column: 1/-1;">
+            <div class="s-label">Lokasi</div>
+            <div class="s-value" id="sum-location">—</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Kartu Nominal ───────────────────────────────── -->
+      <div class="nominal-card" id="nominal-card">
+        <h3>💰 Rincian Tagihan</h3>
+        <div class="nominal-row">
+          <span class="nr-label">Total Paket</span>
+          <span class="nr-val" id="nr-total">—</span>
+        </div>
+        <div class="nominal-row">
+          <span class="nr-label">DP Terbayar ✅</span>
+          <span class="nr-val" style="color:var(--green,#22c55e);" id="nr-dp">—</span>
+        </div>
+        <div class="sisa-banner">
+          <span class="sisa-label">🔴 Sisa yang Harus Dibayar</span>
+          <span class="sisa-amount" id="nr-sisa">—</span>
+        </div>
+        <div class="catatan-box" id="catatan-box">
+          <strong style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.05em;color:var(--purple);">Catatan dari Admin</strong>
+          <div id="catatan-text" style="margin-top:4px;"></div>
+        </div>
+      </div>
+
+      <!-- ── Panel Cara Pembayaran ───────────────────────── -->
+      <div class="payment-panel" id="payment-panel">
+        <h3>💳 Cara Pembayaran</h3>
+
+        <!-- Method Tabs (muncul jika method = 'both') -->
+        <div class="method-tabs hidden" id="method-tabs">
+          <button class="method-tab active" id="tab-qris" onclick="switchTab('qris')">📱 QRIS</button>
+          <button class="method-tab" id="tab-bank" onclick="switchTab('bank')">🏦 Transfer Bank</button>
+        </div>
+
+        <!-- QRIS Panel -->
+        <div id="panel-qris" class="hidden">
+          <p style="font-size:0.84rem;color:var(--text-2);margin-bottom:var(--sp-3);">
+            Scan QR Code di bawah menggunakan aplikasi bank atau e-wallet (GoPay, OVO, Dana, ShopeePay, dll.).<br>
+            <strong style="color:var(--red,#ef4444);">Penting:</strong> Masukkan nominal yang tepat saat scan.
+          </p>
+          <div class="qris-wrap" id="qris-wrap">
+            <div class="qris-frame">
+              <img id="qris-img" src="" alt="QRIS Jadiphoto.Moment">
+            </div>
+          </div>
+          <!-- Nominal hint yang jelas dan bisa disalin -->
+          <div class="qris-nominal-hint">
+            <div class="qnh-label">⌨️ Masukkan nominal berikut saat scan:</div>
+            <div class="qnh-amount" id="qris-nominal">—</div>
+            <div class="qnh-copy-row">
+              <span class="qnh-number" id="qris-nominal-plain">—</span>
+              <button class="btn-copy-nominal" id="btn-copy-qris-nominal" onclick="copyNominal()" aria-label="Salin nominal">📋 Salin Nominal</button>
+            </div>
+          </div>
+          <p style="font-size:0.78rem;color:var(--text-3);text-align:center;margin-top:var(--sp-2);">
+            ✅ Berlaku untuk semua bank & e-wallet
+          </p>
+        </div>
+
+        <!-- Bank Transfer Panel -->
+        <div id="panel-bank" class="hidden">
+          <p style="font-size:0.84rem;color:var(--text-2);margin-bottom:var(--sp-4);">
+            Transfer ke salah satu rekening berikut lalu upload bukti transfer di bawah.
+          </p>
+          <div class="bank-list" id="bank-list">
+            <!-- Diisi oleh JS -->
+          </div>
+        </div>
+
+        <!-- No payment method configured -->
+        <div id="panel-empty" class="empty-bank hidden">
+          Metode pembayaran sedang dalam konfigurasi. Silakan hubungi admin via WhatsApp.
+        </div>
+      </div>
+
+      <!-- ── Upload Bukti Bayar ───────────────────────────── -->
+      <div class="upload-card" id="upload-card">
+        <h2>📤 Upload Bukti Pembayaran</h2>
+        <p id="upload-desc">Setelah transfer, screenshot/foto bukti pembayaran dan upload di sini. Pastikan nominal, tanggal, dan rekening tujuan terlihat jelas.</p>
+
+        <div id="upload-alert" class="alert alert-error hidden" role="alert"></div>
+
+        <div class="dropzone" id="dropzone" role="button" aria-label="Area upload bukti transfer">
+          <input type="file" id="proof-file" accept="image/jpeg,image/png,image/webp,application/pdf" aria-label="Pilih file bukti transfer">
+          <div class="dropzone-icon">📎</div>
+          <div class="dropzone-text">Klik atau seret & lepas file di sini</div>
+          <div class="dropzone-hint">JPG, PNG, WebP, PDF — Maks 5MB</div>
+        </div>
+
+        <div class="file-preview" id="file-preview">
+          <img class="file-preview-thumb" id="preview-thumb" src="" alt="Preview">
+          <div class="file-preview-info">
+            <div class="file-preview-name" id="preview-name">—</div>
+            <div class="file-preview-size" id="preview-size">—</div>
+          </div>
+          <button class="btn-remove" id="btn-remove-file" aria-label="Hapus file">✕</button>
+        </div>
+
+        <div class="progress-wrap" id="progress-wrap">
+          <div class="progress-bar-bg">
+            <div class="progress-bar-fill" id="progress-bar" style="width:0%"></div>
+          </div>
+          <div class="progress-label" id="progress-label">Mempersiapkan upload...</div>
+        </div>
+
+        <button class="btn btn-primary" style="width:100%;margin-top:var(--sp-5);padding:14px;font-size:1rem;" id="btn-upload" disabled>
+          <span id="btn-upload-text">Kirim Bukti Pembayaran</span>
+          <span id="btn-upload-spinner" class="spinner hidden" aria-hidden="true"></span>
+        </button>
+      </div>
+
+    </div><!-- /main-wrap -->
+
+  </main>
+
+  <!-- Toast notifications -->
+  <div id="toast-container" role="status" aria-live="polite"></div>
+
+  <script>
+  // ═══════════════════════════════════════════════════════════════
+  // Toast
+  // ═══════════════════════════════════════════════════════════════
+  function toast(msg, type) {
+    type = type || 'info';
+    var el = document.createElement('div');
+    el.className = 'toast toast-' + type;
+    el.textContent = msg;
+    document.getElementById('toast-container').appendChild(el);
+    requestAnimationFrame(function() {
+      requestAnimationFrame(function() { el.classList.add('show'); });
+    });
+    setTimeout(function() {
+      el.classList.remove('show');
+      setTimeout(function() { el.remove(); }, 300);
+    }, 4000);
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // Helpers
+  // ═══════════════════════════════════════════════════════════════
+  function fmtRp(n) {
+    return 'Rp ' + Number(n).toLocaleString('id-ID');
+  }
+  function fmtDate(d) {
+    if (!d) return '—';
+    return new Date(d).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+  }
+  function show(id) { document.getElementById(id).classList.remove('hidden'); }
+  function hide(id) { document.getElementById(id).classList.add('hidden'); }
+
+  // ═══════════════════════════════════════════════════════════════
+  // State
+  // ═══════════════════════════════════════════════════════════════
+  var TOKEN = new URLSearchParams(location.search).get('token');
+  var currentData = null;  // { tagihan, booking, payment }
+  var sisaInt = 0;
+
+  // ═══════════════════════════════════════════════════════════════
+  // Init
+  // ═══════════════════════════════════════════════════════════════
+  if (!TOKEN || TOKEN.length < 32) {
+    hide('state-loading');
+    show('state-error');
+  } else {
+    loadTagihan(TOKEN);
+  }
+
+  async function loadTagihan(token) {
+    try {
+      var res = await fetch('/api/pelunasan/token/' + encodeURIComponent(token));
+      if (!res.ok) {
+        hide('state-loading');
+        show('state-error');
+        return;
+      }
+      currentData = await res.json();
+      hide('state-loading');
+      renderPage(currentData);
+    } catch (e) {
+      console.error('[pelunasan] load error:', e);
+      hide('state-loading');
+      show('state-error');
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // Render
+  // ═══════════════════════════════════════════════════════════════
+  function renderPage(data) {
+    var t = data.tagihan;
+    var b = data.booking;
+    var p = data.payment;
+    sisaInt = parseInt(t.sisa_kekurangan, 10);
+
+    // Booking summary
+    document.getElementById('cat-dot').style.background = b.category_color || '#7c6dfa';
+    document.getElementById('cat-label').textContent = b.category_name || '—';
+    document.getElementById('booking-id-display').textContent = data.tagihan.booking_id || '—';
+    document.getElementById('sum-name').textContent = b.client_name || '—';
+    document.getElementById('sum-date').textContent = fmtDate(b.event_date);
+    document.getElementById('sum-package').textContent = b.package_name || '—';
+    document.getElementById('sum-location').textContent = b.location || '—';
+
+    // Nominal card
+    document.getElementById('nr-total').textContent = fmtRp(t.total_tagihan);
+    document.getElementById('nr-dp').textContent   = fmtRp(t.dp_terbayar);
+    document.getElementById('nr-sisa').textContent = fmtRp(t.sisa_kekurangan);
+
+    if (t.catatan) {
+      document.getElementById('catatan-text').textContent = t.catatan;
+      document.getElementById('catatan-box').style.display = 'block';
+    }
+
+    // Payment method
+    renderPaymentMethod(p, sisaInt);
+
+    // Status banner + upload card visibility
+    var status = t.status;
+
+    show('main-wrap');
+
+    if (status === 'lunas') {
+      show('banner-lunas');
+      hide('payment-panel');
+      hide('upload-card');
+    } else if (status === 'menunggu_verifikasi') {
+      show('banner-review');
+      hide('upload-card');
+    } else if (status === 'rejected') {
+      show('banner-rejected');
+      if (t.reject_reason) {
+        document.getElementById('rejected-reason-text').textContent = t.reject_reason;
+        show('rejected-reason-box');
+      }
+      // Upload card tetap tampil untuk upload ulang
+    } else if (status === 'cancelled') {
+      // Tampilkan sebagai error (tagihan dibatalkan)
+      hide('main-wrap');
+      hide('state-loading');
+      var errEl = document.getElementById('state-error');
+      errEl.querySelector('.state-title').textContent = 'Tagihan Dibatalkan';
+      errEl.querySelector('.state-desc').textContent = 'Tagihan ini telah dibatalkan oleh admin. Hubungi Jadiphoto.Moment untuk informasi lebih lanjut.';
+      show('state-error');
+    }
+    // status === 'sent' → form upload tampil normal (default)
+  }
+
+  // ─── Render metode pembayaran ────────────────────────────────
+  function renderPaymentMethod(p, sisa) {
+    var method = p.method; // 'qris' | 'bank' | 'both'
+
+    if (method === 'qris' || method === 'both') {
+      renderQris(p.qris_image_url, sisa);
+    }
+    if (method === 'bank' || method === 'both') {
+      renderBank(p.bank_accounts);
+    }
+
+    if (method === 'both') {
+      show('method-tabs');
+      // Default tab: qris jika ada gambar, bank jika tidak
+      if (p.qris_image_url) {
+        switchTab('qris');
+      } else {
+        switchTab('bank');
+      }
+    } else if (method === 'qris') {
+      show('panel-qris');
+    } else if (method === 'bank') {
+      show('panel-bank');
+    } else {
+      show('panel-empty');
+    }
+
+    // Jika tidak ada QRIS dan tidak ada bank, tampilkan empty
+    if (!p.qris_image_url && (!p.bank_accounts || p.bank_accounts.length === 0)) {
+      hide('panel-qris'); hide('panel-bank'); hide('method-tabs');
+      show('panel-empty');
+    }
+  }
+
+  function renderQris(qrisUrl, sisa) {
+    if (!qrisUrl) return;
+    document.getElementById('qris-img').src = qrisUrl;
+    var formatted = 'Rp ' + sisa.toLocaleString('id-ID');
+    document.getElementById('qris-nominal').textContent = formatted;
+    document.getElementById('qris-nominal-plain').textContent = sisa.toLocaleString('id-ID');
+  }
+
+  function renderBank(accounts) {
+    var listEl = document.getElementById('bank-list');
+    if (!accounts || accounts.length === 0) {
+      listEl.innerHTML = '<div class="empty-bank">Belum ada rekening aktif. Hubungi admin.</div>';
+      return;
+    }
+    listEl.innerHTML = accounts.map(function(acc) {
+      return '<div class="bank-item">' +
+        '<div class="bank-name">' + escHtml(acc.nama_bank) + '</div>' +
+        '<div class="bank-no-row">' +
+          '<span class="bank-no" id="bankno-' + acc.id + '">' + escHtml(acc.no_rekening) + '</span>' +
+          '<button class="btn-salin" id="salin-' + acc.id + '" ' +
+            'onclick="salinRekening(\'' + escAttr(acc.no_rekening) + '\', ' + acc.id + ')" ' +
+            'aria-label="Salin nomor rekening ' + escAttr(acc.nama_bank) + '">📋 Salin</button>' +
+        '</div>' +
+        '<div class="bank-atas-nama">a.n. ' + escHtml(acc.atas_nama) + '</div>' +
+      '</div>';
+    }).join('');
+  }
+
+  function escHtml(s) {
+    return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+  function escAttr(s) {
+    return String(s || '').replace(/'/g, "\\'");
+  }
+
+  // ─── Tab switching ───────────────────────────────────────────
+  function switchTab(tab) {
+    document.getElementById('tab-qris').classList.toggle('active', tab === 'qris');
+    document.getElementById('tab-bank').classList.toggle('active', tab === 'bank');
+    if (tab === 'qris') { show('panel-qris'); hide('panel-bank'); }
+    else                { hide('panel-qris'); show('panel-bank'); }
+  }
+
+  // ─── Copy rekening bank ──────────────────────────────────────
+  function salinRekening(noRek, id) {
+    if (!navigator.clipboard) {
+      toast('Browser tidak mendukung salin otomatis. Salin manual: ' + noRek, 'info');
+      return;
+    }
+    navigator.clipboard.writeText(noRek).then(function() {
+      var btn = document.getElementById('salin-' + id);
+      if (btn) {
+        var orig = btn.textContent;
+        btn.textContent = '✅ Disalin!';
+        btn.classList.add('copied');
+        setTimeout(function() { btn.textContent = orig; btn.classList.remove('copied'); }, 2000);
+      }
+      toast('Nomor rekening berhasil disalin 📋', 'success');
+    }).catch(function() {
+      toast('Gagal salin. Salin manual: ' + noRek, 'error');
+    });
+  }
+
+  // ─── Copy nominal QRIS ───────────────────────────────────────
+  function copyNominal() {
+    var nominalStr = String(sisaInt);
+    if (!navigator.clipboard) {
+      toast('Salin manual: ' + nominalStr, 'info');
+      return;
+    }
+    navigator.clipboard.writeText(nominalStr).then(function() {
+      toast('Nominal berhasil disalin 📋', 'success');
+      var btn = document.getElementById('btn-copy-qris-nominal');
+      if (btn) {
+        btn.textContent = '✅ Disalin!';
+        setTimeout(function() { btn.textContent = '📋 Salin Nominal'; }, 2000);
+      }
+    }).catch(function() { toast('Gagal salin nominal', 'error'); });
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // Upload Logic
+  // ═══════════════════════════════════════════════════════════════
+  var selectedFile = null;
+  var fileInput   = document.getElementById('proof-file');
+  var dropzone    = document.getElementById('dropzone');
+  var filePreview = document.getElementById('file-preview');
+  var uploadBtn   = document.getElementById('btn-upload');
+
+  fileInput.addEventListener('change', function() { handleFile(fileInput.files[0]); });
+
+  dropzone.addEventListener('dragover', function(e) { e.preventDefault(); dropzone.classList.add('drag-over'); });
+  dropzone.addEventListener('dragleave', function()  { dropzone.classList.remove('drag-over'); });
+  dropzone.addEventListener('drop', function(e) {
+    e.preventDefault(); dropzone.classList.remove('drag-over');
+    if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+  });
+
+  function handleFile(file) {
+    if (!file) return;
+    var allowed = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
+    if (!allowed.includes(file.type)) { toast('Hanya JPG, PNG, WebP, atau PDF yang diizinkan', 'error'); return; }
+    if (file.size > 5 * 1024 * 1024) { toast('Ukuran file maksimal 5MB', 'error'); return; }
+
+    selectedFile = file;
+    document.getElementById('preview-name').textContent = file.name;
+    document.getElementById('preview-size').textContent = (file.size / 1024).toFixed(0) + ' KB';
+
+    var thumb = document.getElementById('preview-thumb');
+    if (file.type.startsWith('image/')) {
+      var reader = new FileReader();
+      reader.onload = function(e) { thumb.src = e.target.result; };
+      reader.readAsDataURL(file);
+      thumb.style.display = 'block';
+    } else {
+      thumb.src = ''; thumb.style.display = 'none';
+    }
+
+    filePreview.classList.add('show');
+    uploadBtn.disabled = false;
+  }
+
+  document.getElementById('btn-remove-file').addEventListener('click', function() {
+    selectedFile = null;
+    fileInput.value = '';
+    filePreview.classList.remove('show');
+    uploadBtn.disabled = true;
+  });
+
+  uploadBtn.addEventListener('click', async function() {
+    if (!selectedFile || !TOKEN) return;
+
+    var alertEl    = document.getElementById('upload-alert');
+    var progressEl = document.getElementById('progress-wrap');
+    var progressBar = document.getElementById('progress-bar');
+    var progressLbl = document.getElementById('progress-label');
+
+    alertEl.classList.add('hidden');
+    progressEl.classList.add('show');
+    uploadBtn.disabled = true;
+    document.getElementById('btn-upload-spinner').classList.remove('hidden');
+    document.getElementById('btn-upload-text').classList.add('hidden');
+
+    function setError(msg) {
+      alertEl.textContent = msg;
+      alertEl.classList.remove('hidden');
+      uploadBtn.disabled = false;
+      document.getElementById('btn-upload-spinner').classList.add('hidden');
+      document.getElementById('btn-upload-text').classList.remove('hidden');
+      progressEl.classList.remove('show');
+    }
+    function setProgress(pct, label) {
+      progressBar.style.width = pct + '%';
+      progressLbl.textContent = label;
+    }
+
+    try {
+      setProgress(20, 'Mengunggah file...');
+
+      var safeFileName = selectedFile.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+      var pathname = 'pelunasan/' + TOKEN.slice(0, 8) + '-' + Date.now() + '-' + safeFileName;
+
+      // Upload via server-side proxy (sama dengan DP)
+      var formData = new FormData();
+      formData.append('file', selectedFile);
+      formData.append('pathname', pathname);
+      formData.append('fileType', 'pelunasan_proof');
+
+      var uploadRes = await fetch('/api/upload/file', { method: 'POST', body: formData });
+      setProgress(65, 'Memproses...');
+
+      if (!uploadRes.ok) {
+        var errData = await uploadRes.json().catch(function() { return {}; });
+        if (uploadRes.status === 500) {
+          return setError('Fitur upload sementara tidak tersedia. Hubungi admin via WhatsApp.');
+        }
+        return setError(errData.error || 'Gagal mengunggah file. Silakan coba lagi.');
+      }
+
+      var result = await uploadRes.json();
+      if (!result.url) throw new Error('Upload selesai tetapi URL file tidak diperoleh.');
+      setProgress(85, 'Menyimpan...');
+
+      // Submit URL bukti ke endpoint pelunasan
+      var submitRes = await fetch('/api/pelunasan/token/' + encodeURIComponent(TOKEN) + '/submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          bukti_file_url: result.url,
+          bukti_blob_key: pathname,
+          bukti_filename: selectedFile.name,
+        }),
+      });
+
+      var submitData = await submitRes.json();
+      if (!submitRes.ok) {
+        return setError(submitData.error || 'Gagal menyimpan data. Silakan hubungi admin.');
+      }
+
+      setProgress(100, 'Selesai!');
+      setTimeout(function() {
+        // Sembunyikan upload, tampilkan banner review
+        hide('upload-card');
+        hide('banner-rejected');
+        show('banner-review');
+        toast('Bukti pembayaran berhasil dikirim! ✅', 'success');
+      }, 400);
+
+    } catch (err) {
+      console.error('[pelunasan] upload error:', err);
+      setError(err.message || 'Terjadi kesalahan saat mengunggah. Coba lagi.');
+    }
+  });
+  </script>
+</body>
+</html>

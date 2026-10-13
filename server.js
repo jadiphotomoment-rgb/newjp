@@ -43,6 +43,9 @@ app.use('/api/finance',              require('./routes/finance'));
 app.use('/api/google',               require('./routes/google'));
 app.use('/api/shortlinks',           require('./routes/shortlinks'));
 app.use('/api/wa-templates',         require('./routes/wa-templates'));
+app.use('/api/settings/payment',     require('./routes/payment-settings'));
+app.use('/api/pelunasan',            require('./routes/pelunasan'));
+app.use('/api/dashboard',            require('./routes/dashboard'));
 
 // ── Page Routes ──────────────────────────────────────────────
 // Root → redirect to admin login
@@ -56,6 +59,11 @@ app.get('/booking/:slug?', (req, res) => {
 });
 app.get('/upload-dp', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'upload-dp.html'));
+});
+
+// Halaman publik pelunasan via token — /pelunasan?token=...
+app.get('/pelunasan', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'pelunasan.html'));
 });
 
 // Ignore favicon to prevent 404 logs

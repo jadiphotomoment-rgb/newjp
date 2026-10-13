@@ -229,3 +229,33 @@ html.light .fc .fc-daygrid-day.fc-day-today { background: rgba(99,102,241,0.06);
 
 /* ── Calendar container dark ─────────────────────────────── */
 :not(html.light) #calendar-container { background: var(--color-surface-container-lowest) !important; border-color: rgba(255,255,255,0.08) !important; }
+
+/* ── Pelunasan Modals Root & Backdrop Overlays (Topmost Popup) ── */
+#pelunasan-modals-root {
+  position: relative;
+  z-index: 99999 !important;
+}
+.pelunasan-modal-overlay {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 99999 !important;
+  background: rgba(0, 0, 0, 0.75) !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 1rem !important;
+}
+.pelunasan-modal-card {
+  background-color: var(--color-surface-container-lowest, #1a2030) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  box-shadow: 0 25px 60px -10px rgba(0, 0, 0, 0.8) !important;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+}
+html.light .pelunasan-modal-card {
+  background-color: #ffffff !important;
+  border: 1px solid #c7c4d7 !important;
+  box-shadow: 0 25px 60px -10px rgba(0, 0, 0, 0.25) !important;
+}

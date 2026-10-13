@@ -587,27 +587,149 @@
 
       </div>
 
-      <!-- Lead Sources Analytics Row -->
-      <div
-        class="mt-2 bg-surface-container-lowest rounded-xl border border-outline-variant/30 flex flex-col shadow-md shadow-black/5 hover:shadow-lg hover:shadow-primary/10 transition-all duration-300">
-        <div class="p-6 border-b border-outline-variant/30 flex items-center justify-between bg-surface-bright">
+      <!-- ═══════════════════════════════════════════════════════════════
+           MARKETING & LEAD SOURCES ANALYTICS (FASE 5)
+           ═══════════════════════════════════════════════════════════════ -->
+      <div class="mt-4 bg-surface-container-lowest rounded-xl border border-outline-variant/30 flex flex-col shadow-md shadow-black/5 overflow-hidden">
+        
+        <!-- Header with Title & Filter Controls -->
+        <div class="p-6 border-b border-outline-variant/30 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-surface-bright">
           <div class="flex items-center gap-3">
-            <span class="material-symbols-outlined text-primary text-[28px]">pie_chart</span>
-            <h2 class="font-headline-md text-on-surface font-bold tracking-tight">Statistik Sumber Kontak Client</h2>
-          </div>
-        </div>
-        <div class="p-6 flex-1 flex flex-col md:flex-row items-center justify-center gap-8 min-h-[320px]">
-          <div class="w-full md:w-1/2 relative flex justify-center" style="max-height: 280px;">
-            <canvas id="leadSourceChart"></canvas>
-            <div id="leadSourceEmpty"
-              class="hidden text-center font-label-md text-on-surface-variant font-bold absolute top-1/2 -translate-y-1/2">
-              Belum ada data analitik.
+            <div class="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+              <span class="material-symbols-outlined text-[24px]">campaign</span>
+            </div>
+            <div>
+              <h2 class="font-headline-md text-on-surface font-bold tracking-tight text-lg m-0">Analisis Sumber Informasi & Marketing</h2>
+              <p class="text-xs text-on-surface-variant m-0">Channel akuisisi klien, konversi lunas, dan nilai omset booking</p>
             </div>
           </div>
-          <div class="w-full md:w-1/2" id="leadSourceLegend">
-            <!-- Custom Legend Injection -->
+          <div class="flex flex-wrap items-center gap-2.5">
+            <select id="mkt-filter-category" aria-label="Filter Kategori"
+              class="border border-outline-variant rounded-lg px-3 py-1.5 text-xs bg-surface-container-low text-on-surface focus:ring-1 focus:ring-primary focus:outline-none">
+              <option value="">Semua Kategori</option>
+            </select>
+            <select id="mkt-filter-period" aria-label="Filter Periode"
+              class="border border-outline-variant rounded-lg px-3 py-1.5 text-xs bg-surface-container-low text-on-surface focus:ring-1 focus:ring-primary focus:outline-none">
+              <option value="all">Semua Waktu</option>
+              <option value="this_month">Bulan Ini</option>
+              <option value="last_3_months">3 Bulan Terakhir</option>
+              <option value="this_year">Tahun Ini</option>
+            </select>
+            <button id="btn-refresh-mkt" class="btn btn-outline btn-sm px-3 py-1.5 text-xs flex items-center gap-1" title="Refresh data">
+              <span class="material-symbols-outlined text-[16px]">refresh</span>
+            </button>
           </div>
         </div>
+
+        <!-- 4 KPI Summary Cards -->
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 p-6 border-b border-outline-variant/20 bg-surface-container-low/40">
+          <div class="bg-surface-container-lowest p-4 rounded-xl border border-outline-variant/30 flex flex-col justify-between">
+            <div class="text-[11px] font-semibold text-on-surface-variant uppercase tracking-wider mb-1">Top Channel Klien</div>
+            <div class="text-base font-bold text-primary flex items-center gap-1.5 truncate" id="kpi-top-source">—</div>
+            <div class="text-[11px] text-on-surface-variant mt-1" id="kpi-top-source-sub">— booking didapat</div>
+          </div>
+          <div class="bg-surface-container-lowest p-4 rounded-xl border border-outline-variant/30 flex flex-col justify-between">
+            <div class="text-[11px] font-semibold text-on-surface-variant uppercase tracking-wider mb-1">Top Revenue Channel</div>
+            <div class="text-base font-bold text-emerald-400 flex items-center gap-1.5 truncate" id="kpi-top-revenue">—</div>
+            <div class="text-[11px] text-on-surface-variant mt-1" id="kpi-top-revenue-sub">Omset Rp —</div>
+          </div>
+          <div class="bg-surface-container-lowest p-4 rounded-xl border border-outline-variant/30 flex flex-col justify-between">
+            <div class="text-[11px] font-semibold text-on-surface-variant uppercase tracking-wider mb-1">Total Nilai Booking</div>
+            <div class="text-base font-bold text-on-surface truncate" id="kpi-total-revenue">Rp 0</div>
+            <div class="text-[11px] text-on-surface-variant mt-1" id="kpi-total-bookings">Dari — total booking</div>
+          </div>
+          <div class="bg-surface-container-lowest p-4 rounded-xl border border-outline-variant/30 flex flex-col justify-between">
+            <div class="text-[11px] font-semibold text-on-surface-variant uppercase tracking-wider mb-1">Konversi ke Lunas</div>
+            <div class="text-base font-bold text-sky-400" id="kpi-conversion-rate">0%</div>
+            <div class="text-[11px] text-on-surface-variant mt-1" id="kpi-conversion-sub">— booking lunas</div>
+          </div>
+        </div>
+
+        <!-- 2 Chart Cards: Distribusi Donut & Revenue Bar -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 p-6 border-b border-outline-variant/20">
+          
+          <!-- Chart 1: Distribusi Donut & Custom Legend -->
+          <div class="bg-surface-container-low/50 rounded-xl p-5 border border-outline-variant/30 flex flex-col">
+            <div class="flex items-center justify-between mb-4">
+              <div class="font-headline-sm text-sm font-bold text-on-surface flex items-center gap-2">
+                <span class="material-symbols-outlined text-[18px] text-primary">pie_chart</span>
+                <span>Pangsa Distribusi Sumber</span>
+              </div>
+              <span class="text-xs text-on-surface-variant" id="mkt-dist-total-text">Total 0 Klien</span>
+            </div>
+            
+            <div class="flex flex-col sm:flex-row items-center gap-6 flex-1 min-h-[260px]">
+              <div class="w-full sm:w-1/2 relative flex justify-center" style="max-height: 240px; height: 240px;">
+                <canvas id="leadSourceChart"></canvas>
+                <div id="leadSourceEmpty" class="hidden text-center text-xs font-semibold text-on-surface-variant absolute top-1/2 -translate-y-1/2">
+                  Belum ada data sumber.
+                </div>
+              </div>
+              <div class="w-full sm:w-1/2 flex-1 overflow-y-auto max-h-[240px]" id="leadSourceLegend">
+                <!-- Legend items injected here -->
+              </div>
+            </div>
+          </div>
+
+          <!-- Chart 2: Nilai Omset (Revenue) per Channel -->
+          <div class="bg-surface-container-low/50 rounded-xl p-5 border border-outline-variant/30 flex flex-col">
+            <div class="flex items-center justify-between mb-4">
+              <div class="font-headline-sm text-sm font-bold text-on-surface flex items-center gap-2">
+                <span class="material-symbols-outlined text-[18px] text-emerald-400">bar_chart</span>
+                <span>Nilai Omset per Channel (Rp)</span>
+              </div>
+              <span class="text-xs text-on-surface-variant">Prioritas Budget Marketing</span>
+            </div>
+            <div class="relative flex-1" style="min-height: 240px; height: 240px;">
+              <canvas id="revenueSourceChart"></canvas>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Detail Table: Sumber vs Nilai & Konversi -->
+        <div class="p-6 border-b border-outline-variant/20">
+          <div class="flex items-center justify-between mb-3">
+            <div class="font-headline-sm text-sm font-bold text-on-surface flex items-center gap-2">
+              <span class="material-symbols-outlined text-[18px] text-primary">analytics</span>
+              <span>Rincian Performa Tiap Channel</span>
+            </div>
+          </div>
+          <div class="overflow-x-auto rounded-xl border border-outline-variant/30 bg-surface-container-lowest">
+            <table class="w-full text-left text-xs">
+              <thead>
+                <tr class="border-b border-outline-variant/30 bg-surface-container-low">
+                  <th class="py-3 px-4 font-semibold text-on-surface-variant">Sumber Channel</th>
+                  <th class="py-3 px-4 font-semibold text-on-surface-variant text-center">Jumlah Booking</th>
+                  <th class="py-3 px-4 font-semibold text-on-surface-variant text-center">Pangsa (%)</th>
+                  <th class="py-3 px-4 font-semibold text-on-surface-variant text-right">Total Nilai</th>
+                  <th class="py-3 px-4 font-semibold text-on-surface-variant text-right">Rata-rata / Klien</th>
+                  <th class="py-3 px-4 font-semibold text-on-surface-variant text-center">Konversi Lunas</th>
+                </tr>
+              </thead>
+              <tbody id="mkt-breakdown-tbody">
+                <tr><td colspan="6" class="text-center py-6 text-on-surface-variant">Memuat data performa...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Recent Referrals & Notes -->
+        <div class="p-6 bg-surface-container-low/30">
+          <div class="flex items-center justify-between mb-3">
+            <div class="font-headline-sm text-sm font-bold text-on-surface flex items-center gap-2">
+              <span class="material-symbols-outlined text-[18px] text-primary">record_voice_over</span>
+              <span>Keterangan Rekomendasi / Detail Sumber Terbaru</span>
+            </div>
+            <span class="text-xs text-on-surface-variant">Dari isian form klien</span>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3" id="mkt-referrals-list">
+            <div class="p-3 rounded-lg bg-surface-container border border-outline-variant/20 text-xs text-on-surface-variant text-center col-span-full">
+              Belum ada catatan rekomendasi spesifik.
+            </div>
+          </div>
+        </div>
+
       </div>
 
     </main>

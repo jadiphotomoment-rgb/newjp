@@ -133,107 +133,291 @@ async function loadDashboardStats() {
       const stats = await sRes.json();
       const el = document.getElementById('stat-active');
       if (el) el.textContent = stats.active;
-
-      if (stats.leadSources) {
-        renderLeadSourcesChart(stats.leadSources);
-      }
     }
+
+    // Load Marketing & Lead Sources Analytics (Fase 5)
+    await loadMarketingCategories();
+    await loadMarketingAnalytics();
 
   } catch (e) {
     console.error("Gagal memuat statistik dashboard:", e);
   }
 }
 
-// ── Render Chart ──────────────────────────────────────────────────
+// ── Helper Format & Escape ───────────────────────────────────────
+function fmtRp(n) {
+  return Number(n || 0).toLocaleString('id-ID');
+}
+function fmtShortRp(n) {
+  const num = Number(n || 0);
+  if (num >= 1000000) return 'Rp ' + (num / 1000000).toFixed(1) + ' jt';
+  return 'Rp ' + num.toLocaleString('id-ID');
+}
+function escHtml(str) {
+  if (str == null) return '';
+  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+// ── Marketing & Lead Sources Analytics (Fase 5) ───────────────────
 let leadChartInstance = null;
-function renderLeadSourcesChart(sources) {
+let revenueChartInstance = null;
+
+async function loadMarketingCategories() {
+  try {
+    const res = await apiFetch('/api/bookings/categories');
+    if (!res.ok) return;
+    const cats = await res.json();
+    const sel = document.getElementById('mkt-filter-category');
+    if (sel && sel.options.length <= 1) {
+      sel.innerHTML = '<option value="">Semua Kategori</option>' + cats.map(c =>
+        `<option value="${c.slug}">${escHtml(c.name)}</option>`
+      ).join('');
+    }
+  } catch (_) {}
+}
+
+async function loadMarketingAnalytics() {
+  const cat = document.getElementById('mkt-filter-category')?.value || '';
+  const period = document.getElementById('mkt-filter-period')?.value || 'all';
+  const qs = new URLSearchParams({ ...(cat && { category: cat }), ...(period && { period }) });
+
+  try {
+    const res = await apiFetch(`/api/dashboard/sumber-informasi?${qs}`);
+    if (!res.ok) return;
+    const data = await res.json();
+
+    const sum = data.summary || {};
+    const dist = data.distribution || [];
+    const referrals = data.recent_referrals || [];
+
+    // 1. Update KPI Summary Cards
+    const kpiTopSrc = document.getElementById('kpi-top-source');
+    if (kpiTopSrc) kpiTopSrc.textContent = sum.top_source || '—';
+    const kpiTopSrcSub = document.getElementById('kpi-top-source-sub');
+    if (kpiTopSrcSub) kpiTopSrcSub.textContent = `${sum.top_source_count || 0} booking didapat`;
+
+    const kpiTopRev = document.getElementById('kpi-top-revenue');
+    if (kpiTopRev) kpiTopRev.textContent = sum.top_revenue_source || '—';
+    const kpiTopRevSub = document.getElementById('kpi-top-revenue-sub');
+    if (kpiTopRevSub) kpiTopRevSub.textContent = `Omset ${fmtShortRp(sum.top_revenue_amount)}`;
+
+    const kpiTotRev = document.getElementById('kpi-total-revenue');
+    if (kpiTotRev) kpiTotRev.textContent = fmtShortRp(sum.total_revenue);
+    const kpiTotBook = document.getElementById('kpi-total-bookings');
+    if (kpiTotBook) kpiTotBook.textContent = `Dari ${sum.total_bookings || 0} total booking`;
+
+    const kpiConv = document.getElementById('kpi-conversion-rate');
+    if (kpiConv) kpiConv.textContent = `${sum.overall_conversion_rate || 0}%`;
+    const kpiConvSub = document.getElementById('kpi-conversion-sub');
+    if (kpiConvSub) kpiConvSub.textContent = `${sum.total_lunas || 0} booking lunas`;
+
+    const totalTextEl = document.getElementById('mkt-dist-total-text');
+    if (totalTextEl) totalTextEl.textContent = `Total ${sum.total_bookings || 0} Klien`;
+
+    // 2. Render Donut Chart (Distribusi)
+    renderLeadDistributionChart(dist);
+
+    // 3. Render Bar Chart (Revenue per Channel)
+    renderRevenueSourceChart(dist);
+
+    // 4. Populate Breakdown Table
+    renderBreakdownTable(dist);
+
+    // 5. Populate Referrals List
+    renderReferralsList(referrals);
+
+  } catch (err) {
+    console.error('Gagal memuat analitik marketing:', err);
+  }
+}
+
+function renderLeadDistributionChart(dist) {
   const ctx = document.getElementById('leadSourceChart');
   const emptyEl = document.getElementById('leadSourceEmpty');
   const legendEl = document.getElementById('leadSourceLegend');
-  
   if (!ctx) return;
 
-  if (!sources || sources.length === 0) {
+  if (!dist || dist.length === 0) {
     ctx.style.display = 'none';
     if (emptyEl) emptyEl.classList.remove('hidden');
-    if (legendEl) legendEl.innerHTML = '';
+    if (legendEl) legendEl.innerHTML = '<p class="text-xs text-on-surface-variant text-center py-4">Belum ada data analitik.</p>';
     return;
   }
 
   ctx.style.display = 'block';
   if (emptyEl) emptyEl.classList.add('hidden');
 
-  const labels = sources.map(s => s.source || 'Lainnya');
-  const data = sources.map(s => s.count);
-  const total = data.reduce((a, b) => a + b, 0);
+  const labels = dist.map(d => d.label);
+  const counts = dist.map(d => d.count);
+  const colors = dist.map(d => d.color);
 
-  // Modern colors based on Lumina Design System
-  const bgColors = [
-    '#e91d75', // Primary
-    '#07006c', // On Primary Fixed
-    '#565e74', // Secondary
-    '#595c5e', // Tertiary
-    '#ba1a1a', // Error
-    '#767586', // Outline
-    '#c0c1ff', // Primary Dim
-    '#dae2fd', // Secondary Container
-  ];
-
-  if (leadChartInstance) {
-    leadChartInstance.destroy();
-  }
+  if (leadChartInstance) leadChartInstance.destroy();
 
   leadChartInstance = new Chart(ctx, {
     type: 'doughnut',
     data: {
       labels: labels,
       datasets: [{
-        data: data,
-        backgroundColor: bgColors,
+        data: counts,
+        backgroundColor: colors,
         borderWidth: 0,
-        hoverOffset: 4
+        hoverOffset: 6
       }]
     },
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      cutout: '70%',
+      cutout: '72%',
       plugins: {
         legend: { display: false },
         tooltip: {
-          backgroundColor: '#213145',
-          titleFont: { family: 'Helvetica Neue', size: 13, weight: 'bold' },
-          bodyFont: { family: 'Helvetica Neue', size: 13 },
-          padding: 12,
+          backgroundColor: '#1b2234',
+          titleFont: { size: 12, weight: 'bold' },
+          bodyFont: { size: 12 },
+          padding: 10,
           cornerRadius: 8,
-          displayColors: true
+          callbacks: {
+            label: function(context) {
+              const item = dist[context.dataIndex];
+              return ` ${item.count} Klien (${item.percentage}%)`;
+            }
+          }
         }
       }
     }
   });
 
-  // Custom Legend for better Typography (Bold)
   if (legendEl) {
-    let legendHtml = '<div class="flex flex-col gap-3">';
-    sources.forEach((s, idx) => {
-      const color = bgColors[idx % bgColors.length];
-      const pct = Math.round((s.count / total) * 100);
-      legendHtml += `
-        <div class="flex items-center justify-between p-3 rounded-lg bg-surface-container-low border border-outline-variant/20 hover:bg-surface-container transition-colors">
-          <div class="flex items-center gap-3">
-            <div class="w-4 h-4 rounded-full" style="background-color: ${color}"></div>
-            <span class="font-body-md text-on-surface font-bold">${s.source || 'Lainnya'}</span>
-          </div>
-          <div class="flex items-center gap-4">
-            <span class="font-label-md text-on-surface-variant font-bold">${s.count} Klien</span>
-            <span class="font-headline-md text-primary font-bold text-right w-12">${pct}%</span>
-          </div>
+    legendEl.innerHTML = dist.map(d => `
+      <div class="flex items-center justify-between p-2 rounded-lg bg-surface-container border border-outline-variant/20 hover:bg-surface-container-high transition-colors mb-1.5">
+        <div class="flex items-center gap-2">
+          <div class="w-2.5 h-2.5 rounded-full shrink-0" style="background-color: ${d.color}"></div>
+          <span class="text-xs font-semibold text-on-surface truncate">${escHtml(d.label)}</span>
         </div>
-      `;
-    });
-    legendHtml += '</div>';
-    legendEl.innerHTML = legendHtml;
+        <div class="flex items-center gap-2.5">
+          <span class="text-[11px] text-on-surface-variant">${d.count}</span>
+          <span class="text-xs font-bold text-primary w-11 text-right">${d.percentage}%</span>
+        </div>
+      </div>
+    `).join('');
   }
+}
+
+function renderRevenueSourceChart(dist) {
+  const ctx = document.getElementById('revenueSourceChart');
+  if (!ctx) return;
+
+  const validDist = dist.filter(d => Number(d.total_revenue) > 0);
+  const dataList = validDist.length ? validDist : dist;
+  const labels = dataList.map(d => d.label);
+  const revenues = dataList.map(d => d.total_revenue);
+  const colors = dataList.map(d => d.color);
+
+  if (revenueChartInstance) revenueChartInstance.destroy();
+
+  revenueChartInstance = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'Total Nilai Booking',
+        data: revenues,
+        backgroundColor: colors,
+        borderRadius: 6,
+        maxBarThickness: 36
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#1b2234',
+          callbacks: {
+            label: function(context) {
+              return ` Total: Rp ${fmtRp(context.raw)}`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: { display: false },
+          ticks: { font: { size: 10 }, color: '#9ca4c0' }
+        },
+        y: {
+          grid: { color: 'rgba(255, 255, 255, 0.05)' },
+          ticks: {
+            font: { size: 10 },
+            color: '#9ca4c0',
+            callback: function(value) {
+              if (value >= 1000000) return (value / 1000000) + 'jt';
+              if (value >= 1000) return (value / 1000) + 'k';
+              return value;
+            }
+          }
+        }
+      }
+    }
+  });
+}
+
+function renderBreakdownTable(dist) {
+  const tbody = document.getElementById('mkt-breakdown-tbody');
+  if (!tbody) return;
+
+  if (!dist || dist.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="6" class="text-center py-6 text-on-surface-variant">Belum ada data untuk periode ini</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = dist.map(d => `
+    <tr class="hover:bg-surface-container-low transition-colors">
+      <td class="py-3 px-4">
+        <div class="flex items-center gap-2">
+          <div class="w-3 h-3 rounded-full shrink-0" style="background-color: ${d.color}"></div>
+          <span class="font-semibold text-on-surface">${escHtml(d.label)}</span>
+        </div>
+      </td>
+      <td class="py-3 px-4 text-center font-bold text-on-surface">${d.count}</td>
+      <td class="py-3 px-4 text-center">
+        <span class="inline-block px-2 py-0.5 rounded-full text-[11px] font-bold" style="background:${d.bg};color:${d.color}">${d.percentage}%</span>
+      </td>
+      <td class="py-3 px-4 text-right font-bold text-emerald-400">Rp ${fmtRp(d.total_revenue)}</td>
+      <td class="py-3 px-4 text-right text-on-surface-variant">Rp ${fmtRp(d.avg_revenue)}</td>
+      <td class="py-3 px-4 text-center">
+        <span class="font-semibold text-on-surface">${d.lunas_count} / ${d.count}</span>
+        <span class="text-[10px] text-on-surface-variant block">(${d.conversion_rate}%)</span>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function renderReferralsList(referrals) {
+  const container = document.getElementById('mkt-referrals-list');
+  if (!container) return;
+
+  if (!referrals || referrals.length === 0) {
+    container.innerHTML = '<div class="p-3 rounded-lg bg-surface-container border border-outline-variant/20 text-xs text-on-surface-variant text-center col-span-full">Belum ada rincian rekomendasi spesifik dari klien.</div>';
+    return;
+  }
+
+  container.innerHTML = referrals.map(r => `
+    <div class="p-3 rounded-xl bg-surface-container border border-outline-variant/30 flex flex-col justify-between shadow-sm">
+      <div class="flex justify-between items-start gap-2 mb-1.5">
+        <div class="font-semibold text-xs text-on-surface truncate">${escHtml(r.client_name)}</div>
+        <span class="badge text-[10px] bg-primary/10 text-primary border-primary/20">${escHtml(r.category_name || 'Booking')}</span>
+      </div>
+      <div class="text-xs text-on-surface-variant italic bg-surface-container-low p-2 rounded-lg mb-2">
+        "${escHtml(r.sumber_informasi_detail)}"
+      </div>
+      <div class="text-[10px] text-on-surface-variant/70 flex justify-between">
+        <span class="capitalize">via ${escHtml(r.sumber_informasi || 'referral')}</span>
+        <span>${r.event_date ? new Date(r.event_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }) : ''}</span>
+      </div>
+    </div>
+  `).join('');
 }
 
 // ── Ganti Password ───────────────────────────────────────────────
@@ -303,6 +487,14 @@ document.querySelectorAll('.modal-close').forEach(btn => {
 ['modal-pass-close','modal-pass-close2'].forEach(id => {
   const el = document.getElementById(id);
   if (el) el.addEventListener('click', closeAllModals);
+});
+
+// ── Marketing analytics filter listeners ──────────────────────────
+document.getElementById('mkt-filter-category')?.addEventListener('change', loadMarketingAnalytics);
+document.getElementById('mkt-filter-period')?.addEventListener('change', loadMarketingAnalytics);
+document.getElementById('btn-refresh-mkt')?.addEventListener('click', () => {
+  showToast('Memperbarui data marketing...', 'info');
+  loadMarketingAnalytics();
 });
 
 // ── Initial load ──────────────────────────────────────────────────

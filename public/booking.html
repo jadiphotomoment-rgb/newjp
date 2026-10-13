@@ -500,16 +500,20 @@
             </div>
           </div>
           <div class="form-group" style="margin-top: 16px;">
-            <label for="client-source">Sumber Info (Tahu dari mana?) *</label>
+            <label for="client-source">Tahu Jadiphoto dari mana? *</label>
             <select id="client-source" required>
               <option value="" disabled selected>Pilih salah satu...</option>
-              <option value="Instagram">Instagram</option>
-              <option value="TikTok">TikTok</option>
-              <option value="Rekomendasi Teman/Keluarga">Rekomendasi Teman / Keluarga</option>
-              <option value="Pencarian Google">Pencarian Google</option>
-              <option value="Iklan">Iklan (Ads)</option>
-              <option value="Lainnya">Lainnya</option>
+              <option value="instagram">Instagram</option>
+              <option value="tiktok">TikTok</option>
+              <option value="google">Google Search</option>
+              <option value="referral">Rekomendasi teman / keluarga</option>
+              <option value="event">Event / Pameran</option>
+              <option value="lainnya">Lainnya (isian teks)</option>
             </select>
+          </div>
+          <div class="form-group" id="client-source-detail-wrap" style="display:none; margin-top: 12px;">
+            <label for="client-source-detail" id="client-source-detail-label">Keterangan Sumber *</label>
+            <input type="text" id="client-source-detail" placeholder="Nama perekomendasi atau info lainnya">
           </div>
         </div>
 
@@ -1208,17 +1212,23 @@
       });
       // Extract lead source
       const sourceEl = document.getElementById('client-source');
+      const sourceDetailEl = document.getElementById('client-source-detail');
+      const sumberInformasi = sourceEl ? sourceEl.value : null;
+      const sumberInformasiDetail = sourceDetailEl ? sourceDetailEl.value.trim() : null;
       if (sourceEl) formData.source = sourceEl.value;
+      if (sumberInformasiDetail) formData.source_detail = sumberInformasiDetail;
 
       const payload = {
-        clientName:   document.getElementById('client-name').value.trim(),
-        clientPhone:  document.getElementById('client-phone').value.trim(),
-        eventDate:    selectedDate,
-        eventTime:    eventTime || null,
-        location:     document.getElementById('event-location').value.trim(),
-        packageId:    selectedPkg ? selectedPkg.id : null,
-        packagePrice: selectedPkg ? selectedPkg.price : null,
-        packageName:  selectedPkg ? selectedPkg.name : null,
+        clientName:             document.getElementById('client-name').value.trim(),
+        clientPhone:            document.getElementById('client-phone').value.trim(),
+        eventDate:              selectedDate,
+        eventTime:              eventTime || null,
+        location:               document.getElementById('event-location').value.trim(),
+        packageId:              selectedPkg ? selectedPkg.id : null,
+        packagePrice:           selectedPkg ? selectedPkg.price : null,
+        packageName:            selectedPkg ? selectedPkg.name : null,
+        sumberInformasi:        sumberInformasi,
+        sumberInformasiDetail:  sumberInformasiDetail,
         formData
       };
 
@@ -1255,6 +1265,29 @@
         btn.disabled = false; spinner.classList.add('hidden'); btnText.classList.remove('hidden');
       }
     });
+
+    /* ── Client Source Detail Toggle ── */
+    const clientSourceSelect = document.getElementById('client-source');
+    if (clientSourceSelect) {
+      clientSourceSelect.addEventListener('change', () => {
+        const wrap = document.getElementById('client-source-detail-wrap');
+        const label = document.getElementById('client-source-detail-label');
+        const input = document.getElementById('client-source-detail');
+        if (!wrap) return;
+        if (clientSourceSelect.value === 'referral') {
+          wrap.style.display = 'block';
+          if (label) label.textContent = 'Direkomendasikan oleh siapa? *';
+          if (input) { input.required = true; input.placeholder = 'Nama teman / keluarga'; }
+        } else if (clientSourceSelect.value === 'lainnya') {
+          wrap.style.display = 'block';
+          if (label) label.textContent = 'Sebutkan dari mana Anda tahu kami *';
+          if (input) { input.required = true; input.placeholder = 'Contoh: Spanduk kampus, brosur, dll'; }
+        } else {
+          wrap.style.display = 'none';
+          if (input) { input.required = false; input.value = ''; }
+        }
+      });
+    }
 
     /* ── Init ── */
     loadCategories();

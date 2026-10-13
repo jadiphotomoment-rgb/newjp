@@ -103,10 +103,11 @@ router.get('/stats', auth, async (req, res) => {
       WHERE s.admin_id = $1
     `, [req.admin.adminId]);
 
-    // Query for Lead Sources (Sumber Info Kontak dari JSONB form_data)
+    // Query for Lead Sources (Sumber Info Kontak dari kolom sumber_informasi atau JSONB form_data)
     const sourcesRes = await db.query(`
-      SELECT COALESCE(form_data->>'source', 'Lainnya/Tidak Diketahui') AS source, COUNT(*) AS count
+      SELECT COALESCE(NULLIF(TRIM(sumber_informasi), ''), form_data->>'source', 'Lainnya/Tidak Diketahui') AS source, COUNT(*) AS count
       FROM bookings
+      WHERE deleted_at IS NULL
       GROUP BY source
       ORDER BY count DESC
     `);
