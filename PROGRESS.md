@@ -18,7 +18,16 @@
 - [x] Fase 5: Terapkan ke Endpoint yang Ada - Selesai
 - [x] Fase 6: Frontend Admin - Selesai
 - [x] Fase 7: Test & Kinerja - Selesai
-- [ ] Fase 8: Review Keamanan & Rilis
+- [x] Fase 8: Review Keamanan & Rilis - Selesai
+
+## Catatan Fase 8 (Final)
+- File yang dibuat/disentuh:
+  - `middleware/auth.js`: Penambahan dukungan runtime feature flag `RBAC_ENABLED` (default: `true`, jika diset `false` sistem beralih otomatis ke fallback kompatibel single-admin).
+  - `package.json`: Ditambahkan skrip npm siap pakai: `npm test`, `npm run owner:create`, dan `npm run db:migrate`.
+  - `PANDUAN-RILIS-RBAC.md`: Dokumen resmi panduan rilis, checklist verifikasi Definition of Done (100% lulus), instruksi migrasi idempotent, panduan rollback cepat via feature flag, dan SOP pemulihan darurat akun Owner.
+- Hasil Uji & Keamanan:
+  - `npm test` mengeksekusi seluruh suite test (Fase 2, 3, 4, 5, 7) dan lulus 100% tanpa error.
+  - Skrip migrasi terverifikasi idempotent dan skrip CLI pembuat owner siap digunakan di lingkungan server.
 
 ## Catatan Fase 7
 - File yang dibuat/disentuh:

@@ -94,11 +94,17 @@ async function authenticate(req, res, next) {
 /**
  * Middleware untuk otorisasi berdasarkan permission key
  * Contoh: requirePermission('finance.view')
+ * Mendukung feature flag RBAC_ENABLED (default: true). Jika diset 'false', seluruh request diloloskan (fallback kompatibel).
  */
 function requirePermission(permissionKey) {
   return (req, res, next) => {
     if (!req.user) {
       return res.status(401).json({ error: 'Autentikasi diperlukan' });
+    }
+
+    const rbacEnabled = process.env.RBAC_ENABLED !== 'false';
+    if (!rbacEnabled) {
+      return next();
     }
 
     if (!hasPermission(req.user.role, permissionKey)) {
