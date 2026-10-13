@@ -11,7 +11,7 @@
 
 ## Status Fase
 - [x] Fase 0: Pemetaan (MAP.md) - Selesai
-- [ ] Fase 1: Migrasi Database
+- [x] Fase 1: Migrasi Database - Selesai
 - [ ] Fase 2: Autentikasi & Otorisasi
 - [ ] Fase 3: Layanan Audit Log
 - [ ] Fase 4: Approval Engine
@@ -20,10 +20,11 @@
 - [ ] Fase 7: Test & Kinerja
 - [ ] Fase 8: Review Keamanan & Rilis
 
-## Catatan Fase 0
-- File yang disentuh: MAP.md, PROGRESS.md.
-- Titik sentuh utama: routes/auth.js, routes/finance.js, routes/dashboard.js, routes/bookings.js, routes/pelunasan.js, routes/payment-settings.js, middleware/auth.js, database.js.
-- Endpoint agregat uang: /api/finance/* (Owner only), /api/dashboard/sumber-informasi (perlu serializer per-role untuk buang total_revenue, avg_revenue, dsb).
+## Catatan Fase 1
+- File yang dibuat/disentuh: `migrations/001_rbac_and_approvals.sql`, `migrations/001_rbac_and_approvals_down.sql`, `scripts/migrate.js`, `scripts/create-owner.js`, `scripts/test_migration.js`, `PROGRESS.md`.
+- Hasil uji: `node scripts/test_migration.js` lulus 100%. Siklus UP -> DOWN -> UP berhasil; trigger append-only audit_log terbukti menolak UPDATE & DELETE; akun Owner otomatis ter-seed & data lama ter-backfill.
+- Keputusan: Menggunakan database branch Neon saat ini untuk pengujian migrasi UP->DOWN->UP yang terisolasi dan terverifikasi.
+
 
 
 ## Keputusan Arsitektur & Catatan
