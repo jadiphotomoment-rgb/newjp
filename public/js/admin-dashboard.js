@@ -12,15 +12,16 @@ if (!token || !admin) {
 
 // ── Authenticated fetch helper ──────────────────────────────────
 async function apiFetch(path, options = {}) {
+  const activeToken = localStorage.getItem('sf_token') || token;
   const res = await fetch(path, {
     ...options,
     headers: {
-      'Authorization': `Bearer ${token}`,
+      'Authorization': `Bearer ${activeToken}`,
       'Content-Type': 'application/json',
       ...(options.headers || {}),
     },
   });
-  if (res.status === 401 || res.status === 403) {
+  if (res.status === 401) {
     localStorage.removeItem('sf_token');
     localStorage.removeItem('sf_admin');
     window.location.replace('/admin/login.html');
@@ -108,28 +109,32 @@ if (btnCekDb) {
 // ── Load Stats (Dashboard specific) ──────────────────────────────
 async function loadDashboardStats() {
   try {
+    const isOwner = admin && (admin.role === 'owner');
     const [bRes, fRes, sRes] = await Promise.all([
       apiFetch('/api/bookings/admin/list'),
-      apiFetch('/api/finance/summary'),
+      isOwner ? apiFetch('/api/finance/summary') : Promise.resolve(null),
       apiFetch('/api/sessions/stats')
     ]);
     
-    if (bRes.ok) {
+    if (bRes && bRes.ok) {
       const bookings = await bRes.json();
       const el = document.getElementById('stat-bookings');
       if (el) el.textContent = bookings.length;
     }
     
-    if (fRes.ok) {
+    if (fRes && fRes.ok) {
       const fin = await fRes.json();
       const income = Number(fin.thisMonthIncome || 0);
       const el = document.getElementById('stat-income');
       if (el) {
         el.textContent = 'Rp ' + (income >= 1000000 ? (income / 1000000).toFixed(1) + 'jt' : income.toLocaleString('id-ID'));
       }
+    } else if (!isOwner) {
+      const el = document.getElementById('stat-income');
+      if (el) el.textContent = '—';
     }
 
-    if (sRes.ok) {
+    if (sRes && sRes.ok) {
       const stats = await sRes.json();
       const el = document.getElementById('stat-active');
       if (el) el.textContent = stats.active;

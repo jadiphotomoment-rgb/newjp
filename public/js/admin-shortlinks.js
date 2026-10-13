@@ -19,15 +19,16 @@ if (document.getElementById('btn-logout')) {
 
 // ── Authenticated fetch helper ──────────────────────────────────
 async function apiFetch(path, options = {}) {
+  const activeToken = localStorage.getItem('sf_token') || token;
   const res = await fetch(path, {
     ...options,
     headers: {
-      'Authorization': `Bearer ${token}`,
+      'Authorization': `Bearer ${activeToken}`,
       'Content-Type': 'application/json',
       ...(options.headers || {}),
     },
   });
-  if (res.status === 401 || res.status === 403) {
+  if (res.status === 401) {
     localStorage.removeItem('sf_token');
     localStorage.removeItem('sf_admin');
     window.location.replace('/admin/login.html');

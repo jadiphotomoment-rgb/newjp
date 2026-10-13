@@ -115,12 +115,12 @@ function promptMandatoryPasswordChange(token, currentPassword) {
         <form id="mandatory-pass-form" class="space-y-4">
           <div id="mandatory-pass-alert" class="hidden p-3 rounded-lg text-xs bg-error-container text-on-error-container"></div>
           <div>
-            <label class="block text-xs font-semibold mb-1 text-on-surface-variant">Password Baru (min 8 karakter)</label>
-            <input type="password" id="mand-new-pass" minlength="8" required class="w-full bg-surface-container-low border border-outline-variant/40 rounded-lg p-2.5 text-sm focus:outline-none focus:border-primary">
+            <label class="block text-xs font-semibold mb-1 text-on-surface-variant">Password Baru (min 10 karakter)</label>
+            <input type="password" id="mand-new-pass" minlength="10" required class="w-full bg-surface-container-low border border-outline-variant/40 rounded-lg p-2.5 text-sm focus:outline-none focus:border-primary">
           </div>
           <div>
             <label class="block text-xs font-semibold mb-1 text-on-surface-variant">Konfirmasi Password Baru</label>
-            <input type="password" id="mand-confirm-pass" minlength="8" required class="w-full bg-surface-container-low border border-outline-variant/40 rounded-lg p-2.5 text-sm focus:outline-none focus:border-primary">
+            <input type="password" id="mand-confirm-pass" minlength="10" required class="w-full bg-surface-container-low border border-outline-variant/40 rounded-lg p-2.5 text-sm focus:outline-none focus:border-primary">
           </div>
           <button type="submit" id="mand-submit-btn" class="w-full py-2.5 bg-primary text-on-primary rounded-lg text-sm font-semibold hover:opacity-90">Simpan & Masuk ke Dashboard</button>
         </form>
@@ -133,6 +133,12 @@ function promptMandatoryPasswordChange(token, currentPassword) {
       const newPass = modal.querySelector('#mand-new-pass').value;
       const confirmPass = modal.querySelector('#mand-confirm-pass').value;
       const alertEl = modal.querySelector('#mandatory-pass-alert');
+
+      if (newPass.length < 10) {
+        alertEl.textContent = 'Password baru minimal 10 karakter.';
+        alertEl.classList.remove('hidden');
+        return;
+      }
 
       if (newPass !== confirmPass) {
         alertEl.textContent = 'Konfirmasi password tidak cocok.';
@@ -160,6 +166,14 @@ function promptMandatoryPasswordChange(token, currentPassword) {
           btn.disabled = false;
           btn.textContent = 'Simpan & Masuk ke Dashboard';
           return;
+        }
+
+        // Perbarui token sesi dengan token_version terbaru agar tidak 401 di dashboard
+        if (resData.accessToken || resData.token) {
+          localStorage.setItem('sf_token', resData.accessToken || resData.token);
+        }
+        if (resData.user || resData.admin) {
+          localStorage.setItem('sf_admin', JSON.stringify(resData.user || resData.admin));
         }
 
         window.location.replace('/admin/dashboard.html');
