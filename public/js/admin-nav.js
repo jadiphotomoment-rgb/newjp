@@ -30,7 +30,7 @@
 
   // 3. Terapkan RBAC pada Antarmuka (Navigasi & Badge)
   function applyRbacUI() {
-    const isOwner = admin.role === 'owner';
+    const isOwner = admin.role === 'owner' || admin.role === 'admin';
 
     // Sembunyikan elemen menu bertanda data-role="owner" bagi staff
     document.querySelectorAll('[data-role="owner"]').forEach(el => {
@@ -47,7 +47,7 @@
         ? 'bg-amber-500/15 text-amber-500 border border-amber-500/30'
         : 'bg-primary/15 text-primary border border-primary/30';
       const roleIcon = isOwner ? 'crown' : 'badge';
-      const roleLabel = isOwner ? 'Owner' : 'Staff';
+      const roleLabel = isOwner ? 'Administrator (Owner)' : 'Staff';
 
       profileContainer.innerHTML = `
         <div class="flex items-center gap-2 px-3 py-1.5 rounded-full ${roleBadgeClass} text-xs font-semibold">

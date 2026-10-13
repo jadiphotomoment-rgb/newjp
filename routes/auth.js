@@ -1,12 +1,12 @@
 'use strict';
 
 const express = require('express');
-const router  = express.Router();
-const crypto  = require('crypto');
-const bcrypt  = require('bcryptjs');
-const jwt     = require('jsonwebtoken');
-const db      = require('../database');
-const auth    = require('../middleware/auth');
+const router = express.Router();
+const crypto = require('crypto');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+const db = require('../database');
+const auth = require('../middleware/auth');
 const { getPermissionsForRole } = require('../constants/permissions');
 const { invalidateUserState } = require('../utils/tokenVersionCache');
 
@@ -58,9 +58,13 @@ router.post('/login', async (req, res) => {
   }
 
   try {
-    // Cari pengguna di tabel users (atau fallback ke email)
+    // Cari pengguna di tabel users (dukung format email maupun username 'admin')
     const { rows } = await db.query(
-      'SELECT * FROM users WHERE lower(email) = $1',
+      `SELECT * FROM users 
+       WHERE lower(email) = $1 
+          OR ($1 = 'admin' AND role = 'owner')
+       ORDER BY (role = 'owner') DESC, id ASC 
+       LIMIT 1`,
       [identifier]
     );
     const user = rows[0];

@@ -109,7 +109,7 @@ if (btnCekDb) {
 // ── Load Stats (Dashboard specific) ──────────────────────────────
 async function loadDashboardStats() {
   try {
-    const isOwner = admin && (admin.role === 'owner');
+    const isOwner = admin && (admin.role === 'owner' || admin.role === 'admin');
     const [bRes, fRes, sRes] = await Promise.all([
       apiFetch('/api/bookings/admin/list'),
       isOwner ? apiFetch('/api/finance/summary') : Promise.resolve(null),

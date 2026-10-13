@@ -44,6 +44,9 @@ const ROLE_PERMISSIONS = {
   ]
 };
 
+// Dukungan backward compatibility: role 'admin' dianggap sinonim dengan 'owner'
+ROLE_PERMISSIONS.admin = ROLE_PERMISSIONS.owner;
+
 /**
  * Cek apakah sebuah role memiliki permission tertentu.
  * Mendukung wildcard (misal 'finance.*' mencakup 'finance.view').
