@@ -430,112 +430,56 @@
 
     <main class="flex-1 p-4 lg:p-8 flex flex-col gap-6" role="main">
 
-      <!-- Main Layout: Recent Activities & Quick Actions -->
-      <div class="flex flex-col lg:flex-row gap-6">
-
-        <!-- Recent Activities (Left, Flex-2) -->
+      <!-- Aksi Cepat & CRM Overview -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div
-          class="flex-[2] bg-surface-container-lowest rounded-xl border border-outline-variant/30 overflow-hidden flex flex-col shadow-md shadow-black/5 hover:shadow-lg hover:shadow-primary/10 transition-all duration-300">
-          <div class="p-6 border-b border-outline-variant/30 flex justify-between items-center bg-surface-bright">
-            <h2 class="font-headline-md text-on-surface">Recent Activities</h2>
-            <button class="font-label-md text-primary hover:text-primary-container transition-colors">View All</button>
-          </div>
-          <div class="divide-y divide-outline-variant/20 flex-1">
-            <div class="p-4 hover:bg-surface-container-low transition-colors flex items-center justify-between">
-              <div class="flex items-center gap-4">
-                <div class="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center">
-                  <span class="material-symbols-outlined">check_circle</span>
-                </div>
-                <div>
-                  <p class="font-body-md text-on-surface font-medium">Wedding Gallery Delivered</p>
-                  <p class="font-body-sm text-on-surface-variant">Smith & Jones Wedding</p>
-                </div>
-              </div>
-              <span class="font-label-sm text-on-surface-variant">2 hours ago</span>
-            </div>
-            <div class="p-4 hover:bg-surface-container-low transition-colors flex items-center justify-between">
-              <div class="flex items-center gap-4">
-                <div class="w-10 h-10 rounded-full bg-secondary/10 text-secondary flex items-center justify-center">
-                  <span class="material-symbols-outlined">payments</span>
-                </div>
-                <div>
-                  <p class="font-body-md text-on-surface font-medium">Payment Received</p>
-                  <p class="font-body-sm text-on-surface-variant">$1,500 from Emma Davis</p>
-                </div>
-              </div>
-              <span class="font-label-sm text-on-surface-variant">5 hours ago</span>
-            </div>
-            <div class="p-4 hover:bg-surface-container-low transition-colors flex items-center justify-between">
-              <div class="flex items-center gap-4">
-                <div class="w-10 h-10 rounded-full bg-tertiary/10 text-tertiary flex items-center justify-center">
-                  <span class="material-symbols-outlined">event</span>
-                </div>
-                <div>
-                  <p class="font-body-md text-on-surface font-medium">New Booking Confirmed</p>
-                  <p class="font-body-sm text-on-surface-variant">Corporate Portrait Session</p>
-                </div>
-              </div>
-              <span class="font-label-sm text-on-surface-variant">1 day ago</span>
-            </div>
-            <div class="p-4 hover:bg-surface-container-low transition-colors flex items-center justify-between">
-              <div class="flex items-center gap-4">
-                <div class="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center">
-                  <span class="material-symbols-outlined">forum</span>
-                </div>
-                <div>
-                  <p class="font-body-md text-on-surface font-medium">Client Feedback</p>
-                  <p class="font-body-sm text-on-surface-variant">5 stars from Michael Brown</p>
-                </div>
-              </div>
-              <span class="font-label-sm text-on-surface-variant">2 days ago</span>
-            </div>
+          class="lg:col-span-2 bg-surface-container-lowest rounded-xl border border-outline-variant/30 p-6 shadow-md shadow-black/5 hover:shadow-lg hover:shadow-primary/10 transition-all duration-300">
+          <h2 class="font-headline-md text-on-surface font-bold text-base mb-4 flex items-center gap-2">
+            <span class="material-symbols-outlined text-primary text-[20px]">bolt</span>
+            Aksi Cepat
+          </h2>
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <button onclick="location.href='/admin/sessions.html'"
+              class="flex flex-col items-center justify-center p-4 bg-surface-container-low hover:bg-surface-container rounded-xl transition-colors border border-outline-variant/20 gap-2">
+              <span class="material-symbols-outlined text-primary text-[28px]">add_a_photo</span>
+              <span class="font-label-sm font-semibold text-on-surface">Sesi Sortir</span>
+            </button>
+            <button onclick="location.href='/admin/bookings.html'"
+              class="flex flex-col items-center justify-center p-4 bg-surface-container-low hover:bg-surface-container rounded-xl transition-colors border border-outline-variant/20 gap-2">
+              <span class="material-symbols-outlined text-sky-400 text-[28px]">calendar_today</span>
+              <span class="font-label-sm font-semibold text-on-surface">Booking</span>
+            </button>
+            <button onclick="location.href='/admin/approvals.html'"
+              class="flex flex-col items-center justify-center p-4 bg-surface-container-low hover:bg-surface-container rounded-xl transition-colors border border-outline-variant/20 gap-2">
+              <span class="material-symbols-outlined text-amber-500 text-[28px]">verified</span>
+              <span class="font-label-sm font-semibold text-on-surface">Persetujuan</span>
+            </button>
+            <button onclick="location.href='/admin/finance.html'" data-role="owner"
+              class="flex flex-col items-center justify-center p-4 bg-surface-container-low hover:bg-surface-container rounded-xl transition-colors border border-outline-variant/20 gap-2">
+              <span class="material-symbols-outlined text-emerald-500 text-[28px]">payments</span>
+              <span class="font-label-sm font-semibold text-on-surface">Keuangan</span>
+            </button>
           </div>
         </div>
 
-        <!-- Quick Actions & Banner (Right, Flex-1) -->
-        <div class="flex-[1] flex flex-col gap-6">
-          <div
-            class="bg-surface-container-lowest rounded-xl border border-outline-variant/30 p-6 shadow-md shadow-black/5 hover:shadow-lg hover:shadow-primary/10 transition-all duration-300">
-            <h2 class="font-headline-md text-on-surface mb-4">Quick Actions</h2>
-            <div class="grid grid-cols-2 gap-4">
-              <button onclick="location.href='/admin/sessions.html'"
-                class="flex flex-col items-center justify-center p-4 bg-surface-container-low hover:bg-surface-container rounded-lg transition-colors border border-outline-variant/20 gap-2">
-                <span class="material-symbols-outlined text-primary text-[28px]">add_a_photo</span>
-                <span class="font-label-sm text-on-surface">New Session</span>
-              </button>
-              <button onclick="location.href='/admin/finance.html'"
-                class="flex flex-col items-center justify-center p-4 bg-surface-container-low hover:bg-surface-container rounded-lg transition-colors border border-outline-variant/20 gap-2">
-                <span class="material-symbols-outlined text-secondary text-[28px]">receipt_long</span>
-                <span class="font-label-sm text-on-surface">Finance</span>
-              </button>
-              <button onclick="location.href='/admin/sessions.html'"
-                class="flex flex-col items-center justify-center p-4 bg-surface-container-low hover:bg-surface-container rounded-lg transition-colors border border-outline-variant/20 gap-2">
-                <span class="material-symbols-outlined text-tertiary text-[28px]">share</span>
-                <span class="font-label-sm text-on-surface">Share Gallery</span>
-              </button>
-              <button onclick="location.href='/admin/bookings.html'"
-                class="flex flex-col items-center justify-center p-4 bg-surface-container-low hover:bg-surface-container rounded-lg transition-colors border border-outline-variant/20 gap-2">
-                <span class="material-symbols-outlined text-on-surface-variant text-[28px]">group</span>
-                <span class="font-label-sm text-on-surface">Clients</span>
-              </button>
+        <div
+          class="bg-gradient-to-br from-primary/20 via-surface-container-low to-surface-container-lowest rounded-xl p-6 border border-primary/20 shadow-md shadow-black/5 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center gap-2 text-primary font-bold text-sm mb-1">
+              <span class="material-symbols-outlined text-[18px]">photo_camera</span>
+              Jadiphoto.Moment
             </div>
+            <p class="text-xs text-on-surface-variant leading-relaxed">
+              Kelola jadwal foto, verifikasi bukti pembayaran, bagikan galeri sortir, dan pantau persetujuan aksi operasional.
+            </p>
           </div>
-
-          <div
-            class="bg-primary-container rounded-xl p-6 relative overflow-hidden text-on-primary-container shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/40 transition-all duration-300 hover:-translate-y-1">
-            <div class="absolute -right-12 -bottom-12 w-48 h-48 bg-primary opacity-20 rounded-full blur-2xl"></div>
-            <div class="relative z-10">
-              <h3 class="font-headline-md mb-2">Storage Upgrade</h3>
-              <p class="font-body-sm mb-4 opacity-90">You're using 85% of your 1TB plan. Upgrade now for unlimited
-                high-res uploads.</p>
-              <button
-                class="bg-on-primary-container text-primary font-label-md px-6 py-2 rounded-full hover:bg-surface-container-lowest transition-colors shadow-sm">
-                Upgrade Plan
-              </button>
-            </div>
+          <div class="pt-4 flex items-center gap-2">
+            <button onclick="location.href='/admin/bookings.html'"
+              class="btn btn-primary btn-sm px-4 py-2 text-xs font-semibold rounded-lg">
+              Buka Jadwal Booking
+            </button>
           </div>
         </div>
-
       </div>
 
       <!-- ═══════════════════════════════════════════════════════════════
