@@ -104,10 +104,13 @@ function formatIp(ip) {
 /**
  * Catat audit log di dalam transaksi database yang sedang berjalan (tx)
  */
-async function record(tx, { actor, aksi, entitas, entitas_id, sebelum, sesudah, approval_id, req } = {}) {
+async function record(tx, { actor, aksi, entitas, entitas_id, sebelum, sesudah, data_sebelum, data_setelah, approval_id, req } = {}) {
   if (!tx || typeof tx.query !== 'function') {
     throw new Error('Audit record requires an active database transaction client (tx)');
   }
+
+  const effectiveSebelum = sebelum !== undefined ? sebelum : data_sebelum;
+  const effectiveSesudah = sesudah !== undefined ? sesudah : data_setelah;
 
   const effectiveActor = actor || (req && req.user ? { id: req.user.id, role: req.user.role } : null);
   const actorId = effectiveActor ? effectiveActor.id : null;
@@ -117,7 +120,7 @@ async function record(tx, { actor, aksi, entitas, entitas_id, sebelum, sesudah, 
   const rawIp = req?.ip || req?.connection?.remoteAddress || null;
   const ip = formatIp(rawIp);
 
-  const { diffBefore, diffAfter } = computeDiff(sebelum, sesudah);
+  const { diffBefore, diffAfter } = computeDiff(effectiveSebelum, effectiveSesudah);
 
   const sql = `
     INSERT INTO audit_log (

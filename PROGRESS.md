@@ -15,10 +15,20 @@
 - [x] Fase 2: Autentikasi & Otorisasi - Selesai
 - [x] Fase 3: Layanan Audit Log - Selesai
 - [x] Fase 4: Approval Engine - Selesai
-- [ ] Fase 5: Terapkan ke Endpoint yang Ada
+- [x] Fase 5: Terapkan ke Endpoint yang Ada - Selesai
 - [ ] Fase 6: Frontend Admin
 - [ ] Fase 7: Test & Kinerja
 - [ ] Fase 8: Review Keamanan & Rilis
+
+## Catatan Fase 5
+- File yang dibuat/disentuh: `routes/users.js`, `routes/audit-log.js`, `routes/monitoring.js`, `routes/bookings.js`, `routes/finance.js`, `routes/payment-settings.js`, `routes/pelunasan.js`, `routes/dashboard.js`, `routes/categories.js`, `routes/wa-templates.js`, `routes/google.js`, `services/approval.js`, `services/audit.js`, `server.js`, `tests/phase5_rbac.test.js`.
+- Penerapan RBAC & Route Guarding:
+  - Guarding menyeluruh rute admin keuangan, settings payment, dan manajemen staff (403 untuk staff).
+  - Serializer dashboard: otomatis menyembunyikan metrik omset (`total_revenue`, dll.) jika role bukan owner.
+  - Audit scoping: staff hanya dapat membaca log miliknya sendiri; owner dapat mengakses seluruh log dengan keyset pagination.
+  - Optimistic locking: update booking memverifikasi kecocokan `version` (409 Conflict jika basi/mismatch).
+  - Approval hooks: aksi sensitif staff (hapus booking, pembatalan booking ber-DP, override nilai tagihan) otomatis dialihkan ke `approval_requests` (HTTP 202).
+- Hasil uji: `tests/phase5_rbac.test.js` serta regresi penuh Fase 2, 3, 4, 5 lulus 100% (semua hijau).
 
 ## Catatan Fase 3
 - File yang dibuat/disentuh: `services/audit.js`, `middleware/requestId.js`, `server.js`, `tests/phase3_audit.test.js`, `PROGRESS.md`.

@@ -5,8 +5,11 @@ const router  = express.Router();
 const db      = require('../database');
 const auth    = require('../middleware/auth');
 
+router.use(auth);
+router.use(auth.requirePermission('category.manage'));
+
 // GET /api/admin/categories — list semua kategori
-router.get('/', auth, async (req, res) => {
+router.get('/', async (req, res) => {
   try {
     const { rows } = await db.query(
       'SELECT * FROM booking_categories ORDER BY id'

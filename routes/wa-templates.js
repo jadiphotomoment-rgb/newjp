@@ -6,7 +6,7 @@ const db      = require('../database');
 const auth    = require('../middleware/auth');
 
 // ── GET /api/wa-templates — list all templates ─────────────────
-router.get('/', auth, async (req, res) => {
+router.get('/', auth, auth.requirePermission('wa_template.manage'), async (req, res) => {
   try {
     const { rows } = await db.query(
       `SELECT id, key, label, description, template, variables, category, is_active, updated_at
@@ -36,7 +36,7 @@ router.get('/:key', async (req, res) => {
 });
 
 // ── PATCH /api/wa-templates/:key — update template ─────────────
-router.patch('/:key', auth, async (req, res) => {
+router.patch('/:key', auth, auth.requirePermission('wa_template.manage'), async (req, res) => {
   const { template, label, description, is_active } = req.body;
 
   if (!template || !template.trim()) {
@@ -64,7 +64,7 @@ router.patch('/:key', auth, async (req, res) => {
 });
 
 // ── POST /api/wa-templates/:key/reset — reset template ke default ──
-router.post('/:key/reset', auth, async (req, res) => {
+router.post('/:key/reset', auth, auth.requirePermission('wa_template.manage'), async (req, res) => {
   const defaults = {
     booking_confirmed: {
       template: `✅ *Booking Dikonfirmasi — Jadiphoto.Moment*

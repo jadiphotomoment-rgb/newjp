@@ -46,9 +46,11 @@ router.get('/', async (req, res) => {
 // ═══════════════════════════════════════════════════════════════
 // ADMIN ENDPOINTS
 // ═══════════════════════════════════════════════════════════════
+router.use(auth);
+router.use(auth.requirePermission('payment_settings.manage'));
 
 // GET /api/settings/payment/admin — semua data (admin)
-router.get('/admin', auth, async (req, res) => {
+router.get('/admin', async (req, res) => {
   try {
     const [qrisRes, banksRes] = await Promise.all([
       db.query('SELECT id, qris_image_url, qris_blob_key, updated_at FROM payment_settings WHERE id = 1'),

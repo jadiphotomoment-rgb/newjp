@@ -16,7 +16,7 @@ const { getOAuth2Client } = require('../utils/googleAuth');
 // ─────────────────────────────────────────────────────────────────────────────
 
 // GET /api/google/auth — Generate Auth URL
-router.get('/auth', auth, (req, res) => {
+router.get('/auth', auth, auth.requirePermission('payment_settings.manage'), (req, res) => {
   try {
     const oauth2Client = getOAuth2Client();
 
@@ -99,7 +99,7 @@ router.get('/callback', async (req, res) => {
 });
 
 // GET /api/google/status — Check if admin is connected
-router.get('/status', auth, async (req, res) => {
+router.get('/status', auth, auth.requirePermission('payment_settings.manage'), async (req, res) => {
   try {
     const { rows } = await db.query(
       'SELECT id FROM google_oauth_tokens WHERE admin_id = $1',
@@ -113,7 +113,7 @@ router.get('/status', auth, async (req, res) => {
 });
 
 // DELETE /api/google/disconnect — Disconnect account
-router.delete('/disconnect', auth, async (req, res) => {
+router.delete('/disconnect', auth, auth.requirePermission('payment_settings.manage'), async (req, res) => {
   try {
     const { rows } = await db.query(
       'DELETE FROM google_oauth_tokens WHERE admin_id = $1 RETURNING id',

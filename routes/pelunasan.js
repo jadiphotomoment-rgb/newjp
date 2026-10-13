@@ -22,6 +22,8 @@ const crypto          = require('crypto');
 const https           = require('https');
 const db              = require('../database');
 const auth            = require('../middleware/auth');
+const audit           = require('../services/audit');
+const approvalSvc     = require('../services/approval');
 const { getWaTemplate } = require('../utils/template');
 
 // ── Helper: Format Rupiah (tanpa desimal) ───────────────────────
@@ -230,7 +232,7 @@ router.post('/token/:token/submit', async (req, res) => {
  * GET /api/pelunasan?booking_id=&status=&page=&limit=
  * Daftar tagihan. Jika booking_id disertakan, filter per booking.
  */
-router.get('/', auth, async (req, res) => {
+router.get('/', auth, auth.requirePermission('booking.view'), async (req, res) => {
   const { booking_id, status, page = 1, limit = 50 } = req.query;
   const params = [];
   const conditions = [];
@@ -272,7 +274,7 @@ router.get('/', auth, async (req, res) => {
  * GET /api/pelunasan/:id
  * Detail satu tagihan (admin).
  */
-router.get('/:id', auth, async (req, res) => {
+router.get('/:id', auth, auth.requirePermission('booking.view'), async (req, res) => {
   const id = parseInt(req.params.id, 10);
   if (isNaN(id)) return res.status(400).json({ error: 'ID tidak valid' });
 
@@ -306,7 +308,7 @@ router.get('/:id', auth, async (req, res) => {
  * Admin membuat tagihan pelunasan baru.
  * Server selalu menghitung ulang sisa = total - dp_terbayar.
  */
-router.post('/', auth, async (req, res) => {
+router.post('/', auth, auth.requirePermission('tagihan.send'), async (req, res) => {
   const { booking_id, total_tagihan, catatan } = req.body;
 
   if (!booking_id) return res.status(400).json({ error: 'booking_id wajib diisi' });
@@ -316,11 +318,12 @@ router.post('/', auth, async (req, res) => {
 
   const totalInt = Math.round(Number(total_tagihan));
 
+  let dbClient;
   try {
     // Ambil data booking + DP terbayar yang sudah disetujui
     const bookRes = await db.query(
-      `SELECT b.id, b.client_name, b.client_phone, b.event_date, b.package_name,
-              b.status, b.deleted_at,
+      `SELECT b.id, b.client_name, b.client_phone, b.event_date, b.package_name, b.package_price,
+              b.status, b.deleted_at, b.version,
               COALESCE(
                 (SELECT SUM(amount) FROM payments
                  WHERE booking_id = b.id AND status = 'approved' AND payment_type = 'dp'),
@@ -336,6 +339,28 @@ router.post('/', auth, async (req, res) => {
 
     if (booking.deleted_at) return res.status(410).json({ error: 'Booking ini sudah dihapus (soft delete)' });
 
+    // Jika staff mengubah total_tagihan berbeda dari package_price, cek approval
+    const pkgPrice = booking.package_price != null ? Math.round(Number(booking.package_price)) : null;
+    if (pkgPrice != null && totalInt !== pkgPrice) {
+      const mode = await approvalSvc.resolveAksi('tagihan.override_amount', req.user.role);
+      if (mode === 'approval') {
+        const appReq = await approvalSvc.ajukan({
+          aksiTipe: 'tagihan.override_amount',
+          requestedBy: req.user.id,
+          entitasTipe: 'pelunasan',
+          entitasId: booking.id,
+          baseVersion: booking.version || 1,
+          payload: { booking_id: booking.id, total_tagihan: totalInt, catatan: catatan?.trim() || null },
+          req
+        });
+        return res.status(202).json({
+          status: 'pending_approval',
+          message: 'Perubahan nilai tagihan memerlukan persetujuan Owner',
+          approval_id: appReq.id
+        });
+      }
+    }
+
     // Hitung sisa di server — klien tidak bisa manipulasi
     const dpInt   = Math.round(Number(booking.dp_terbayar_aktual));
     const sisaInt = totalInt - dpInt;
@@ -349,19 +374,37 @@ router.post('/', auth, async (req, res) => {
     // Generate token acak aman (32 bytes = 64 hex chars)
     const token = crypto.randomBytes(32).toString('hex');
 
+    dbClient = await db.getClient();
+    await dbClient.query('BEGIN');
+
     // Insert tagihan baru
-    const { rows: insertRows } = await db.query(
+    const { rows: insertRows } = await dbClient.query(
       `INSERT INTO pelunasan (booking_id, token, total_tagihan, dp_terbayar, sisa_kekurangan, catatan, status, sent_at, send_count, created_by)
        VALUES ($1, $2, $3, $4, $5, $6, 'sent', now(), 1, $7)
        RETURNING *`,
       [
         booking.id, token, totalInt, dpInt, sisaInt,
         catatan?.trim() || null,
-        req.admin.adminId,
+        req.user.id,
       ]
     );
 
     const tagihan = insertRows[0];
+
+    await audit.record(dbClient, {
+      req,
+      aksi: 'tagihan.create',
+      entitas: 'pelunasan',
+      entitas_id: tagihan.id,
+      data_setelah: {
+        id: tagihan.id,
+        booking_id: booking.id,
+        total_tagihan: totalInt,
+        sisa_kekurangan: sisaInt
+      }
+    });
+
+    await dbClient.query('COMMIT');
     const linkPelunasan = buildPelunasanUrl(token);
 
     res.status(201).json({
@@ -381,8 +424,11 @@ router.post('/', auth, async (req, res) => {
       },
     });
   } catch (err) {
+    if (dbClient) await dbClient.query('ROLLBACK');
     console.error('[pelunasan] POST / error:', err);
     res.status(500).json({ error: 'Database error' });
+  } finally {
+    if (dbClient) dbClient.release();
   }
 });
 
@@ -391,7 +437,7 @@ router.post('/', auth, async (req, res) => {
  * Kirim / kirim ulang pesan WA tagihan ke klien.
  * Menyimpan timestamp & jumlah kirim untuk mencegah kebingungan klien.
  */
-router.post('/:id/send-wa', auth, async (req, res) => {
+router.post('/:id/send-wa', auth, auth.requirePermission('tagihan.send'), async (req, res) => {
   const id = parseInt(req.params.id, 10);
   if (isNaN(id)) return res.status(400).json({ error: 'ID tidak valid' });
 
@@ -472,7 +518,7 @@ router.post('/:id/send-wa', auth, async (req, res) => {
  *   - reject_reason tersimpan
  *   - Kirim WA alasan penolakan + link upload ulang ke klien
  */
-router.patch('/:id/verify', auth, async (req, res) => {
+router.patch('/:id/verify', auth, auth.requirePermission('payment.verify'), async (req, res) => {
   const id = parseInt(req.params.id, 10);
   if (isNaN(id)) return res.status(400).json({ error: 'ID tidak valid' });
 
@@ -512,20 +558,20 @@ router.patch('/:id/verify', auth, async (req, res) => {
       // 1. Update pelunasan → lunas
       await client.query(
         `UPDATE pelunasan
-         SET status = 'lunas', verified_by = $1, verified_at = now()
+         SET status = 'lunas', verified_by = $1, verified_at = now(), updated_by = $1, version = version + 1
          WHERE id = $2`,
-        [req.admin.adminId, id]
+        [req.user.id, id]
       );
 
       // 2. Catat pemasukan di tabel payments (otomatis masuk finance.html)
       await client.query(
-        `INSERT INTO payments (booking_id, amount, payment_type, proof_url, status, approved_by, approved_at)
-         VALUES ($1, $2, 'pelunasan', $3, 'approved', $4, now())`,
+        `INSERT INTO payments (booking_id, amount, payment_type, proof_url, status, approved_by, approved_at, created_by, updated_by)
+         VALUES ($1, $2, 'pelunasan', $3, 'approved', $4, now(), $4, $4)`,
         [
           tagihan.booking_id,
           tagihan.sisa_kekurangan,
           null,                   // proof_url di payments cukup null (ada di pelunasan.bukti_file_url)
-          req.admin.adminId,
+          req.user.id,
         ]
       );
 
@@ -533,16 +579,25 @@ router.patch('/:id/verify', auth, async (req, res) => {
       //    (hanya update jika tidak ada tagihan menunggu_verifikasi lain di booking yg sama)
       await client.query(
         `UPDATE bookings
-         SET status = 'lunas'
-         WHERE id = $1
+         SET status = 'lunas', updated_by = $1, version = version + 1
+         WHERE id = $2
            AND NOT EXISTS (
              SELECT 1 FROM pelunasan
-             WHERE booking_id = $1
-               AND id != $2
+             WHERE booking_id = $2
+               AND id != $3
                AND status IN ('sent', 'rejected', 'menunggu_verifikasi')
            )`,
-        [tagihan.booking_id, id]
+        [req.user.id, tagihan.booking_id, id]
       );
+
+      await audit.record(client, {
+        req,
+        aksi: 'payment.verify',
+        entitas: 'pelunasan',
+        entitas_id: id,
+        data_sebelum: { status: 'menunggu_verifikasi' },
+        data_setelah: { status: 'lunas', action: 'approve' }
+      });
 
       await client.query('COMMIT');
 
@@ -566,10 +621,19 @@ router.patch('/:id/verify', auth, async (req, res) => {
       // REJECT
       await client.query(
         `UPDATE pelunasan
-         SET status = 'rejected', reject_reason = $1, verified_by = $2, verified_at = now()
+         SET status = 'rejected', reject_reason = $1, verified_by = $2, verified_at = now(), updated_by = $2, version = version + 1
          WHERE id = $3`,
-        [reason.trim(), req.admin.adminId, id]
+        [reason.trim(), req.user.id, id]
       );
+
+      await audit.record(client, {
+        req,
+        aksi: 'payment.verify',
+        entitas: 'pelunasan',
+        entitas_id: id,
+        data_sebelum: { status: 'menunggu_verifikasi' },
+        data_setelah: { status: 'rejected', action: 'reject', reason: reason.trim() }
+      });
 
       await client.query('COMMIT');
 
@@ -603,31 +667,47 @@ router.patch('/:id/verify', auth, async (req, res) => {
  * Admin membatalkan tagihan yang belum lunas.
  * Tagihan 'lunas' tidak bisa dibatalkan.
  */
-router.patch('/:id/cancel', auth, async (req, res) => {
+router.patch('/:id/cancel', auth, auth.requirePermission('booking.update'), async (req, res) => {
   const id = parseInt(req.params.id, 10);
   if (isNaN(id)) return res.status(400).json({ error: 'ID tidak valid' });
 
+  let client;
   try {
-    const { rows } = await db.query(
+    client = await db.getClient();
+    await client.query('BEGIN');
+
+    const { rows } = await client.query(
       `UPDATE pelunasan
-       SET status = 'cancelled', verified_by = $1, verified_at = now()
+       SET status = 'cancelled', verified_by = $1, verified_at = now(), updated_by = $1, version = version + 1
        WHERE id = $2
          AND status != 'lunas'
        RETURNING id, status, booking_id`,
-      [req.admin.adminId, id]
+      [req.user.id, id]
     );
 
     if (!rows[0]) {
-      // Bisa tidak ditemukan atau sudah lunas
+      await client.query('ROLLBACK');
       const check = await db.query('SELECT status FROM pelunasan WHERE id = $1', [id]);
       if (!check.rows[0]) return res.status(404).json({ error: 'Tagihan tidak ditemukan' });
       if (check.rows[0].status === 'lunas') return res.status(409).json({ error: 'Tagihan yang sudah lunas tidak bisa dibatalkan.' });
     }
 
+    await audit.record(client, {
+      req,
+      aksi: 'tagihan.cancel',
+      entitas: 'pelunasan',
+      entitas_id: id,
+      data_setelah: { status: 'cancelled' }
+    });
+
+    await client.query('COMMIT');
     res.json({ message: 'Tagihan berhasil dibatalkan.', data: rows[0] });
   } catch (err) {
+    if (client) await client.query('ROLLBACK');
     console.error('[pelunasan] PATCH /:id/cancel error:', err);
     res.status(500).json({ error: 'Database error' });
+  } finally {
+    if (client) client.release();
   }
 });
 

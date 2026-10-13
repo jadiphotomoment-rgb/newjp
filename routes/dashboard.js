@@ -148,20 +148,43 @@ router.get('/sumber-informasi', auth, async (req, res) => {
       ? [...distribution].sort((a, b) => b.total_revenue - a.total_revenue)[0]
       : null;
 
+    const canViewRevenue = req.user?.role === 'owner';
+
+    let finalSummary = {
+      total_bookings: totalBookings,
+      total_revenue: totalRevenue,
+      total_lunas: totalLunas,
+      overall_conversion_rate: totalBookings > 0 ? Number(((totalLunas / totalBookings) * 100).toFixed(1)) : 0,
+      top_source: topByCount ? topByCount.label : 'Belum Ada',
+      top_source_count: topByCount ? topByCount.count : 0,
+      top_revenue_source: topByRev ? topByRev.label : 'Belum Ada',
+      top_revenue_amount: topByRev ? topByRev.total_revenue : 0
+    };
+
+    let finalDistribution = distribution;
+    let finalReferrals = refRes.rows;
+
+    // Per-role serializer: Staff dilarang melihat angka omset/pendapatan
+    if (!canViewRevenue) {
+      const { total_revenue, top_revenue_source, top_revenue_amount, ...staffSummary } = finalSummary;
+      finalSummary = staffSummary;
+
+      finalDistribution = distribution.map(d => {
+        const { total_revenue, avg_revenue, ...staffD } = d;
+        return staffD;
+      });
+
+      finalReferrals = refRes.rows.map(r => {
+        const { package_price, ...staffR } = r;
+        return staffR;
+      });
+    }
+
     res.json({
-      summary: {
-        total_bookings: totalBookings,
-        total_revenue: totalRevenue,
-        total_lunas: totalLunas,
-        overall_conversion_rate: totalBookings > 0 ? Number(((totalLunas / totalBookings) * 100).toFixed(1)) : 0,
-        top_source: topByCount ? topByCount.label : 'Belum Ada',
-        top_source_count: topByCount ? topByCount.count : 0,
-        top_revenue_source: topByRev ? topByRev.label : 'Belum Ada',
-        top_revenue_amount: topByRev ? topByRev.total_revenue : 0
-      },
-      distribution,
+      summary: finalSummary,
+      distribution: finalDistribution,
       monthly_trend: monthlyTrend,
-      recent_referrals: refRes.rows
+      recent_referrals: finalReferrals
     });
   } catch (err) {
     console.error('[dashboard] sumber-informasi error:', err);

@@ -4,6 +4,8 @@ const express  = require('express');
 const router   = express.Router();
 const db       = require('../database');
 const auth     = require('../middleware/auth');
+const audit    = require('../services/audit');
+const approvalSvc = require('../services/approval');
 const https    = require('https');
 const { getWaTemplate } = require('../utils/template');
 const { google }           = require('googleapis');
@@ -444,8 +446,8 @@ async function handleAdminList(req, res) {
 }
 
 // GET /api/admin/bookings — daftar booking dengan filter
-router.get('/admin/list', auth, handleAdminList);
-router.get('/', auth, handleAdminList);
+router.get('/admin/list', auth, auth.requirePermission('booking.view'), handleAdminList);
+router.get('/', auth, auth.requirePermission('booking.view'), handleAdminList);
 
 // GET /api/admin/bookings/:id — detail booking (admin)
 async function handleAdminDetail(req, res) {
@@ -496,10 +498,10 @@ async function handleAdminDetail(req, res) {
   }
 }
 
-router.get('/admin/detail/:id', auth, handleAdminDetail);
+router.get('/admin/detail/:id', auth, auth.requirePermission('booking.view'), handleAdminDetail);
 
 // PATCH /api/admin/bookings/:id/set-price — set harga paket & dp_amount (legacy, kept for compat)
-router.patch('/admin/:id/set-price', auth, async (req, res) => {
+router.patch('/admin/:id/set-price', auth, auth.requirePermission('booking.update'), async (req, res) => {
   const { packagePrice } = req.body;
   const price = parseFloat(packagePrice);
   if (isNaN(price) || price < 0) return res.status(400).json({ error: 'Harga tidak valid' });
@@ -582,6 +584,12 @@ async function handleEditBooking(req, res) {
       }
     }
 
+    // Optimistic locking
+    const expectedVersion = req.body.version !== undefined ? parseInt(req.body.version, 10) : null;
+    if (expectedVersion !== null && !isNaN(expectedVersion) && booking.version !== expectedVersion) {
+      return res.status(409).json({ error: 'Data telah diubah oleh pengguna lain. Silakan refresh.' });
+    }
+
     dbClient = await db.getClient();
     await dbClient.query('BEGIN');
 
@@ -595,8 +603,10 @@ async function handleEditBooking(req, res) {
          location      = $5,
          package_price = COALESCE($6, package_price),
          dp_amount     = $7,
-         form_data     = COALESCE($8, form_data)
-       WHERE id = $9`,
+         form_data     = COALESCE($8, form_data),
+         updated_by    = $9,
+         version       = version + 1
+       WHERE id = $10`,
       [
         client_name.trim(),
         client_phone.trim(),
@@ -606,6 +616,7 @@ async function handleEditBooking(req, res) {
         price || null,
         dpAmount,
         form_data ? JSON.stringify(form_data) : null,
+        req.user.id,
         booking.id
       ]
     );
@@ -613,11 +624,34 @@ async function handleEditBooking(req, res) {
     // Sync pending payment amount if dp_amount changed
     if (dpAmount !== booking.dp_amount) {
       await dbClient.query(
-        `UPDATE payments SET amount = $1
-         WHERE booking_id = $2 AND status = 'pending'`,
-        [dpAmount, booking.id]
+        `UPDATE payments SET amount = $1, updated_by = $2, version = version + 1
+         WHERE booking_id = $3 AND status = 'pending'`,
+        [dpAmount, req.user.id, booking.id]
       );
     }
+
+    await audit.record(dbClient, {
+      req,
+      aksi: 'booking.update',
+      entitas: 'booking',
+      entitas_id: booking.id,
+      data_sebelum: {
+        client_name: booking.client_name,
+        client_phone: booking.client_phone,
+        event_date: booking.event_date,
+        event_time: booking.event_time,
+        package_price: booking.package_price,
+        dp_amount: booking.dp_amount
+      },
+      data_setelah: {
+        client_name: client_name.trim(),
+        client_phone: client_phone.trim(),
+        event_date,
+        event_time: event_time || null,
+        package_price: price || booking.package_price,
+        dp_amount: dpAmount
+      }
+    });
 
     await dbClient.query('COMMIT');
 
@@ -639,11 +673,11 @@ async function handleEditBooking(req, res) {
   }
 }
 
-router.put('/admin/:id', auth, handleEditBooking);
-router.put('/:id', auth, handleEditBooking);
+router.put('/admin/:id', auth, auth.requirePermission('booking.update'), handleEditBooking);
+router.put('/:id', auth, auth.requirePermission('booking.update'), handleEditBooking);
 
 // PATCH /api/admin/bookings/:id/approve-dp — approve DP
-router.patch('/admin/:id/approve-dp', auth, async (req, res) => {
+router.patch('/admin/:id/approve-dp', auth, auth.requirePermission('payment.verify'), async (req, res) => {
   let client;
   try {
     const bookRes = await db.query(
@@ -690,7 +724,7 @@ router.patch('/admin/:id/approve-dp', auth, async (req, res) => {
 
     // Ambil payment pending terbaru
     const payRes = await db.query(
-      `SELECT id FROM payments WHERE booking_id = $1 AND status = 'pending' ORDER BY created_at DESC LIMIT 1`,
+      `SELECT id, amount FROM payments WHERE booking_id = $1 AND status = 'pending' ORDER BY created_at DESC LIMIT 1`,
       [booking.id]
     );
 
@@ -699,17 +733,26 @@ router.patch('/admin/:id/approve-dp', auth, async (req, res) => {
 
     // Update booking → confirmed
     await client.query(
-      `UPDATE bookings SET status = 'confirmed' WHERE id = $1`,
-      [booking.id]
+      `UPDATE bookings SET status = 'confirmed', updated_by = $1, version = version + 1 WHERE id = $2`,
+      [req.user.id, booking.id]
     );
 
     // Update payment → approved
     if (payRes.rows[0]) {
       await client.query(
-        `UPDATE payments SET status = 'approved', approved_by = $1, approved_at = now() WHERE id = $2`,
-        [req.admin.adminId, payRes.rows[0].id]
+        `UPDATE payments SET status = 'approved', approved_by = $1, approved_at = now(), updated_by = $1, version = version + 1 WHERE id = $2`,
+        [req.user.id, payRes.rows[0].id]
       );
     }
+
+    await audit.record(client, {
+      req,
+      aksi: 'payment.verify',
+      entitas: 'booking',
+      entitas_id: booking.id,
+      data_sebelum: { status: 'dp_review' },
+      data_setelah: { status: 'confirmed', action: 'approve_dp' }
+    });
 
     await client.query('COMMIT');
 
@@ -739,7 +782,7 @@ router.patch('/admin/:id/approve-dp', auth, async (req, res) => {
 });
 
 // PATCH /api/admin/bookings/:id/reject-dp — reject DP
-router.patch('/admin/:id/reject-dp', auth, async (req, res) => {
+router.patch('/admin/:id/reject-dp', auth, auth.requirePermission('payment.verify'), async (req, res) => {
   const { reason } = req.body;
   let client;
   try {
@@ -759,16 +802,25 @@ router.patch('/admin/:id/reject-dp', auth, async (req, res) => {
     await client.query('BEGIN');
 
     await client.query(
-      `UPDATE bookings SET status = 'pending_dp' WHERE id = $1`,
-      [booking.id]
+      `UPDATE bookings SET status = 'pending_dp', updated_by = $1, version = version + 1 WHERE id = $2`,
+      [req.user.id, booking.id]
     );
 
     if (payRes.rows[0]) {
       await client.query(
-        `UPDATE payments SET status = 'rejected', approved_by = $1, approved_at = now(), reject_reason = $2 WHERE id = $3`,
-        [req.admin.adminId, reason || null, payRes.rows[0].id]
+        `UPDATE payments SET status = 'rejected', approved_by = $1, approved_at = now(), reject_reason = $2, updated_by = $1, version = version + 1 WHERE id = $3`,
+        [req.user.id, reason || null, payRes.rows[0].id]
       );
     }
+
+    await audit.record(client, {
+      req,
+      aksi: 'payment.verify',
+      entitas: 'booking',
+      entitas_id: booking.id,
+      data_sebelum: { status: 'dp_review' },
+      data_setelah: { status: 'pending_dp', action: 'reject_dp', reason: reason || null }
+    });
 
     await client.query('COMMIT');
 
@@ -795,7 +847,7 @@ router.patch('/admin/:id/reject-dp', auth, async (req, res) => {
 });
 
 // POST /api/admin/bookings/:id/send-wa-confirmation — kirim WA konfirmasi manual
-router.post('/admin/:id/send-wa-confirmation', auth, async (req, res) => {
+router.post('/admin/:id/send-wa-confirmation', auth, auth.requirePermission('tagihan.send'), async (req, res) => {
   try {
     const { rows } = await db.query(
       `SELECT b.id, b.client_name, b.client_phone, b.event_date, b.event_time, b.status, b.category_id, b.form_data, b.location, b.package_price, b.dp_amount,
@@ -838,17 +890,78 @@ router.post('/admin/:id/send-wa-confirmation', auth, async (req, res) => {
 });
 
 // PATCH /api/admin/bookings/:id/status — ubah status manual
-router.patch('/admin/:id/status', auth, async (req, res) => {
+router.patch('/admin/:id/status', auth, auth.requirePermission('booking.update'), async (req, res) => {
   const { status } = req.body;
   const VALID = ['pending_dp', 'dp_review', 'confirmed', 'menunggu_pelunasan', 'pelunasan_review', 'lunas', 'completed', 'cancelled'];
   if (!VALID.includes(status)) return res.status(400).json({ error: 'Status tidak valid' });
 
+  const bookingId = parseInt(req.params.id, 10);
+  if (isNaN(bookingId)) return res.status(400).json({ error: 'ID booking tidak valid' });
+
+  let client;
   try {
-    await db.query(`UPDATE bookings SET status = $1 WHERE id = $2`, [status, req.params.id]);
+    const bookRes = await db.query('SELECT * FROM bookings WHERE id = $1', [bookingId]);
+    if (!bookRes.rows[0]) return res.status(404).json({ error: 'Booking tidak ditemukan' });
+    const current = bookRes.rows[0];
+
+    // Jika dibatalkan dan sudah ada DP: cek apakah perlu approval
+    if (status === 'cancelled') {
+      const payCheck = await db.query(
+        `SELECT COALESCE(SUM(amount), 0) AS total_dp
+         FROM payments
+         WHERE booking_id = $1 AND status = 'approved' AND payment_type = 'dp'`,
+        [bookingId]
+      );
+      const hasDp = Number(payCheck.rows[0]?.total_dp || 0) > 0 || (current.dp_amount > 0 && current.status !== 'pending_dp');
+
+      if (hasDp) {
+        const mode = await approvalSvc.resolveAksi('booking.cancel_with_dp', req.user.role);
+        if (mode === 'approval') {
+          const appReq = await approvalSvc.ajukan({
+            aksiTipe: 'booking.cancel_with_dp',
+            requestedBy: req.user.id,
+            entitasTipe: 'booking',
+            entitasId: bookingId,
+            baseVersion: current.version || 1,
+            payload: { status: 'cancelled' },
+            req
+          });
+          return res.status(202).json({
+            status: 'pending_approval',
+            message: 'Pembatalan booking dengan DP memerlukan persetujuan Owner',
+            approval_id: appReq.id
+          });
+        }
+      }
+    }
+
+    client = await db.getClient();
+    await client.query('BEGIN');
+
+    await client.query(
+      `UPDATE bookings
+       SET status = $1, updated_by = $2, version = version + 1
+       WHERE id = $3`,
+      [status, req.user.id, bookingId]
+    );
+
+    await audit.record(client, {
+      req,
+      aksi: 'booking.update',
+      entitas: 'booking',
+      entitas_id: bookingId,
+      data_sebelum: { status: current.status },
+      data_setelah: { status }
+    });
+
+    await client.query('COMMIT');
     res.json({ message: 'Status booking diperbarui', status });
   } catch (err) {
+    if (client) await client.query('ROLLBACK');
     console.error('[bookings] status update error:', err);
     res.status(500).json({ error: 'Database error' });
+  } finally {
+    if (client) client.release();
   }
 });
 
@@ -857,30 +970,67 @@ async function handleSoftDelete(req, res) {
   const id = parseInt(req.params.id, 10);
   if (isNaN(id)) return res.status(400).json({ error: 'ID booking tidak valid' });
 
+  let client;
   try {
-    const { rows } = await db.query(
-      `UPDATE bookings
-       SET deleted_at = now(), status = 'cancelled'
-       WHERE id = $1 AND deleted_at IS NULL
-       RETURNING id, client_name, status, deleted_at`,
-      [id]
-    );
-
-    if (!rows[0]) {
-      const check = await db.query('SELECT id, deleted_at FROM bookings WHERE id = $1', [id]);
-      if (!check.rows[0]) return res.status(404).json({ error: 'Booking tidak ditemukan' });
+    const check = await db.query('SELECT * FROM bookings WHERE id = $1', [id]);
+    if (!check.rows[0]) return res.status(404).json({ error: 'Booking tidak ditemukan' });
+    if (check.rows[0].deleted_at) {
       return res.status(409).json({ error: 'Booking ini sudah dihapus (soft-deleted)' });
     }
+    const current = check.rows[0];
 
+    // Cek approval rule untuk booking.delete
+    const mode = await approvalSvc.resolveAksi('booking.delete', req.user.role);
+    if (mode === 'approval') {
+      const appReq = await approvalSvc.ajukan({
+        aksiTipe: 'booking.delete',
+        requestedBy: req.user.id,
+        entitasTipe: 'booking',
+        entitasId: id,
+        baseVersion: current.version || 1,
+        payload: { id },
+        req
+      });
+      return res.status(202).json({
+        status: 'pending_approval',
+        message: 'Penghapusan booking memerlukan persetujuan Owner',
+        approval_id: appReq.id
+      });
+    }
+
+    client = await db.getClient();
+    await client.query('BEGIN');
+
+    const { rows } = await client.query(
+      `UPDATE bookings
+       SET deleted_at = now(), status = 'cancelled', updated_by = $1, version = version + 1
+       WHERE id = $2 AND deleted_at IS NULL
+       RETURNING id, client_name, status, deleted_at`,
+      [req.user.id, id]
+    );
+
+    await audit.record(client, {
+      req,
+      aksi: 'booking.delete',
+      entitas: 'booking',
+      entitas_id: id,
+      data_sebelum: { status: current.status, deleted_at: null },
+      data_setelah: { status: 'cancelled', deleted_at: rows[0]?.deleted_at }
+    });
+
+    await client.query('COMMIT');
     res.json({ message: 'Booking berhasil dibatalkan dan dihapus (soft delete)', booking: rows[0] });
   } catch (err) {
+    if (client) await client.query('ROLLBACK');
     console.error('[bookings] DELETE error:', err);
     res.status(500).json({ error: 'Database error' });
+  } finally {
+    if (client) client.release();
   }
 }
 
-router.delete('/admin/:id', auth, handleSoftDelete);
-router.delete('/:id', auth, handleSoftDelete);
+router.delete('/admin/:id', auth, auth.requirePermission('booking.delete'), handleSoftDelete);
+router.delete('/:id', auth, auth.requirePermission('booking.delete'), handleSoftDelete);
 
 // POST /api/admin/bookings/create — admin manual booking input
 async function handleAdminCreateBooking(req, res) {
@@ -890,6 +1040,7 @@ async function handleAdminCreateBooking(req, res) {
     return res.status(400).json({ error: 'Kategori, nama klien, no HP/WA, dan tanggal acara wajib diisi' });
   }
 
+  let client;
   try {
     const catRes = await db.query('SELECT id, name FROM booking_categories WHERE id = $1', [category_id]);
     if (!catRes.rows[0]) return res.status(404).json({ error: 'Kategori tidak ditemukan' });
@@ -897,9 +1048,12 @@ async function handleAdminCreateBooking(req, res) {
     const price = package_price ? parseFloat(package_price) : null;
     const dp = dp_amount ? parseFloat(dp_amount) : null;
 
-    const { rows } = await db.query(
-      `INSERT INTO bookings (category_id, client_name, client_phone, event_date, event_time, location, package_price, dp_amount, form_data, status, sumber_informasi, sumber_informasi_detail)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+    client = await db.getClient();
+    await client.query('BEGIN');
+
+    const { rows } = await client.query(
+      `INSERT INTO bookings (category_id, client_name, client_phone, event_date, event_time, location, package_price, dp_amount, form_data, status, sumber_informasi, sumber_informasi_detail, created_by, updated_by)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $13)
        RETURNING *`,
       [
         category_id,
@@ -913,22 +1067,70 @@ async function handleAdminCreateBooking(req, res) {
         form_data ? JSON.stringify(form_data) : '{}',
         status || 'confirmed',
         sumber_informasi || null,
-        sumber_informasi_detail || null
+        sumber_informasi_detail || null,
+        req.user.id
       ]
     );
 
-    res.status(201).json({ message: 'Booking berhasil dibuat manual oleh admin', booking: rows[0] });
+    const newBooking = rows[0];
+
+    await audit.record(client, {
+      req,
+      aksi: 'booking.create',
+      entitas: 'booking',
+      entitas_id: newBooking.id,
+      data_setelah: {
+        id: newBooking.id,
+        client_name: newBooking.client_name,
+        client_phone: newBooking.client_phone,
+        event_date: newBooking.event_date,
+        package_price: newBooking.package_price
+      }
+    });
+
+    await client.query('COMMIT');
+    res.status(201).json({ message: 'Booking berhasil dibuat manual oleh admin', booking: newBooking });
   } catch (err) {
+    if (client) await client.query('ROLLBACK');
     console.error('[bookings] admin create error:', err);
     res.status(500).json({ error: 'Gagal membuat booking' });
+  } finally {
+    if (client) client.release();
   }
 }
 
-router.post('/admin/create', auth, handleAdminCreateBooking);
-router.post('/admin', auth, handleAdminCreateBooking);
+router.post('/admin/create', auth, auth.requirePermission('booking.create'), handleAdminCreateBooking);
+router.post('/admin', auth, auth.requirePermission('booking.create'), handleAdminCreateBooking);
+
+// GET /api/admin/bookings/:id/history — riwayat audit log booking
+async function handleBookingHistory(req, res) {
+  const id = parseInt(req.params.id, 10);
+  if (isNaN(id)) return res.status(400).json({ error: 'ID booking tidak valid' });
+
+  try {
+    const { rows } = await db.query(
+      `SELECT a.id, a.request_id, a.actor_id, a.actor_role, a.aksi,
+              a.entitas, a.entitas_id, a.sebelum, a.sesudah, a.approval_id,
+              a.ip, a.created_at,
+              u.nama AS actor_name, u.email AS actor_email
+       FROM audit_log a
+       LEFT JOIN users u ON a.actor_id = u.id
+       WHERE a.entitas = 'booking' AND a.entitas_id = $1
+       ORDER BY a.created_at DESC, a.id DESC`,
+      [id.toString()]
+    );
+    res.json({ booking_id: id, history: rows });
+  } catch (err) {
+    console.error('[bookings] history error:', err);
+    res.status(500).json({ error: 'Database error' });
+  }
+}
+
+router.get('/admin/:id/history', auth, auth.requirePermission('booking.view'), handleBookingHistory);
+router.get('/:id/history', auth, auth.requirePermission('booking.view'), handleBookingHistory);
 
 // PATCH /api/admin/bookings/:id/link-session — hubungkan ke sesi sortir
-router.patch('/admin/:id/link-session', auth, async (req, res) => {
+router.patch('/admin/:id/link-session', auth, auth.requirePermission('booking.update'), async (req, res) => {
   const { sessionUuid } = req.body;
   try {
     const sessRes = await db.query('SELECT id FROM sessions WHERE uuid = $1 AND admin_id = $2', [sessionUuid, req.admin.adminId]);
@@ -943,7 +1145,7 @@ router.patch('/admin/:id/link-session', auth, async (req, res) => {
 });
 
 // GET /api/admin/bookings/calendar — data untuk FullCalendar
-router.get('/admin/calendar', auth, async (req, res) => {
+router.get('/admin/calendar', auth, auth.requirePermission('booking.view'), async (req, res) => {
   const { month } = req.query;
   const params = [];
   let dateFilter = '';
@@ -1001,7 +1203,7 @@ router.get('/admin/calendar', auth, async (req, res) => {
 });
 
 // POST /api/admin/bookings/:id/sync-calendar — Sinkronisasi ke Google Calendar
-router.post('/admin/:id/sync-calendar', auth, async (req, res) => {
+router.post('/admin/:id/sync-calendar', auth, auth.requirePermission('booking.update'), async (req, res) => {
   try {
     // 1. Dapatkan token Google untuk admin ini
     const tokenRes = await db.query('SELECT * FROM google_oauth_tokens WHERE admin_id = $1', [req.admin.adminId]);

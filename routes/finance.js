@@ -33,8 +33,12 @@ function sendWhatsApp(target, message) {
   });
 }
 
+// Semua rute finance memerlukan autentikasi dan permission finance.view (Owner only)
+router.use(auth);
+router.use(auth.requirePermission('finance.view'));
+
 // GET /api/finance/summary — ringkasan keuangan
-router.get('/summary', auth, async (req, res) => {
+router.get('/summary', async (req, res) => {
   const { month, category } = req.query;
 
   try {

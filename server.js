@@ -48,6 +48,9 @@ app.use('/api/settings/payment',     require('./routes/payment-settings'));
 app.use('/api/pelunasan',            require('./routes/pelunasan'));
 app.use('/api/dashboard',            require('./routes/dashboard'));
 app.use('/api/approvals',            require('./routes/approvals'));
+app.use('/api/users',                require('./routes/users'));
+app.use('/api/audit',                require('./routes/audit-log'));
+app.use('/api/monitoring',           require('./routes/monitoring'));
 
 // ── Periodik: expire approval requests yang melewati batas waktu (tiap jam) ──
 setInterval(async () => {

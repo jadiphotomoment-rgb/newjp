@@ -42,51 +42,83 @@ function invalidateRulesCache() {
  * Ajukan approval request baru (harus dipanggil dalam transaksi tx).
  * Cegah duplikat via unique index ux_approval_pending.
  */
-async function ajukan(tx, {
-  tipe, entitas, entitas_id, payload, base_version,
-  alasan, requested_by, req
-}) {
-  const rule = await getAturan(tipe);
-  if (!rule) {
-    throw Object.assign(new Error(`Tipe approval tidak dikenal: '${tipe}'`), { code: 'UNKNOWN_TYPE', status: 400 });
+async function ajukan(clientOrParams, maybeParams) {
+  let tx = clientOrParams;
+  let params = maybeParams;
+  let ownClient = null;
+
+  if (!maybeParams && clientOrParams && typeof clientOrParams.query !== 'function') {
+    params = clientOrParams;
+    ownClient = await db.getClient();
+    await ownClient.query('BEGIN');
+    tx = ownClient;
   }
 
-  const expiresAt = new Date(Date.now() + rule.expires_days * 24 * 60 * 60 * 1000);
+  const tipe = params.tipe || params.aksiTipe;
+  const entitas = params.entitas || params.entitasTipe;
+  const entitas_id = params.entitas_id || params.entitasId;
+  const payload = params.payload || {};
+  const base_version = params.base_version || params.baseVersion || null;
+  const alasan = params.alasan || null;
+  const requested_by = params.requested_by || params.requestedBy;
+  const req = params.req;
 
-  let newApproval;
   try {
-    const { rows } = await tx.query(`
-      INSERT INTO approval_requests
-        (tipe, entitas, entitas_id, payload, base_version, alasan, requested_by, expires_at)
-      VALUES ($1, $2, $3, $4::jsonb, $5, $6, $7, $8)
-      RETURNING *
-    `, [
-      tipe, entitas, entitas_id,
-      JSON.stringify(payload), base_version,
-      alasan || null, requested_by, expiresAt
-    ]);
-    newApproval = rows[0];
+    const rule = await getAturan(tipe);
+    if (!rule) {
+      throw Object.assign(new Error(`Tipe approval tidak dikenal: '${tipe}'`), { code: 'UNKNOWN_TYPE', status: 400 });
+    }
+
+    const expiresAt = new Date(Date.now() + rule.expires_days * 24 * 60 * 60 * 1000);
+
+    let newApproval;
+    try {
+      const { rows } = await tx.query(`
+        INSERT INTO approval_requests
+          (tipe, entitas, entitas_id, payload, base_version, alasan, requested_by, expires_at)
+        VALUES ($1, $2, $3, $4::jsonb, $5, $6, $7, $8)
+        RETURNING *
+      `, [
+        tipe, entitas, entitas_id,
+        JSON.stringify(payload), base_version,
+        alasan || null, requested_by, expiresAt
+      ]);
+      newApproval = rows[0];
+    } catch (err) {
+      if (err.code === '23505') {
+        throw Object.assign(
+          new Error('Sudah ada permintaan persetujuan pending untuk entitas dan jenis aksi ini. Tunggu keputusan Owner.'),
+          { code: 'DUPLICATE_PENDING', status: 409 }
+        );
+      }
+      throw err;
+    }
+
+    await audit.record(tx, {
+      actor: { id: requested_by, role: req?.user?.role || 'staff' },
+      aksi: `approval.ajukan.${tipe}`,
+      entitas,
+      entitas_id,
+      sebelum: null,
+      sesudah: { approval_id: newApproval.id, tipe, alasan, base_version },
+      req
+    });
+
+    if (ownClient) {
+      await ownClient.query('COMMIT');
+    }
+
+    return newApproval;
   } catch (err) {
-    if (err.code === '23505') {
-      throw Object.assign(
-        new Error('Sudah ada permintaan persetujuan pending untuk entitas dan jenis aksi ini. Tunggu keputusan Owner.'),
-        { code: 'DUPLICATE_PENDING', status: 409 }
-      );
+    if (ownClient) {
+      try { await ownClient.query('ROLLBACK'); } catch (_) {}
     }
     throw err;
+  } finally {
+    if (ownClient) {
+      ownClient.release();
+    }
   }
-
-  await audit.record(tx, {
-    actor: { id: requested_by, role: req?.user?.role || 'staff' },
-    aksi: `approval.ajukan.${tipe}`,
-    entitas,
-    entitas_id,
-    sebelum: null,
-    sesudah: { approval_id: newApproval.id, tipe, alasan, base_version },
-    req
-  });
-
-  return newApproval;
 }
 
 /**
