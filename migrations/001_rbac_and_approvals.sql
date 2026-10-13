@@ -34,7 +34,7 @@ CREATE INDEX IF NOT EXISTS ix_refresh_user ON refresh_tokens(user_id) WHERE revo
 -- 3. Tabel audit_log
 CREATE TABLE IF NOT EXISTS audit_log (
   id          BIGSERIAL PRIMARY KEY,
-  actor_id    INT REFERENCES users(id) ON DELETE SET NULL,
+  actor_id    INT,        -- Tidak pakai FK (audit_log immutable, ON DELETE SET NULL bertentangan dengan trigger)
   actor_role  VARCHAR(10),
   aksi        VARCHAR(60) NOT NULL,
   entitas     VARCHAR(40) NOT NULL,
@@ -88,9 +88,9 @@ CREATE TABLE IF NOT EXISTS approval_requests (
   alasan        TEXT,
   status        VARCHAR(12) NOT NULL DEFAULT 'pending'
                 CHECK (status IN ('pending','approved','rejected','stale','expired','cancelled')),
-  requested_by  INT NOT NULL REFERENCES users(id),
+  requested_by  INT NOT NULL,   -- Tidak FK agar user test bisa dihapus bebas
   requested_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
-  decided_by    INT REFERENCES users(id),
+  decided_by    INT,            -- Tidak FK untuk alasan yang sama
   decided_at    TIMESTAMPTZ,
   decision_note TEXT,
   expires_at    TIMESTAMPTZ NOT NULL,

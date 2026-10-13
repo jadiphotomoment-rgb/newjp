@@ -47,6 +47,18 @@ app.use('/api/wa-templates',         require('./routes/wa-templates'));
 app.use('/api/settings/payment',     require('./routes/payment-settings'));
 app.use('/api/pelunasan',            require('./routes/pelunasan'));
 app.use('/api/dashboard',            require('./routes/dashboard'));
+app.use('/api/approvals',            require('./routes/approvals'));
+
+// ── Periodik: expire approval requests yang melewati batas waktu (tiap jam) ──
+setInterval(async () => {
+  try {
+    const { expireAll } = require('./services/approval');
+    await expireAll();
+  } catch (e) {
+    console.warn('[approval cron] expireAll error:', e.message);
+  }
+}, 60 * 60 * 1000); // tiap 1 jam
+
 
 // ── Page Routes ──────────────────────────────────────────────
 // Root → redirect to admin login
