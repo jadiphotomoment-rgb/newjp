@@ -14,6 +14,7 @@ const PORT = process.env.PORT || 3000;
 // ── Middleware ────────────────────────────────────────────────
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true }));
+app.use(require('./middleware/requestId'));
 
 // Redirect .html requests to clean URLs
 app.use((req, res, next) => {

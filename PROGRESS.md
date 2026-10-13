@@ -13,18 +13,18 @@
 - [x] Fase 0: Pemetaan (MAP.md) - Selesai
 - [x] Fase 1: Migrasi Database - Selesai
 - [x] Fase 2: Autentikasi & Otorisasi - Selesai
-- [ ] Fase 3: Layanan Audit Log
+- [x] Fase 3: Layanan Audit Log - Selesai
 - [ ] Fase 4: Approval Engine
 - [ ] Fase 5: Terapkan ke Endpoint yang Ada
 - [ ] Fase 6: Frontend Admin
 - [ ] Fase 7: Test & Kinerja
 - [ ] Fase 8: Review Keamanan & Rilis
 
-## Catatan Fase 2
-- File yang dibuat/disentuh: `constants/permissions.js`, `utils/tokenVersionCache.js`, `middleware/auth.js`, `routes/auth.js`, `tests/phase2_auth.test.js`, `PROGRESS.md`.
-- Fitur auth: login dengan rate limiter & lockout (5x gagal -> 15 min lock), access token 15 menit, refresh token 7 hari di cookie HttpOnly dengan rotasi & deteksi pemakaian ulang (chain revocation), logout, ganti password wajib (min 10 karakter).
-- Hasil uji: `node tests/phase2_auth.test.js` lulus 100% (login sukses, login gagal seragam, lockout 429, RBAC per-role, refresh rotation, reuse detection, nonaktifkan user -> 401).
-- Keputusan: Middleware auth mempertahankan `req.admin` selain `req.user` untuk backward compatibility mulus dengan controller yang belum dimigrasi.
+## Catatan Fase 3
+- File yang dibuat/disentuh: `services/audit.js`, `middleware/requestId.js`, `server.js`, `tests/phase3_audit.test.js`, `PROGRESS.md`.
+- Fitur audit: `audit.record(tx, {...})` dalam transaksi atomik, perhitungan diff JSONB hanya menyimpan field yang berubah, redaksi otomatis field sensitif (password, token, hash) dan masking nomor WA (`0812****7890`), integrasi X-Request-Id. Helper `withAudit` untuk transaksi ber-rollback aman.
+- Hasil uji: `node tests/phase3_audit.test.js` lulus 100% (sukses = 1 log, rollback = 0 log, diff valid, redaksi/masking valid).
+
 
 
 
