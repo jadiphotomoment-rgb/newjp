@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Manajemen Staff — Jadiphoto.Moment</title>
+  <meta name="robots" content="noindex, nofollow">
+
+  <link href="/css/style.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/style.css?v=3">
+  <link rel="stylesheet" href="/css/admin-theme.css?v=1">
+  <script src="/js/theme.js?v=3"></script>
+  <script src="/js/admin-nav.js"></script>
+</head>
+
+<body class="bg-background font-body-md text-on-background flex min-h-screen">
+
+  <!-- Sidebar -->
+  <aside class="w-64 border-r border-outline-variant/30 flex flex-col justify-between p-lg bg-surface-container-lowest shrink-0 hidden md:flex min-h-screen sticky top-0 h-screen overflow-y-auto">
+    <div class="space-y-xl">
+      <div class="flex items-center justify-between px-md py-sm">
+        <div class="flex items-center gap-sm">
+          <img src="/img/Logo warna.webp" alt="Logo" class="h-6 w-auto object-contain dark:hidden" />
+          <img src="/img/Logo putih.webp" alt="Logo" class="h-6 w-auto object-contain hidden dark:block" />
+        </div>
+        <button class="btn btn-icon text-on-surface-variant hover:bg-surface-container transition-all" onclick="toggleTheme()" aria-label="Ganti tema">
+          <span class="material-symbols-outlined" data-theme-icon>light_mode</span>
+        </button>
+      </div>
+
+      <nav class="space-y-1">
+        <a href="/admin/dashboard.html" class="flex items-center gap-3 px-4 py-3 rounded-xl text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all">
+          <span class="material-symbols-outlined">dashboard</span>
+          <span class="font-label-md">Dashboard</span>
+        </a>
+        <a href="/admin/bookings.html" class="flex items-center gap-3 px-4 py-3 rounded-xl text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all">
+          <span class="material-symbols-outlined">calendar_today</span>
+          <span class="font-label-md">Booking</span>
+        </a>
+        <a href="/admin/approvals.html" class="flex items-center justify-between px-4 py-3 rounded-xl text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all">
+          <div class="flex items-center gap-3">
+            <span class="material-symbols-outlined">verified</span>
+            <span class="font-label-md">Persetujuan</span>
+          </div>
+          <span id="approval-badge-count" class="hidden px-2 py-0.5 rounded-full text-[11px] font-bold bg-amber-500 text-black">0</span>
+        </a>
+        <a href="/admin/sessions.html" class="flex items-center gap-3 px-4 py-3 rounded-xl text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all">
+          <span class="material-symbols-outlined">add_a_photo</span>
+          <span class="font-label-md">Sesi Sortir</span>
+        </a>
+        <a href="/admin/finance.html" data-role="owner" class="flex items-center gap-3 px-4 py-3 rounded-xl text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all">
+          <span class="material-symbols-outlined">payments</span>
+          <span class="font-label-md">Keuangan</span>
+        </a>
+        <a href="/admin/users.html" data-role="owner" class="flex items-center gap-3 px-4 py-3 rounded-xl bg-primary/10 text-primary font-semibold transition-all" aria-current="page">
+          <span class="material-symbols-outlined">group</span>
+          <span class="font-label-md">Manajemen Staff</span>
+        </a>
+        <a href="/admin/monitoring.html" data-role="owner" class="flex items-center gap-3 px-4 py-3 rounded-xl text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all">
+          <span class="material-symbols-outlined">monitoring</span>
+          <span class="font-label-md">Monitoring Staff</span>
+        </a>
+        <a href="/admin/activity.html" data-role="owner" class="flex items-center gap-3 px-4 py-3 rounded-xl text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all">
+          <span class="material-symbols-outlined">history</span>
+          <span class="font-label-md">Audit Log</span>
+        </a>
+        <a href="/admin/categories.html" class="flex items-center gap-3 px-4 py-3 rounded-xl text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all">
+          <span class="material-symbols-outlined">category</span>
+          <span class="font-label-md">Kategori</span>
+        </a>
+        <a href="/admin/wa-templates.html" class="flex items-center gap-3 px-4 py-3 rounded-xl text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all">
+          <span class="material-symbols-outlined">chat</span>
+          <span class="font-label-md">Template WA</span>
+        </a>
+      </nav>
+    </div>
+
+    <div class="pt-lg border-t border-outline-variant/30 space-y-2">
+      <div id="user-profile-badge" class="mb-2"></div>
+      <button class="flex items-center gap-3 px-4 py-2.5 rounded-xl text-on-surface-variant hover:bg-surface-container w-full transition-all text-left text-sm" id="btn-change-pass">
+        <span class="material-symbols-outlined text-sm">lock_reset</span>
+        <span>Ganti Password</span>
+      </button>
+      <button class="flex items-center gap-3 px-4 py-2.5 rounded-xl text-error hover:bg-error/10 w-full transition-all text-left text-sm" id="btn-logout">
+        <span class="material-symbols-outlined text-sm">logout</span>
+        <span>Keluar</span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="flex-1 flex flex-col min-w-0 bg-background overflow-x-hidden">
+    <header class="h-16 border-b border-outline-variant/30 flex items-center justify-between px-6 bg-surface-container-lowest/60 backdrop-blur-md sticky top-0 z-30">
+      <div class="flex items-center gap-3">
+        <h1 class="text-xl font-bold tracking-tight">Manajemen Akun Staff & Hak Akses</h1>
+      </div>
+      <div>
+        <button id="btn-add-staff" class="btn btn-sm bg-primary text-on-primary hover:opacity-90 flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold shadow-sm transition-all">
+          <span class="material-symbols-outlined text-sm">person_add</span>
+          <span>Tambah Staff Baru</span>
+        </button>
+      </div>
+    </header>
+
+    <div class="p-6 md:p-8 max-w-7xl w-full mx-auto space-y-6">
+      <div class="bg-surface-container-lowest border border-outline-variant/30 rounded-2xl overflow-hidden shadow-sm">
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-sm">
+            <thead class="bg-surface-container-low text-on-surface-variant text-xs uppercase font-semibold border-b border-outline-variant/20">
+              <tr>
+                <th class="px-6 py-3.5">Nama & Email</th>
+                <th class="px-6 py-3.5">Role</th>
+                <th class="px-6 py-3.5">Status Akun</th>
+                <th class="px-6 py-3.5">Catatan Keamanan</th>
+                <th class="px-6 py-3.5 text-right">Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="users-tbody" class="divide-y divide-outline-variant/10 text-on-surface">
+              <tr>
+                <td colspan="5" class="px-6 py-12 text-center text-on-surface-variant">Memuat data pengguna...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Modal Tambah Staff -->
+  <div id="add-user-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm hidden">
+    <div class="bg-surface-container-lowest border border-outline-variant/30 rounded-2xl w-full max-w-md p-6 shadow-2xl relative text-on-surface">
+      <h3 class="text-lg font-bold mb-1">Tambah Akun Staff Baru</h3>
+      <p class="text-xs text-on-surface-variant mb-4">Staf akan diwajibkan mengganti password pada saat login pertama.</p>
+      <form id="add-user-form" class="space-y-4">
+        <div id="add-user-alert" class="hidden p-3 rounded-lg text-xs bg-error-container text-on-error-container"></div>
+        <div>
+          <label class="block text-xs font-semibold mb-1 text-on-surface-variant uppercase">Nama Lengkap</label>
+          <input type="text" id="add-nama" required placeholder="Contoh: Rian Anggara" class="w-full bg-surface-container-low border border-outline-variant/40 rounded-lg p-2.5 text-sm focus:outline-none focus:border-primary">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold mb-1 text-on-surface-variant uppercase">Email Login</label>
+          <input type="email" id="add-email" required placeholder="rian@jadiphoto.moment" class="w-full bg-surface-container-low border border-outline-variant/40 rounded-lg p-2.5 text-sm focus:outline-none focus:border-primary">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold mb-1 text-on-surface-variant uppercase">Password Awal (min 8 karakter)</label>
+          <input type="password" id="add-password" required minlength="8" placeholder="Minimal 8 karakter" class="w-full bg-surface-container-low border border-outline-variant/40 rounded-lg p-2.5 text-sm focus:outline-none focus:border-primary">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold mb-1 text-on-surface-variant uppercase">Role</label>
+          <select id="add-role" class="w-full bg-surface-container-low border border-outline-variant/40 rounded-lg p-2.5 text-sm focus:outline-none focus:border-primary">
+            <option value="staff" selected>Staff (Operasional Harian)</option>
+            <option value="owner">Owner (Akses Penuh)</option>
+          </select>
+        </div>
+        <div class="flex justify-end gap-2 pt-2">
+          <button type="button" onclick="document.getElementById('add-user-modal').classList.add('hidden')" class="px-4 py-2 rounded-lg text-sm font-semibold hover:bg-surface-container">Batal</button>
+          <button type="submit" class="px-4 py-2 bg-primary text-on-primary rounded-lg text-sm font-semibold hover:opacity-90">Simpan Akun</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal Reset Password -->
+  <div id="reset-user-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm hidden">
+    <div class="bg-surface-container-lowest border border-outline-variant/30 rounded-2xl w-full max-w-md p-6 shadow-2xl relative text-on-surface">
+      <h3 class="text-lg font-bold mb-1">Reset Password Staff</h3>
+      <p class="text-xs text-on-surface-variant mb-4" id="reset-user-subtitle">Setel password baru untuk staf.</p>
+      <form id="reset-user-form" class="space-y-4">
+        <input type="hidden" id="reset-user-id">
+        <div id="reset-user-alert" class="hidden p-3 rounded-lg text-xs bg-error-container text-on-error-container"></div>
+        <div>
+          <label class="block text-xs font-semibold mb-1 text-on-surface-variant uppercase">Password Baru Sementara (min 8 karakter)</label>
+          <input type="password" id="reset-new-password" required minlength="8" class="w-full bg-surface-container-low border border-outline-variant/40 rounded-lg p-2.5 text-sm focus:outline-none focus:border-primary">
+        </div>
+        <div class="flex justify-end gap-2 pt-2">
+          <button type="button" onclick="document.getElementById('reset-user-modal').classList.add('hidden')" class="px-4 py-2 rounded-lg text-sm font-semibold hover:bg-surface-container">Batal</button>
+          <button type="submit" class="px-4 py-2 bg-amber-500 text-black rounded-lg text-sm font-semibold hover:opacity-90">Reset Password</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    'use strict';
+    const token = localStorage.getItem('sf_token');
+
+    document.addEventListener('DOMContentLoaded', () => {
+      loadUsers();
+
+      document.getElementById('btn-add-staff').addEventListener('click', () => {
+        document.getElementById('add-user-alert').classList.add('hidden');
+        document.getElementById('add-user-form').reset();
+        document.getElementById('add-user-modal').classList.remove('hidden');
+      });
+
+      document.getElementById('add-user-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const nama = document.getElementById('add-nama').value.trim();
+        const email = document.getElementById('add-email').value.trim();
+        const password = document.getElementById('add-password').value;
+        const role = document.getElementById('add-role').value;
+        const alertEl = document.getElementById('add-user-alert');
+
+        try {
+          const res = await fetch('/api/users', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ nama, email, password, role })
+          });
+          const data = await res.json();
+          if (res.ok) {
+            alert('Akun staff berhasil dibuat!');
+            document.getElementById('add-user-modal').classList.add('hidden');
+            loadUsers();
+          } else {
+            alertEl.textContent = data.error || 'Gagal membuat user.';
+            alertEl.classList.remove('hidden');
+          }
+        } catch (_) {
+          alertEl.textContent = 'Terjadi kesalahan jaringan.';
+          alertEl.classList.remove('hidden');
+        }
+      });
+
+      document.getElementById('reset-user-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const id = document.getElementById('reset-user-id').value;
+        const new_password = document.getElementById('reset-new-password').value;
+        const alertEl = document.getElementById('reset-user-alert');
+
+        try {
+          const res = await fetch(`/api/users/${id}/reset-password`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ new_password })
+          });
+          const data = await res.json();
+          if (res.ok) {
+            alert('Password user berhasil direset. User wajib ganti password saat login berikutnya.');
+            document.getElementById('reset-user-modal').classList.add('hidden');
+            loadUsers();
+          } else {
+            alertEl.textContent = data.error || 'Gagal mereset password.';
+            alertEl.classList.remove('hidden');
+          }
+        } catch (_) {
+          alertEl.textContent = 'Terjadi kesalahan jaringan.';
+          alertEl.classList.remove('hidden');
+        }
+      });
+    });
+
+    async function loadUsers() {
+      const tbody = document.getElementById('users-tbody');
+      try {
+        const res = await fetch('/api/users', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (res.status === 403) {
+          tbody.innerHTML = '<tr><td colspan="5" class="px-6 py-12 text-center text-error">Hanya Owner yang berhak mengakses halaman ini.</td></tr>';
+          return;
+        }
+        if (!res.ok) {
+          tbody.innerHTML = '<tr><td colspan="5" class="px-6 py-12 text-center text-error">Gagal memuat daftar staff.</td></tr>';
+          return;
+        }
+
+        const users = await res.json();
+        if (users.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="5" class="px-6 py-12 text-center text-on-surface-variant">Belum ada user terdaftar.</td></tr>';
+          return;
+        }
+
+        tbody.innerHTML = users.map(u => renderUserRow(u)).join('');
+      } catch (_) {
+        tbody.innerHTML = '<tr><td colspan="5" class="px-6 py-12 text-center text-error">Kesalahan jaringan server.</td></tr>';
+      }
+    }
+
+    function renderUserRow(u) {
+      const isOwner = u.role === 'owner';
+      const roleBadge = isOwner
+        ? '<span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-500/15 text-amber-500 border border-amber-500/30">Owner</span>'
+        : '<span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-primary/15 text-primary border border-primary/30">Staff</span>';
+
+      const activeBadge = u.is_active
+        ? '<span class="px-2 py-0.5 rounded-md text-xs font-semibold bg-emerald-500/15 text-emerald-500">Aktif</span>'
+        : '<span class="px-2 py-0.5 rounded-md text-xs font-semibold bg-error/15 text-error">Nonaktif</span>';
+
+      const securityNote = u.must_change_password
+        ? '<span class="text-amber-400 text-xs flex items-center gap-1"><span class="material-symbols-outlined text-xs">warning</span> Wajib Ganti Password</span>'
+        : '<span class="text-on-surface-variant text-xs">Normal</span>';
+
+      const toggleActionLabel = u.is_active ? 'Nonaktifkan' : 'Aktifkan';
+      const toggleActionColor = u.is_active ? 'text-error hover:bg-error/10' : 'text-emerald-500 hover:bg-emerald-500/10';
+
+      return `
+        <tr class="hover:bg-surface-container-low transition-colors">
+          <td class="px-6 py-4">
+            <div class="font-bold text-on-surface">${u.nama || u.name}</div>
+            <div class="text-xs text-on-surface-variant">${u.email}</div>
+          </td>
+          <td class="px-6 py-4">${roleBadge}</td>
+          <td class="px-6 py-4">${activeBadge}</td>
+          <td class="px-6 py-4">${securityNote}</td>
+          <td class="px-6 py-4 text-right space-x-1">
+            <button onclick="openResetModal(${u.id}, '${u.nama || u.name}')" class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-surface-container hover:bg-surface-container-high transition-all" title="Reset Password">
+              Reset Pass
+            </button>
+            <button onclick="revokeSessions(${u.id})" class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-surface-container hover:bg-surface-container-high transition-all" title="Cabut Semua Sesi Aktif">
+              Cabut Sesi
+            </button>
+            ${window.currentUser?.id !== u.id ? `
+              <button onclick="toggleActiveStatus(${u.id}, ${!u.is_active})" class="px-2.5 py-1 rounded-lg text-xs font-semibold ${toggleActionColor} transition-all">
+                ${toggleActionLabel}
+              </button>
+            ` : ''}
+          </td>
+        </tr>
+      `;
+    }
+
+    function openResetModal(id, nama) {
+      document.getElementById('reset-user-id').value = id;
+      document.getElementById('reset-user-subtitle').textContent = `Setel password baru untuk staf: ${nama}`;
+      document.getElementById('reset-new-password').value = '';
+      document.getElementById('reset-user-alert').classList.add('hidden');
+      document.getElementById('reset-user-modal').classList.remove('hidden');
+    }
+
+    async function toggleActiveStatus(id, newStatus) {
+      const verb = newStatus ? 'mengaktifkan' : 'menonaktifkan';
+      if (!confirm(`Yakin ingin ${verb} akun ini?`)) return;
+
+      try {
+        const res = await fetch(`/api/users/${id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ is_active: newStatus })
+        });
+        if (res.ok) {
+          loadUsers();
+        } else {
+          const data = await res.json();
+          alert(data.error || 'Gagal mengubah status user');
+        }
+      } catch (_) {
+        alert('Terjadi kesalahan jaringan');
+      }
+    }
+
+    async function revokeSessions(id) {
+      if (!confirm('Cabut semua sesi aktif user ini? User akan ter-logout otomatis di semua perangkat.')) return;
+
+      try {
+        const res = await fetch(`/api/users/${id}/revoke-sessions`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (res.ok) {
+          alert('Semua sesi user berhasil dicabut.');
+        } else {
+          const data = await res.json();
+          alert(data.error || 'Gagal mencabut sesi.');
+        }
+      } catch (_) {
+        alert('Terjadi kesalahan jaringan.');
+      }
+    }
+  </script>
+</body>
+
+</html>

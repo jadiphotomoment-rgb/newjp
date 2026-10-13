@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Riwayat Audit Log — Jadiphoto.Moment</title>
+  <meta name="robots" content="noindex, nofollow">
+
+  <link href="/css/style.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/style.css?v=3">
+  <link rel="stylesheet" href="/css/admin-theme.css?v=1">
+  <script src="/js/theme.js?v=3"></script>
+  <script src="/js/admin-nav.js"></script>
+</head>
+
+<body class="bg-background font-body-md text-on-background flex min-h-screen">
+
+  <!-- Sidebar -->
+  <aside class="w-64 border-r border-outline-variant/30 flex flex-col justify-between p-lg bg-surface-container-lowest shrink-0 hidden md:flex min-h-screen sticky top-0 h-screen overflow-y-auto">
+    <div class="space-y-xl">
+      <div class="flex items-center justify-between px-md py-sm">
+        <div class="flex items-center gap-sm">
+          <img src="/img/Logo warna.webp" alt="Logo" class="h-6 w-auto object-contain dark:hidden" />
+          <img src="/img/Logo putih.webp" alt="Logo" class="h-6 w-auto object-contain hidden dark:block" />
+        </div>
+        <button class="btn btn-icon text-on-surface-variant hover:bg-surface-container transition-all" onclick="toggleTheme()" aria-label="Ganti tema">
+          <span class="material-symbols-outlined" data-theme-icon>light_mode</span>
+        </button>
+      </div>
+
+      <nav class="space-y-1">
+        <a href="/admin/dashboard.html" class="flex items-center gap-3 px-4 py-3 rounded-xl text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all">
+          <span class="material-symbols-outlined">dashboard</span>
+          <span class="font-label-md">Dashboard</span>
+        </a>
+        <a href="/admin/bookings.html" class="flex items-center gap-3 px-4 py-3 rounded-xl text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all">
+          <span class="material-symbols-outlined">calendar_today</span>
+          <span class="font-label-md">Booking</span>
+        </a>
+        <a href="/admin/approvals.html" class="flex items-center justify-between px-4 py-3 rounded-xl text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all">
+          <div class="flex items-center gap-3">
+            <span class="material-symbols-outlined">verified</span>
+            <span class="font-label-md">Persetujuan</span>
+          </div>
+          <span id="approval-badge-count" class="hidden px-2 py-0.5 rounded-full text-[11px] font-bold bg-amber-500 text-black">0</span>
+        </a>
+        <a href="/admin/sessions.html" class="flex items-center gap-3 px-4 py-3 rounded-xl text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all">
+          <span class="material-symbols-outlined">add_a_photo</span>
+          <span class="font-label-md">Sesi Sortir</span>
+        </a>
+        <a href="/admin/finance.html" data-role="owner" class="flex items-center gap-3 px-4 py-3 rounded-xl text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all">
+          <span class="material-symbols-outlined">payments</span>
+          <span class="font-label-md">Keuangan</span>
+        </a>
+        <a href="/admin/users.html" data-role="owner" class="flex items-center gap-3 px-4 py-3 rounded-xl text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all">
+          <span class="material-symbols-outlined">group</span>
+          <span class="font-label-md">Manajemen Staff</span>
+        </a>
+        <a href="/admin/monitoring.html" data-role="owner" class="flex items-center gap-3 px-4 py-3 rounded-xl text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all">
+          <span class="material-symbols-outlined">monitoring</span>
+          <span class="font-label-md">Monitoring Staff</span>
+        </a>
+        <a href="/admin/activity.html" data-role="owner" class="flex items-center gap-3 px-4 py-3 rounded-xl bg-primary/10 text-primary font-semibold transition-all" aria-current="page">
+          <span class="material-symbols-outlined">history</span>
+          <span class="font-label-md">Audit Log</span>
+        </a>
+        <a href="/admin/categories.html" class="flex items-center gap-3 px-4 py-3 rounded-xl text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all">
+          <span class="material-symbols-outlined">category</span>
+          <span class="font-label-md">Kategori</span>
+        </a>
+        <a href="/admin/wa-templates.html" class="flex items-center gap-3 px-4 py-3 rounded-xl text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all">
+          <span class="material-symbols-outlined">chat</span>
+          <span class="font-label-md">Template WA</span>
+        </a>
+      </nav>
+    </div>
+
+    <div class="pt-lg border-t border-outline-variant/30 space-y-2">
+      <div id="user-profile-badge" class="mb-2"></div>
+      <button class="flex items-center gap-3 px-4 py-2.5 rounded-xl text-on-surface-variant hover:bg-surface-container w-full transition-all text-left text-sm" id="btn-change-pass">
+        <span class="material-symbols-outlined text-sm">lock_reset</span>
+        <span>Ganti Password</span>
+      </button>
+      <button class="flex items-center gap-3 px-4 py-2.5 rounded-xl text-error hover:bg-error/10 w-full transition-all text-left text-sm" id="btn-logout">
+        <span class="material-symbols-outlined text-sm">logout</span>
+        <span>Keluar</span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="flex-1 flex flex-col min-w-0 bg-background overflow-x-hidden">
+    <header class="h-16 border-b border-outline-variant/30 flex items-center justify-between px-6 bg-surface-container-lowest/60 backdrop-blur-md sticky top-0 z-30">
+      <div class="flex items-center gap-3">
+        <h1 class="text-xl font-bold tracking-tight">Riwayat Aktivitas & Audit Log</h1>
+      </div>
+      <div>
+        <button id="btn-refresh" class="btn btn-sm bg-surface-container-low hover:bg-surface-container text-on-surface flex items-center gap-2 px-3 py-1.5 rounded-lg border border-outline-variant/30 text-xs">
+          <span class="material-symbols-outlined text-sm">refresh</span>
+          <span>Refresh</span>
+        </button>
+      </div>
+    </header>
+
+    <div class="p-6 md:p-8 max-w-7xl w-full mx-auto space-y-6">
+      <!-- Filter Bar -->
+      <div class="bg-surface-container-lowest border border-outline-variant/30 rounded-2xl p-4 flex flex-wrap items-center gap-3 text-xs">
+        <div>
+          <label class="block text-[10px] font-bold text-on-surface-variant uppercase mb-1">Aksi</label>
+          <input type="text" id="filter-aksi" placeholder="Contoh: booking.create" class="bg-surface-container-low border border-outline-variant/40 rounded-lg p-2 text-on-surface focus:outline-none focus:border-primary">
+        </div>
+        <div>
+          <label class="block text-[10px] font-bold text-on-surface-variant uppercase mb-1">Entitas</label>
+          <select id="filter-entitas" class="bg-surface-container-low border border-outline-variant/40 rounded-lg p-2 text-on-surface focus:outline-none focus:border-primary">
+            <option value="">Semua Entitas</option>
+            <option value="booking">Booking</option>
+            <option value="pelunasan">Pelunasan</option>
+            <option value="payment">Payment</option>
+            <option value="user">User</option>
+            <option value="approval">Approval</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-[10px] font-bold text-on-surface-variant uppercase mb-1">Dari Tanggal</label>
+          <input type="date" id="filter-from" class="bg-surface-container-low border border-outline-variant/40 rounded-lg p-2 text-on-surface focus:outline-none focus:border-primary">
+        </div>
+        <div>
+          <label class="block text-[10px] font-bold text-on-surface-variant uppercase mb-1">Sampai Tanggal</label>
+          <input type="date" id="filter-to" class="bg-surface-container-low border border-outline-variant/40 rounded-lg p-2 text-on-surface focus:outline-none focus:border-primary">
+        </div>
+        <div class="self-end pt-1">
+          <button id="btn-apply-filter" class="px-4 py-2 bg-primary text-on-primary rounded-lg font-semibold hover:opacity-90">Terapkan Filter</button>
+        </div>
+      </div>
+
+      <!-- Audit Table -->
+      <div class="bg-surface-container-lowest border border-outline-variant/30 rounded-2xl overflow-hidden shadow-sm">
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-surface-container-low text-on-surface-variant uppercase font-semibold border-b border-outline-variant/20">
+              <tr>
+                <th class="px-5 py-3.5">Waktu</th>
+                <th class="px-5 py-3.5">Aktor</th>
+                <th class="px-5 py-3.5">Aksi</th>
+                <th class="px-5 py-3.5">Entitas Target</th>
+                <th class="px-5 py-3.5">IP Address</th>
+                <th class="px-5 py-3.5 text-right">Detail Diff</th>
+              </tr>
+            </thead>
+            <tbody id="audit-tbody" class="divide-y divide-outline-variant/10 text-on-surface">
+              <tr>
+                <td colspan="6" class="px-5 py-12 text-center text-on-surface-variant">Memuat data audit log...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <!-- Keyset Pagination Bar -->
+        <div id="pagination-bar" class="p-4 border-t border-outline-variant/20 flex items-center justify-between text-xs hidden">
+          <span class="text-on-surface-variant">Menampilkan log terbaru</span>
+          <button id="btn-load-more" class="px-4 py-2 bg-surface-container-high hover:bg-surface-container-bright rounded-lg font-semibold transition-all">Muat Lebih Banyak</button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Modal View Diff -->
+  <div id="diff-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm hidden">
+    <div class="bg-surface-container-lowest border border-outline-variant/30 rounded-2xl w-full max-w-2xl p-6 shadow-2xl relative text-on-surface max-h-[85vh] flex flex-col">
+      <div class="flex items-center justify-between pb-3 border-b border-outline-variant/20">
+        <div>
+          <h3 class="text-base font-bold" id="diff-modal-title">Rincian Perubahan Audit</h3>
+          <p class="text-xs text-on-surface-variant" id="diff-modal-meta"></p>
+        </div>
+        <button onclick="document.getElementById('diff-modal').classList.add('hidden')" class="text-on-surface-variant hover:text-on-surface">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+
+      <div class="flex-1 overflow-y-auto py-4 space-y-4 text-xs font-mono">
+        <div>
+          <div class="font-bold text-red-400 mb-1 uppercase font-sans">Sebelum Perubahan:</div>
+          <pre id="diff-before" class="p-3 rounded-xl bg-surface-container-low border border-outline-variant/20 overflow-x-auto text-[11px]"></pre>
+        </div>
+        <div>
+          <div class="font-bold text-emerald-400 mb-1 uppercase font-sans">Setelah Perubahan:</div>
+          <pre id="diff-after" class="p-3 rounded-xl bg-surface-container-low border border-outline-variant/20 overflow-x-auto text-[11px]"></pre>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    'use strict';
+    const token = localStorage.getItem('sf_token');
+    let nextCursor = null;
+    let auditItems = [];
+
+    document.addEventListener('DOMContentLoaded', () => {
+      loadAudit(false);
+
+      document.getElementById('btn-apply-filter').addEventListener('click', () => loadAudit(false));
+      document.getElementById('btn-refresh').addEventListener('click', () => loadAudit(false));
+      document.getElementById('btn-load-more').addEventListener('click', () => loadAudit(true));
+    });
+
+    async function loadAudit(isAppend = false) {
+      const tbody = document.getElementById('audit-tbody');
+      const paginationBar = document.getElementById('pagination-bar');
+
+      if (!isAppend) {
+        tbody.innerHTML = '<tr><td colspan="6" class="px-5 py-12 text-center text-on-surface-variant">Memuat data audit log...</td></tr>';
+        nextCursor = null;
+      }
+
+      const params = new URLSearchParams();
+      const aksi = document.getElementById('filter-aksi').value.trim();
+      const entitas = document.getElementById('filter-entitas').value;
+      const from = document.getElementById('filter-from').value;
+      const to = document.getElementById('filter-to').value;
+
+      if (aksi) params.set('aksi', aksi);
+      if (entitas) params.set('entitas', entitas);
+      if (from) params.set('from', from);
+      if (to) params.set('to', to);
+      if (isAppend && nextCursor) params.set('cursor', nextCursor);
+
+      try {
+        const res = await fetch(`/api/audit?${params.toString()}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (!res.ok) {
+          tbody.innerHTML = '<tr><td colspan="6" class="px-5 py-12 text-center text-error">Gagal memuat log audit.</td></tr>';
+          return;
+        }
+
+        const data = await res.json();
+        const items = data.items || [];
+        nextCursor = data.next_cursor || null;
+
+        if (!isAppend) {
+          auditItems = items;
+        } else {
+          auditItems = auditItems.concat(items);
+        }
+
+        if (auditItems.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="6" class="px-5 py-12 text-center text-on-surface-variant">Tidak ada log aktivitas ditemukan.</td></tr>';
+          paginationBar.classList.add('hidden');
+          return;
+        }
+
+        tbody.innerHTML = auditItems.map((item, idx) => renderAuditRow(item, idx)).join('');
+
+        if (data.has_more && nextCursor) {
+          paginationBar.classList.remove('hidden');
+        } else {
+          paginationBar.classList.add('hidden');
+        }
+      } catch (_) {
+        tbody.innerHTML = '<tr><td colspan="6" class="px-5 py-12 text-center text-error">Kesalahan jaringan server.</td></tr>';
+      }
+    }
+
+    function renderAuditRow(item, idx) {
+      const timeFmt = new Date(item.created_at).toLocaleString('id-ID');
+      const isOwner = item.actor_role === 'owner';
+      const roleBadge = isOwner
+        ? '<span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-500/15 text-amber-500 border border-amber-500/30">Owner</span>'
+        : '<span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-primary/15 text-primary border border-primary/30">Staff</span>';
+
+      return `
+        <tr class="hover:bg-surface-container-low transition-colors">
+          <td class="px-5 py-3 whitespace-nowrap text-on-surface-variant font-mono text-[11px]">${timeFmt}</td>
+          <td class="px-5 py-3 whitespace-nowrap">
+            <div class="font-semibold text-on-surface">${item.actor_name || 'ID #' + item.actor_id}</div>
+            <div class="mt-0.5">${roleBadge}</div>
+          </td>
+          <td class="px-5 py-3 whitespace-nowrap font-mono font-bold text-primary">${item.aksi}</td>
+          <td class="px-5 py-3 whitespace-nowrap font-mono text-on-surface">${item.entitas} #${item.entitas_id || '-'}</td>
+          <td class="px-5 py-3 whitespace-nowrap font-mono text-on-surface-variant">${item.ip || '-'}</td>
+          <td class="px-5 py-3 whitespace-nowrap text-right">
+            <button onclick="viewDiff(${idx})" class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-surface-container hover:bg-surface-container-high transition-all">
+              Lihat Diff
+            </button>
+          </td>
+        </tr>
+      `;
+    }
+
+    function viewDiff(idx) {
+      const item = auditItems[idx];
+      if (!item) return;
+
+      document.getElementById('diff-modal-title').textContent = `${item.aksi} on ${item.entitas} #${item.entitas_id || '-'}`;
+      document.getElementById('diff-modal-meta').textContent = `Oleh ${item.actor_name || 'User #' + item.actor_id} (${item.actor_role}) pada ${new Date(item.created_at).toLocaleString('id-ID')}`;
+
+      document.getElementById('diff-before').textContent = JSON.stringify(item.sebelum || null, null, 2);
+      document.getElementById('diff-after').textContent = JSON.stringify(item.sesudah || null, null, 2);
+
+      document.getElementById('diff-modal').classList.remove('hidden');
+    }
+  </script>
+</body>
+
+</html>

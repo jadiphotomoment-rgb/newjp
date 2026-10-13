@@ -81,7 +81,14 @@ form.addEventListener('submit', async (e) => {
     }
 
     localStorage.setItem('sf_token', data.token);
-    localStorage.setItem('sf_admin', JSON.stringify(data.admin));
+    localStorage.setItem('sf_admin', JSON.stringify(data.admin || data.user));
+
+    // Jika akun baru / wajib ganti password saat login pertama
+    if (data.must_change_password) {
+      promptMandatoryPasswordChange(data.token, password);
+      return;
+    }
+
     window.location.replace('/admin/dashboard.html');
 
   } catch (err) {
@@ -89,6 +96,82 @@ form.addEventListener('submit', async (e) => {
     setLoading(false);
   }
 });
+
+function promptMandatoryPasswordChange(token, currentPassword) {
+  let modal = document.getElementById('mandatory-pass-modal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'mandatory-pass-modal';
+    modal.className = 'fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md';
+    modal.innerHTML = `
+      <div class="bg-surface-container-lowest border border-outline-variant/30 rounded-2xl w-full max-w-md p-6 shadow-2xl relative text-on-surface">
+        <div class="mb-4 text-center">
+          <div class="inline-flex p-3 rounded-full bg-amber-500/10 text-amber-500 mb-2">
+            <span class="material-symbols-outlined text-2xl">lock_reset</span>
+          </div>
+          <h3 class="text-xl font-bold">Wajib Ganti Password</h3>
+          <p class="text-xs text-on-surface-variant mt-1">Ini adalah login pertama Anda atau password Anda telah direset oleh Owner. Silakan buat password baru.</p>
+        </div>
+        <form id="mandatory-pass-form" class="space-y-4">
+          <div id="mandatory-pass-alert" class="hidden p-3 rounded-lg text-xs bg-error-container text-on-error-container"></div>
+          <div>
+            <label class="block text-xs font-semibold mb-1 text-on-surface-variant">Password Baru (min 8 karakter)</label>
+            <input type="password" id="mand-new-pass" minlength="8" required class="w-full bg-surface-container-low border border-outline-variant/40 rounded-lg p-2.5 text-sm focus:outline-none focus:border-primary">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold mb-1 text-on-surface-variant">Konfirmasi Password Baru</label>
+            <input type="password" id="mand-confirm-pass" minlength="8" required class="w-full bg-surface-container-low border border-outline-variant/40 rounded-lg p-2.5 text-sm focus:outline-none focus:border-primary">
+          </div>
+          <button type="submit" id="mand-submit-btn" class="w-full py-2.5 bg-primary text-on-primary rounded-lg text-sm font-semibold hover:opacity-90">Simpan & Masuk ke Dashboard</button>
+        </form>
+      </div>
+    `;
+    document.body.appendChild(modal);
+
+    modal.querySelector('#mandatory-pass-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const newPass = modal.querySelector('#mand-new-pass').value;
+      const confirmPass = modal.querySelector('#mand-confirm-pass').value;
+      const alertEl = modal.querySelector('#mandatory-pass-alert');
+
+      if (newPass !== confirmPass) {
+        alertEl.textContent = 'Konfirmasi password tidak cocok.';
+        alertEl.classList.remove('hidden');
+        return;
+      }
+
+      const btn = modal.querySelector('#mand-submit-btn');
+      btn.disabled = true;
+      btn.textContent = 'Menyimpan...';
+
+      try {
+        const res = await fetch('/api/auth/change-password', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ currentPassword, newPassword: newPass })
+        });
+        const resData = await res.json();
+        if (!res.ok) {
+          alertEl.textContent = resData.error || 'Gagal mengubah password.';
+          alertEl.classList.remove('hidden');
+          btn.disabled = false;
+          btn.textContent = 'Simpan & Masuk ke Dashboard';
+          return;
+        }
+
+        window.location.replace('/admin/dashboard.html');
+      } catch (_) {
+        alertEl.textContent = 'Terjadi kesalahan jaringan.';
+        alertEl.classList.remove('hidden');
+        btn.disabled = false;
+        btn.textContent = 'Simpan & Masuk ke Dashboard';
+      }
+    });
+  }
+}
 
 // Enter key on username → focus password
 usernameInput.addEventListener('keydown', (e) => {

@@ -16,9 +16,21 @@
 - [x] Fase 3: Layanan Audit Log - Selesai
 - [x] Fase 4: Approval Engine - Selesai
 - [x] Fase 5: Terapkan ke Endpoint yang Ada - Selesai
-- [ ] Fase 6: Frontend Admin
+- [x] Fase 6: Frontend Admin - Selesai
 - [ ] Fase 7: Test & Kinerja
 - [ ] Fase 8: Review Keamanan & Rilis
+
+## Catatan Fase 6
+- File yang dibuat/disentuh:
+  - `public/js/admin-nav.js`: Helper navigasi global, filter RBAC menu `[data-role="owner"]`, role badge pengguna, pending approval counter badge, global modal ganti password & logout.
+  - `public/js/admin-login.js`: Penanganan alur `must_change_password` dengan modal ganti password wajib saat login staf perdana.
+  - `public/admin/approvals.html`: Inbox Persetujuan untuk Owner (Setujui / Tolak dengan verifikasi diff payload) dan Staf (Batalkan permintaan sendiri).
+  - `public/admin/users.html`: Manajemen Staff (Owner-only: Buat akun staf baru, Reset password, Cabut sesi/refresh token, Toggle aktif/nonaktif).
+  - `public/admin/monitoring.html`: Monitoring Kinerja Staff (Owner-only: Metrik agregat aksi, status approval per-staf, breakdown aksi staf).
+  - `public/admin/activity.html`: Riwayat Audit Log Lengkap (Owner-only: Filter aksi, entitas, tanggal, keyset pagination "Muat Lebih Banyak", viewer modal diff sebelum & sesudah).
+  - Navigasi terintegrasi ke seluruh halaman admin existing (`dashboard.html`, `bookings.html`, `sessions.html`, `finance.html`, `categories.html`, `wa-templates.html`, `shortlinks.html`).
+  - `public/admin/bookings.html`: Ditambahkan section interaktif "Riwayat Perubahan (Audit)" pada panel detail booking via `/api/bookings/:id/history`.
+- Hasil uji: Seluruh script JS lulus pengecekan sintaks Node.js (`node -c`), seluruh file memuat `admin-nav.js`, dan regresi pengujian backend Fase 2-5 lulus 100%.
 
 ## Catatan Fase 5
 - File yang dibuat/disentuh: `routes/users.js`, `routes/audit-log.js`, `routes/monitoring.js`, `routes/bookings.js`, `routes/finance.js`, `routes/payment-settings.js`, `routes/pelunasan.js`, `routes/dashboard.js`, `routes/categories.js`, `routes/wa-templates.js`, `routes/google.js`, `services/approval.js`, `services/audit.js`, `server.js`, `tests/phase5_rbac.test.js`.

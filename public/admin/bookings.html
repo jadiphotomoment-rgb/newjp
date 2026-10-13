@@ -572,15 +572,38 @@
         <span class="material-symbols-outlined">calendar_today</span>
         <span class="font-label-md">Booking</span>
       </a>
+      <a href="/admin/approvals.html"
+        class="flex items-center justify-between px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all">
+        <div class="flex items-center gap-3">
+          <span class="material-symbols-outlined">verified</span>
+          <span class="font-label-md">Persetujuan</span>
+        </div>
+        <span id="approval-badge-count" class="hidden px-2 py-0.5 rounded-full text-[11px] font-bold bg-amber-500 text-black">0</span>
+      </a>
       <a href="/admin/sessions.html"
         class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all">
         <span class="material-symbols-outlined">add_a_photo</span>
         <span class="font-label-md">Sesi Sortir</span>
       </a>
-      <a href="/admin/finance.html"
+      <a href="/admin/finance.html" data-role="owner"
         class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all">
         <span class="material-symbols-outlined">payments</span>
         <span class="font-label-md">Keuangan</span>
+      </a>
+      <a href="/admin/users.html" data-role="owner"
+        class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all">
+        <span class="material-symbols-outlined">group</span>
+        <span class="font-label-md">Manajemen Staff</span>
+      </a>
+      <a href="/admin/monitoring.html" data-role="owner"
+        class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all">
+        <span class="material-symbols-outlined">monitoring</span>
+        <span class="font-label-md">Monitoring Staff</span>
+      </a>
+      <a href="/admin/activity.html" data-role="owner"
+        class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all">
+        <span class="material-symbols-outlined">history</span>
+        <span class="font-label-md">Audit Log</span>
       </a>
       <a href="/admin/categories.html"
         class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all">
@@ -592,7 +615,7 @@
         <span class="font-label-md">Template WA</span>
       </a>
 
-          <a href="/admin/shortlinks.html"
+      <a href="/admin/shortlinks.html"
         class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all">
         <span class="material-symbols-outlined">link</span>
         <span class="font-label-md">Shortlink</span>
@@ -600,6 +623,12 @@
     </nav>
 
     <div class="p-lg border-t border-outline-variant/30 flex flex-col gap-2">
+      <button
+        class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container transition-all text-left"
+        id="btn-change-pass">
+        <span class="material-symbols-outlined">lock_reset</span>
+        <span class="font-label-md">Ganti Password</span>
+      </button>
       <button
         class="flex items-center gap-3 px-4 py-3 rounded-lg text-error hover:bg-error/10 transition-all text-left mt-2"
         id="btn-logout">
@@ -1211,8 +1240,24 @@
 
         <!-- Integrasi Tagihan & Pelunasan -->
         ${window.AdminPelunasan ? window.AdminPelunasan.renderSection(b) : ''}
-        
-        <div class="flex flex-col gap-3 mt-4">
+
+        <!-- Riwayat Perubahan & Audit -->
+        <div class="bg-surface-container-lowest border border-outline-variant/30 p-4 rounded-lg mt-4">
+          <div class="flex items-center justify-between mb-3">
+            <div class="detail-section-title !mb-0 flex items-center gap-1.5">
+              <span class="material-symbols-outlined text-[18px]">history</span>
+              Riwayat Perubahan (Audit)
+            </div>
+            <button type="button" class="text-xs text-primary hover:underline font-medium" onclick="loadBookingHistory(${b.id})">
+              Muat Ulang
+            </button>
+          </div>
+          <div id="booking-audit-timeline-${b.id}" class="text-xs text-on-surface-variant space-y-2">
+            <button type="button" class="w-full py-2 border border-outline-variant/40 rounded text-center hover:bg-surface-container text-xs font-semibold" onclick="loadBookingHistory(${b.id})">
+              Muat Riwayat Aktivitas
+            </button>
+          </div>
+        </div>
           ${b.status === 'dp_review' ? `
             <button class="btn btn-primary justify-center w-full" onclick="approveDP(${b.id}, true)">
               <span class="material-symbols-outlined text-[18px]">check_circle</span> Approve DP & Konfirmasi
@@ -1669,6 +1714,55 @@
       }
     }
 
+    async function loadBookingHistory(bookingId) {
+      const container = document.getElementById(`booking-audit-timeline-${bookingId}`);
+      if (!container) return;
+      container.innerHTML = '<p class="text-on-surface-variant italic py-2">Memuat riwayat...</p>';
+
+      try {
+        const res = await fetch(`/api/bookings/${bookingId}/history`, { headers: H });
+        if (!res.ok) throw new Error('Gagal mengambil data riwayat');
+        const data = await res.json();
+        const logs = data.history || [];
+
+        if (logs.length === 0) {
+          container.innerHTML = '<p class="text-on-surface-variant/70 italic py-2">Belum ada riwayat tercatat.</p>';
+          return;
+        }
+
+        container.innerHTML = logs.map(item => {
+          const dateStr = new Date(item.created_at).toLocaleString('id-ID', {
+            dateStyle: 'short', timeStyle: 'short'
+          });
+          const actor = item.actor_name || item.actor_role || 'Sistem';
+
+          let changeDesc = '';
+          if (item.sebelum && item.sesudah) {
+            const keys = Object.keys(item.sesudah);
+            const changes = keys.filter(k => item.sebelum[k] !== item.sesudah[k]);
+            if (changes.length > 0) {
+              changeDesc = `<div class="mt-1 text-[11px] text-on-surface-variant/80">` +
+                changes.map(k => `<div><span class="font-semibold">${k}:</span> <span class="line-through text-error">${JSON.stringify(item.sebelum[k] ?? null)}</span> &rarr; <span class="text-primary font-medium">${JSON.stringify(item.sesudah[k] ?? null)}</span></div>`).join('') +
+                `</div>`;
+            }
+          }
+
+          return `
+            <div class="border-l-2 border-primary/40 pl-3 py-1 text-xs">
+              <div class="flex items-center justify-between font-semibold text-on-surface">
+                <span class="capitalize">${item.aksi.replace(/_/g, ' ')}</span>
+                <span class="text-[11px] text-on-surface-variant/70 font-normal">${dateStr}</span>
+              </div>
+              <div class="text-[11px] text-on-surface-variant">Oleh: <span class="font-medium text-on-surface">${actor}</span></div>
+              ${changeDesc}
+            </div>
+          `;
+        }).join('');
+      } catch (err) {
+        container.innerHTML = `<p class="text-error py-1">Gagal memuat: ${err.message}</p>`;
+      }
+    }
+
     // Expose globally for onclick handlers in template strings & modular modules
     window.connectGoogle = connectGoogle;
     window.syncCalendar = syncCalendar;
@@ -1681,6 +1775,7 @@
     window.changeStatus = changeStatus;
     window.toast = toast;
     window.currentBookingData = currentBookingData;
+    window.loadBookingHistory = loadBookingHistory;
 
     // Check URL parameters for OAuth redirect feedback (runs immediately since script is at end of body)
     (function checkOAuthRedirectParams() {
@@ -1700,6 +1795,7 @@
     loadCategories();
     loadBookings();
   </script>
+  <script src="/js/admin-nav.js"></script>
 </body>
 
 </html>

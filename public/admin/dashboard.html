@@ -332,15 +332,38 @@
         <span class="material-symbols-outlined">calendar_today</span>
         <span class="font-label-md">Booking</span>
       </a>
+      <a href="/admin/approvals.html"
+        class="flex items-center justify-between px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all">
+        <div class="flex items-center gap-3">
+          <span class="material-symbols-outlined">verified</span>
+          <span class="font-label-md">Persetujuan</span>
+        </div>
+        <span id="approval-badge-count" class="hidden px-2 py-0.5 rounded-full text-[11px] font-bold bg-amber-500 text-black">0</span>
+      </a>
       <a href="/admin/sessions.html"
         class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all">
         <span class="material-symbols-outlined">add_a_photo</span>
         <span class="font-label-md">Sesi Sortir</span>
       </a>
-      <a href="/admin/finance.html"
+      <a href="/admin/finance.html" data-role="owner"
         class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all">
         <span class="material-symbols-outlined">payments</span>
         <span class="font-label-md">Keuangan</span>
+      </a>
+      <a href="/admin/users.html" data-role="owner"
+        class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all">
+        <span class="material-symbols-outlined">group</span>
+        <span class="font-label-md">Manajemen Staff</span>
+      </a>
+      <a href="/admin/monitoring.html" data-role="owner"
+        class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all">
+        <span class="material-symbols-outlined">monitoring</span>
+        <span class="font-label-md">Monitoring Staff</span>
+      </a>
+      <a href="/admin/activity.html" data-role="owner"
+        class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all">
+        <span class="material-symbols-outlined">history</span>
+        <span class="font-label-md">Audit Log</span>
       </a>
       <a href="/admin/categories.html"
         class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all">
@@ -352,7 +375,7 @@
         <span class="font-label-md">Template WA</span>
       </a>
 
-          <a href="/admin/shortlinks.html"
+      <a href="/admin/shortlinks.html"
         class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all">
         <span class="material-symbols-outlined">link</span>
         <span class="font-label-md">Shortlink</span>
@@ -777,6 +800,7 @@
   <div id="toast-container" role="status" aria-live="polite" class="fixed bottom-4 right-4 z-[200] flex flex-col gap-2">
   </div>
 
+  <script src="/js/admin-nav.js"></script>
   <script src="/js/admin-dashboard.js?v=6" defer></script>
 </body>
 
