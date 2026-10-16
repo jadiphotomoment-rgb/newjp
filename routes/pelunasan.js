@@ -37,12 +37,7 @@ function fmtDate(d) {
   return new Date(d).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
 }
 
-const { buildPublicUrl } = require('../utils/url');
-
-// ── Helper: Build URL halaman pelunasan publik ──────────────────
-function buildPelunasanUrl(token) {
-  return buildPublicUrl(`/pelunasan?token=${token}`);
-}
+const { buildPelunasanUrl } = require('../utils/url');
 
 // ── Helper: Kirim WhatsApp via Fonnte ───────────────────────────
 function sendWhatsApp(target, message) {
@@ -92,7 +87,14 @@ router.get('/token/:token', async (req, res) => {
          p.sisa_kekurangan, p.catatan, p.status, p.bukti_file_url,
          p.bukti_filename, p.reject_reason, p.sent_at, p.paid_at,
          b.client_name, b.event_date, b.event_time, b.location,
-         b.package_price, b.package_name,
+         b.package_price,
+         COALESCE(
+           NULLIF(TRIM(b.package_name), ''),
+           NULLIF(TRIM(b.form_data->>'_package_name'), ''),
+           NULLIF(TRIM(b.form_data->>'package_name'), ''),
+           bc.name,
+           'Layanan Fotografi'
+         ) AS package_name,
          bc.name  AS category_name,
          bc.slug  AS category_slug,
          bc.color AS category_color
@@ -370,25 +372,51 @@ router.post('/', auth, auth.requirePermission('tagihan.send'), async (req, res) 
       });
     }
 
-    // Generate token acak aman (32 bytes = 64 hex chars)
-    const token = crypto.randomBytes(32).toString('hex');
-
     dbClient = await db.getClient();
     await dbClient.query('BEGIN');
 
-    // Insert tagihan baru
-    const { rows: insertRows } = await dbClient.query(
-      `INSERT INTO pelunasan (booking_id, token, total_tagihan, dp_terbayar, sisa_kekurangan, catatan, status, sent_at, send_count, created_by)
-       VALUES ($1, $2, $3, $4, $5, $6, 'sent', now(), 1, $7)
-       RETURNING *`,
-      [
-        booking.id, token, totalInt, dpInt, sisaInt,
-        catatan?.trim() || null,
-        req.user.id,
-      ]
+    // Cek apakah ada tagihan aktif/pending yang sudah dibuat sebelumnya untuk booking ini
+    const { rows: existingRows } = await dbClient.query(
+      `SELECT * FROM pelunasan 
+       WHERE booking_id = $1 AND status IN ('sent', 'menunggu_verifikasi')
+       ORDER BY id DESC LIMIT 1
+       FOR UPDATE`,
+      [booking.id]
     );
 
-    const tagihan = insertRows[0];
+    let tagihan;
+    let token;
+
+    if (existingRows.length > 0) {
+      // Gunakan token yang sudah ada agar link tetap konsisten dan valid
+      const existing = existingRows[0];
+      token = existing.token;
+
+      const { rows: updatedRows } = await dbClient.query(
+        `UPDATE pelunasan 
+         SET total_tagihan = $1, dp_terbayar = $2, sisa_kekurangan = $3, catatan = $4
+         WHERE id = $5
+         RETURNING *`,
+        [totalInt, dpInt, sisaInt, catatan?.trim() || null, existing.id]
+      );
+      tagihan = updatedRows[0];
+    } else {
+      // Generate token acak aman (32 bytes = 64 hex chars)
+      token = crypto.randomBytes(32).toString('hex');
+
+      // Insert tagihan baru (sent_at NULL & send_count 0 karena belum dikirim ke WA)
+      const { rows: insertRows } = await dbClient.query(
+        `INSERT INTO pelunasan (booking_id, token, total_tagihan, dp_terbayar, sisa_kekurangan, catatan, status, sent_at, send_count, created_by)
+         VALUES ($1, $2, $3, $4, $5, $6, 'sent', NULL, 0, $7)
+         RETURNING *`,
+        [
+          booking.id, token, totalInt, dpInt, sisaInt,
+          catatan?.trim() || null,
+          req.user.id,
+        ]
+      );
+      tagihan = insertRows[0];
+    }
 
     await audit.record(dbClient, {
       req,
@@ -442,8 +470,19 @@ router.post('/:id/send-wa', auth, auth.requirePermission('tagihan.send'), async 
 
   try {
     const { rows } = await db.query(
-      `SELECT p.*, b.client_name, b.client_phone, b.event_date, b.package_name
-       FROM pelunasan p JOIN bookings b ON p.booking_id = b.id
+      `SELECT p.*,
+              EXTRACT(EPOCH FROM (NOW() - p.sent_at))::int AS seconds_since_sent,
+              b.client_name, b.client_phone, b.event_date,
+              COALESCE(
+                NULLIF(TRIM(b.package_name), ''),
+                NULLIF(TRIM(b.form_data->>'_package_name'), ''),
+                NULLIF(TRIM(b.form_data->>'package_name'), ''),
+                bc.name,
+                'Layanan Fotografi'
+              ) AS resolved_package_name
+       FROM pelunasan p 
+       JOIN bookings b ON p.booking_id = b.id
+       LEFT JOIN booking_categories bc ON b.category_id = bc.id
        WHERE p.id = $1`,
       [id]
     );
@@ -460,13 +499,23 @@ router.post('/:id/send-wa', auth, auth.requirePermission('tagihan.send'), async 
       return res.status(422).json({ error: 'Nomor WhatsApp klien tidak tersedia.' });
     }
 
+    // Cooldown 5 menit (300 detik) untuk mencegah pesan terkirim ganda (idempotency guard)
+    const COOLDOWN_SECONDS = 300;
+    if (tagihan.seconds_since_sent !== null && tagihan.seconds_since_sent !== undefined && tagihan.seconds_since_sent < COOLDOWN_SECONDS) {
+      const sisaMenit = Math.ceil((COOLDOWN_SECONDS - tagihan.seconds_since_sent) / 60);
+      return res.status(429).json({
+        error: `Pesan tagihan baru saja dikirim ke klien. Mohon tunggu ${sisaMenit} menit sebelum mengirim ulang untuk mencegah pesan ganda.`
+      });
+    }
+
     const linkPelunasan = buildPelunasanUrl(tagihan.token);
+    const packageName = tagihan.resolved_package_name || 'Layanan Fotografi';
     const catatan_section = tagihan.catatan ? `\n📌 *Catatan:* ${tagihan.catatan}\n` : '';
 
-    // Ambil template dari DB, fallback ke hardcoded
+    // Ambil template dari DB, fallback ke pesan terformat rapi
     let msg = await getWaTemplate('pelunasan_tagihan', {
       client_name: tagihan.client_name,
-      package_name: tagihan.package_name || '-',
+      package_name: packageName,
       event_date: fmtDate(tagihan.event_date),
       total_tagihan: fmtRp(tagihan.total_tagihan),
       dp_terbayar: fmtRp(tagihan.dp_terbayar),
@@ -476,13 +525,22 @@ router.post('/:id/send-wa', auth, auth.requirePermission('tagihan.send'), async 
     });
 
     if (!msg) {
-      msg = `💰 *Tagihan Pelunasan — Jadiphoto.Moment*\n\nHalo ${tagihan.client_name},\n\nBerikut rincian pelunasan booking Anda:\n\n📦 *Paket:* ${tagihan.package_name || '-'}\n📅 *Tanggal Acara:* ${fmtDate(tagihan.event_date)}\n💵 *Total Tagihan:* Rp${fmtRp(tagihan.total_tagihan)}\n✅ *DP Terbayar:* Rp${fmtRp(tagihan.dp_terbayar)}\n🔴 *Sisa Kekurangan: Rp${fmtRp(tagihan.sisa_kekurangan)}*\n${catatan_section}\nSilakan selesaikan pembayaran melalui link berikut:\n🔗 ${linkPelunasan}\n\nTerima kasih 🙏`;
+      msg = `💰 *Tagihan Pelunasan — Jadiphoto.Moment*\n\nHalo ${tagihan.client_name},\n\nBerikut rincian tagihan pelunasan booking Anda:\n\n📦 *Paket:* ${packageName}\n📅 *Tanggal Acara:* ${fmtDate(tagihan.event_date)}\n💵 *Total Tagihan:* Rp ${fmtRp(tagihan.total_tagihan)}\n✅ *DP Terbayar:* Rp ${fmtRp(tagihan.dp_terbayar)}\n🔴 *Sisa Pelunasan:* Rp ${fmtRp(tagihan.sisa_kekurangan)}\n${catatan_section}\nSilakan selesaikan pembayaran melalui link resmi berikut:\n🔗 ${linkPelunasan}\n\nTerima kasih 🙏`;
     }
 
-    // Kirim WA
+    // Kirim WA via Fonnte Gateway
     const waRes = await sendWhatsApp(tagihan.client_phone, msg);
 
-    // Catat pengiriman — increment send_count, update sent_at & sent_to_wa
+    // Verifikasi respons gateway
+    if (!waRes || waRes.status === false) {
+      const reason = (waRes && (waRes.reason || waRes.message)) || 'Gateway WhatsApp Fonnte gagal memproses pengiriman';
+      return res.status(502).json({
+        error: `Gagal mengirim pesan WhatsApp: ${reason}`,
+        wa_response: waRes
+      });
+    }
+
+    // Catat pengiriman hanya saat sukses terkirim — increment send_count, update sent_at & sent_to_wa
     await db.query(
       `UPDATE pelunasan
        SET sent_at = now(), send_count = send_count + 1, sent_to_wa = $1
@@ -497,7 +555,10 @@ router.post('/:id/send-wa', auth, auth.requirePermission('tagihan.send'), async 
     });
   } catch (err) {
     console.error('[pelunasan] POST /:id/send-wa error:', err);
-    res.status(500).json({ error: 'Database error' });
+    if (err.message && err.message.includes('APP_BASE_URL')) {
+      return res.status(500).json({ error: err.message });
+    }
+    res.status(500).json({ error: err.message || 'Database error' });
   }
 });
 

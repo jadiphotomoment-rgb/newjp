@@ -226,9 +226,11 @@ router.post('/:categorySlug', async (req, res) => {
     const rawDetail = req.body.sumberInformasiDetail || (formData && (formData.sumber_informasi_detail || formData.source_detail)) || null;
     const sumberDetail = rawDetail ? String(rawDetail).trim() : null;
 
+    const resolvedPackageName = finalPackageName || category.name || null;
+
     const { rows } = await db.query(
-      `INSERT INTO bookings (category_id, client_name, client_phone, event_date, event_time, location, form_data, package_price, dp_amount, sumber_informasi, sumber_informasi_detail)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id`,
+      `INSERT INTO bookings (category_id, client_name, client_phone, event_date, event_time, location, form_data, package_price, dp_amount, sumber_informasi, sumber_informasi_detail, package_name)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING id`,
       [
         category.id,
         clientName.trim(),
@@ -240,7 +242,8 @@ router.post('/:categorySlug', async (req, res) => {
         finalPackagePrice > 0 ? finalPackagePrice : null,
         dpAmount > 0 ? dpAmount : null,
         sumberInfo,
-        sumberDetail
+        sumberDetail,
+        resolvedPackageName
       ]
     );
 
@@ -1060,9 +1063,11 @@ async function handleAdminCreateBooking(req, res) {
     client = await db.getClient();
     await client.query('BEGIN');
 
+    const pkgName = req.body.package_name || (form_data && (form_data.package_name || form_data._package_name)) || catRes.rows[0]?.name || null;
+
     const { rows } = await client.query(
-      `INSERT INTO bookings (category_id, client_name, client_phone, event_date, event_time, location, package_price, dp_amount, form_data, status, sumber_informasi, sumber_informasi_detail, created_by, updated_by)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $13)
+      `INSERT INTO bookings (category_id, client_name, client_phone, event_date, event_time, location, package_price, dp_amount, form_data, status, sumber_informasi, sumber_informasi_detail, package_name, created_by, updated_by)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $14)
        RETURNING *`,
       [
         category_id,
@@ -1077,6 +1082,7 @@ async function handleAdminCreateBooking(req, res) {
         status || 'confirmed',
         sumber_informasi || null,
         sumber_informasi_detail || null,
+        pkgName,
         req.user.id
       ]
     );

@@ -7,7 +7,16 @@
  * karena di Vercel bisa mengembalikan domain deployment (*.vercel.app).
  */
 function getPublicBaseUrl() {
-  const base = process.env.PUBLIC_BASE_URL || process.env.BASE_URL || 'http://localhost:3000';
+  const base = process.env.APP_BASE_URL || process.env.PUBLIC_BASE_URL || process.env.BASE_URL;
+  if (!base) {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error(
+        'APP_BASE_URL belum dikonfigurasi di environment production. ' +
+        'Wajib set APP_BASE_URL di environment variables (contoh: https://jadiphoto.web.id) untuk mencegah pengiriman link invalid ke klien.'
+      );
+    }
+    return 'http://localhost:3000';
+  }
   return base.replace(/\/+$/, '');
 }
 
@@ -22,7 +31,20 @@ function buildPublicUrl(path = '') {
   return `${base}${normalizedPath}`;
 }
 
+/**
+ * Helper tunggal untuk membangun link pelunasan klien
+ * @param {string} token
+ * @returns {string} - URL absolut pelunasan
+ */
+function buildPelunasanUrl(token) {
+  if (!token) {
+    throw new Error('Token pelunasan wajib diisi untuk membangun URL pelunasan');
+  }
+  return buildPublicUrl(`/pelunasan?token=${encodeURIComponent(token)}`);
+}
+
 module.exports = {
   getPublicBaseUrl,
   buildPublicUrl,
+  buildPelunasanUrl,
 };

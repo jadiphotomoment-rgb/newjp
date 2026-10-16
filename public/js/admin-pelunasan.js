@@ -626,7 +626,7 @@
                     <span>Salin Link</span>
                   </button>
                   <button class="btn btn-outline btn-sm text-xs flex-1 justify-center text-[#25D366] border-[#25D366]/30 bg-[#25D366]/5 hover:bg-[#25D366]/10"
-                    onclick="window.AdminPelunasan.resendWA(${t.id})">
+                    onclick="window.AdminPelunasan.resendWA(${t.id}, this)">
                     <span class="material-symbols-outlined text-[14px]">send</span>
                     <span>Kirim WA</span>
                   </button>
@@ -756,6 +756,9 @@
     // ── Submit Tagihan Baru ───────────────────────────────────────
     async submitTagihForm(e) {
       e.preventDefault();
+      if (this._isSubmittingTagihan) return;
+      this._isSubmittingTagihan = true;
+
       const bookingId = document.getElementById('tagih-booking-id').value;
       const totalTagihan = document.getElementById('tagih-total-input').value;
       const catatan = document.getElementById('tagih-catatan-input').value;
@@ -764,7 +767,7 @@
       const btn = document.getElementById('btn-submit-tagihan');
       const originalText = btn.innerHTML;
       btn.disabled = true;
-      btn.innerHTML = '<span class="spinner w-4 h-4 border-2 mr-2"></span> Memproses...';
+      btn.innerHTML = '<span class="spinner w-4 h-4 border-2 mr-2"></span> Membuat Tagihan...';
 
       try {
         const res = await fetch('/api/pelunasan', {
@@ -787,14 +790,20 @@
 
         // Jika opsi kirim WA dicentang
         if (sendWa && tagihan && tagihan.id) {
+          btn.innerHTML = '<span class="spinner w-4 h-4 border-2 mr-2"></span> Mengirim WhatsApp...';
           try {
-            await fetch(`/api/pelunasan/${tagihan.id}/send-wa`, {
+            const waRes = await fetch(`/api/pelunasan/${tagihan.id}/send-wa`, {
               method: 'POST',
               headers: getHeaders()
             });
-            showToast('Pesan WhatsApp tagihan berhasil dikirim ke klien!', 'success');
+            const waData = await waRes.json();
+            if (!waRes.ok) {
+              showToast(waData.error || 'Tagihan tersimpan, namun WA gagal terkirim.', 'warning');
+            } else {
+              showToast('Pesan WhatsApp tagihan berhasil dikirim ke klien!', 'success');
+            }
           } catch (_) {
-            showToast('Tagihan tersimpan, namun WA gagal terkirim.', 'info');
+            showToast('Tagihan tersimpan, namun koneksi gateway WA bermasalah.', 'info');
           }
         }
 
@@ -810,6 +819,7 @@
       } catch (err) {
         showToast(err.message || 'Terjadi kesalahan sistem', 'error');
       } finally {
+        this._isSubmittingTagihan = false;
         btn.disabled = false;
         btn.innerHTML = originalText;
       }
@@ -924,8 +934,19 @@
     },
 
     // ── Resend WhatsApp ───────────────────────────────────────────
-    async resendWA(tagihanId) {
+    async resendWA(tagihanId, btnEl) {
+      if (!this._resendingIds) this._resendingIds = new Set();
+      if (this._resendingIds.has(tagihanId)) return;
+
       if (!confirm('Kirim ulang rincian tagihan ke WhatsApp klien sekarang?')) return;
+
+      this._resendingIds.add(tagihanId);
+      const originalHtml = btnEl ? btnEl.innerHTML : null;
+      if (btnEl) {
+        btnEl.disabled = true;
+        btnEl.innerHTML = '<span class="spinner w-3 h-3 border-2 inline-block mr-1"></span> Mengirim...';
+      }
+
       try {
         const res = await fetch(`/api/pelunasan/${tagihanId}/send-wa`, {
           method: 'POST',
@@ -936,6 +957,12 @@
         showToast('Pesan tagihan berhasil dikirim ke WhatsApp klien!', 'success');
       } catch (err) {
         showToast(err.message || 'Gagal menghubungi WhatsApp gateway', 'error');
+      } finally {
+        this._resendingIds.delete(tagihanId);
+        if (btnEl) {
+          btnEl.disabled = false;
+          if (originalHtml) btnEl.innerHTML = originalHtml;
+        }
       }
     },
 
