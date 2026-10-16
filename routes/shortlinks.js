@@ -5,6 +5,7 @@ const router  = express.Router();
 const db      = require('../database');
 const auth    = require('../middleware/auth');
 const crypto  = require('crypto');
+const { buildPublicUrl } = require('../utils/url');
 
 // Helper to generate random short code
 function generateShortCode(length = 6) {
@@ -54,7 +55,10 @@ router.post('/', auth, async (req, res) => {
         'INSERT INTO shortlinks (short_code, original_url, admin_id) VALUES ($1, $2, $3) RETURNING *',
         [custom_code, validUrl, req.admin.adminId]
       );
-      return res.status(201).json(rows[0]);
+      return res.status(201).json({
+        ...rows[0],
+        short_url: buildPublicUrl(`/l/${rows[0].short_code}`)
+      });
     } catch (err) {
       if (err.code === '23505') { // unique_violation
         return res.status(400).json({ error: 'Custom alias sudah digunakan, silakan pilih yang lain' });
@@ -76,7 +80,10 @@ router.post('/', auth, async (req, res) => {
         [code, validUrl, req.admin.adminId]
       );
       success = true;
-      res.status(201).json(rows[0]);
+      res.status(201).json({
+        ...rows[0],
+        short_url: buildPublicUrl(`/l/${rows[0].short_code}`)
+      });
       break;
     } catch (err) {
       if (err.code === '23505') { // unique_violation

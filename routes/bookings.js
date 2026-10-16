@@ -8,6 +8,7 @@ const audit    = require('../services/audit');
 const approvalSvc = require('../services/approval');
 const https    = require('https');
 const { getWaTemplate } = require('../utils/template');
+const { buildPublicUrl } = require('../utils/url');
 const { google }           = require('googleapis');
 const { getAuthenticatedClient } = require('../utils/googleAuth');
 
@@ -832,13 +833,15 @@ router.patch('/admin/:id/reject-dp', auth, auth.requirePermission('payment.verif
 
     // Notifikasi WA ke klien
     const reasonText = reason ? `\n\nAlasan: _${reason}_` : '';
+    const uploadDpUrl = buildPublicUrl(`/upload-dp.html?booking=${booking.id}`);
     // Coba template dari DB (dp_rejected)
     let msg = await getWaTemplate('dp_rejected', {
       client_name: booking.client_name,
       reason_text: reason ? `\n\nAlasan: _${reason}_` : '',
+      upload_dp_url: uploadDpUrl,
     });
     if (!msg) {
-      msg = `❌ *Bukti Transfer Ditolak*\n\nHalo ${booking.client_name},\n\nBukti transfer DP Anda tidak dapat diverifikasi.${reasonText}\n\nSilakan upload ulang bukti transfer yang valid. Terima kasih.`;
+      msg = `❌ *Bukti Transfer Ditolak*\n\nHalo ${booking.client_name},\n\nBukti transfer DP Anda tidak dapat diverifikasi.${reasonText}\n\nSilakan upload ulang bukti transfer yang valid melalui link berikut:\n🔗 ${uploadDpUrl}\n\nTerima kasih.`;
     }
     if (booking.client_phone) sendWhatsApp(booking.client_phone, msg).catch(() => {});
 

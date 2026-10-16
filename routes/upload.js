@@ -322,4 +322,63 @@ router.get('/private/payments/:id', auth, async (req, res) => {
   }
 });
 
+// ─────────────────────────────────────────────────────────────────
+// GET /api/upload/private/pelunasan/:id (Admin Only)
+// Proxy khusus untuk mengambil private blob file bukti pelunasan
+// ─────────────────────────────────────────────────────────────────
+router.get('/private/pelunasan/:id', auth, async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (isNaN(id)) return res.status(400).json({ error: 'ID tidak valid' });
+
+  try {
+    const { rows } = await db.query('SELECT bukti_file_url AS proof_url, bukti_filename AS proof_filename FROM pelunasan WHERE id = $1', [id]);
+    if (rows.length === 0 || !rows[0].proof_url) {
+      return res.status(404).send('Bukti pelunasan tidak ditemukan');
+    }
+
+    const proofUrl = rows[0].proof_url;
+    const token = getBlobToken();
+    if (!token) {
+      return res.status(500).send('Server belum dikonfigurasi untuk Vercel Blob (Token tidak ada).');
+    }
+
+    const response = await fetch(proofUrl, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+
+    if (!response.ok) {
+      return res.status(response.status).send('Gagal mengambil file dari penyimpanan.');
+    }
+
+    const contentType = response.headers.get('content-type');
+    if (contentType) res.setHeader('Content-Type', contentType);
+
+    const fileName = rows[0].proof_filename || 'bukti_pelunasan';
+    res.setHeader('Content-Disposition', `inline; filename="${fileName}"`);
+
+    if (response.body && typeof response.body.pipe === 'function') {
+      response.body.pipe(res);
+    } else if (response.body) {
+      const reader = response.body.getReader();
+      const pump = async () => {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          res.write(value);
+        }
+        res.end();
+      };
+      await pump();
+    } else {
+      const buffer = await response.arrayBuffer();
+      res.send(Buffer.from(buffer));
+    }
+  } catch (err) {
+    console.error('[upload] private pelunasan proxy error:', err);
+    res.status(500).send('Server error saat mengambil file.');
+  }
+});
+
 module.exports = router;

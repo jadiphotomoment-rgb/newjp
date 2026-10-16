@@ -6,6 +6,7 @@ const db      = require('../database');
 const auth    = require('../middleware/auth');
 const https   = require('https');
 const { getWaTemplate } = require('../utils/template');
+const { buildPublicUrl } = require('../utils/url');
 
 // ── WhatsApp sender ──────────────────────────────────────────────
 function sendWhatsApp(target, message) {
@@ -273,15 +274,17 @@ router.patch('/payments/:id/reject', auth, async (req, res) => {
     if (bookRes.rows[0]) {
       const b = bookRes.rows[0];
       const reasonText = reason ? `\n\nAlasan: _${reason}_` : '';
+      const uploadDpUrl = buildPublicUrl(`/upload-dp.html?booking=${b.id}`);
       
       // Coba template dari DB (dp_rejected)
       let msg = await getWaTemplate('dp_rejected', {
         client_name: b.client_name,
         reason_text: reasonText,
+        upload_dp_url: uploadDpUrl,
       });
       
       if (!msg) {
-        msg = `❌ *Bukti Transfer Ditolak*\n\nHalo ${b.client_name},\n\nMohon maaf, bukti transfer pembayaran Anda tidak dapat diverifikasi.${reasonText}\n\nSilakan upload ulang bukti transfer yang valid. Terima kasih.`;
+        msg = `❌ *Bukti Transfer Ditolak*\n\nHalo ${b.client_name},\n\nMohon maaf, bukti transfer pembayaran Anda tidak dapat diverifikasi.${reasonText}\n\nSilakan upload ulang bukti transfer yang valid melalui link berikut:\n🔗 ${uploadDpUrl}\n\nTerima kasih.`;
       }
       
       if (b.client_phone) sendWhatsApp(b.client_phone, msg).catch(() => {});

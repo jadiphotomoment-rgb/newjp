@@ -7,6 +7,7 @@ const { v4: uuidv4 } = require('uuid');
 const db   = require('../database');
 const auth = require('../middleware/auth');
 const { getWaTemplate } = require('../utils/template');
+const { buildPublicUrl } = require('../utils/url');
 
 // ── Helper: WhatsApp sender via Fonnte ─────────────────────────
 function sendWhatsApp(target, message) {
@@ -235,12 +236,11 @@ router.post('/', auth, async (req, res) => {
       req.admin.adminId
     ]);
 
-    const baseUrl = `${req.protocol}://${req.get('host')}`;
     res.status(201).json({
       uuid,
       shortSlug,
-      galleryUrl:  `${baseUrl}/gallery.html?session=${uuid}`,
-      shortUrl:    `${baseUrl}/s/${shortSlug}`,
+      galleryUrl:  buildPublicUrl(`/gallery.html?session=${uuid}`),
+      shortUrl:    buildPublicUrl(`/s/${shortSlug}`),
       message:     'Sesi berhasil dibuat'
     });
   } catch (err) {

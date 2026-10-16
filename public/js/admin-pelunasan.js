@@ -570,33 +570,36 @@
               ` : ''}
 
               <!-- Bukti Transfer (jika ada) -->
-              ${t.bukti_file_url ? `
+              ${t.bukti_file_url ? (() => {
+                const secureUrl = '/api/upload/private/pelunasan/' + t.id + '?token=' + (window.TOKEN || localStorage.getItem('sf_token'));
+                const isPdf = ((t.bukti_filename || t.bukti_file_url || '').toLowerCase()).includes('.pdf');
+                return `
                 <div class="mb-3 p-3 bg-surface-container rounded-xl border border-outline-variant/30">
                   <div class="text-[11px] font-semibold text-on-surface-variant uppercase tracking-wider mb-2 flex items-center justify-between">
-                    <span>Bukti Transfer Klien</span>
+                    <span>Bukti Pelunasan</span>
                     ${t.paid_at ? `<span class="text-[10px] text-on-surface-variant lowercase">${fmtDate(t.paid_at)}</span>` : ''}
                   </div>
                   <div class="flex items-center gap-3">
-                    ${t.bukti_file_url.endsWith('.pdf') ? `
-                      <a href="${escAttr(t.bukti_file_url)}" target="_blank"
+                    ${isPdf ? `
+                      <a href="${escAttr(secureUrl)}" target="_blank"
                         class="btn btn-outline btn-sm text-xs flex items-center gap-1.5 text-primary">
                         <span class="material-symbols-outlined text-[16px]">picture_as_pdf</span>
-                        <span>Buka Bukti PDF</span>
+                        <span>Buka Bukti Pelunasan (PDF)</span>
                       </a>
                     ` : `
-                      <img src="${escAttr(t.bukti_file_url)}" alt="Bukti"
-                        onclick="window.AdminPelunasan.previewBukti('${escAttr(t.bukti_file_url)}')"
+                      <img src="${escAttr(secureUrl)}" alt="Bukti Pelunasan"
+                        onclick="window.AdminPelunasan.previewBukti('${escAttr(secureUrl)}')"
                         class="w-16 h-16 object-cover rounded-lg border border-outline-variant/40 cursor-pointer hover:opacity-80 transition-opacity bg-black/10">
                       <div class="flex flex-col gap-1">
                         <button type="button" class="btn btn-outline btn-sm text-xs py-1 px-2.5"
-                          onclick="window.AdminPelunasan.previewBukti('${escAttr(t.bukti_file_url)}')">
-                          <span class="material-symbols-outlined text-[14px]">zoom_in</span> Lihat Bukti
+                          onclick="window.AdminPelunasan.previewBukti('${escAttr(secureUrl)}')">
+                          <span class="material-symbols-outlined text-[14px]">zoom_in</span> Lihat Bukti Pelunasan
                         </button>
                       </div>
                     `}
                   </div>
-                </div>
-              ` : ''}
+                </div>`;
+              })() : ''}
 
               <!-- Tombol Aksi Verifikasi / Approval -->
               ${isReview ? `

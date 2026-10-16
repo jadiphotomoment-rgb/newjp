@@ -1174,26 +1174,33 @@
         `<div class="detail-row"><span class="dk">${k}</span><span class="dv">${v}</span></div>`
       ).join('');
 
-      const paymentsHtml = (b.payments || []).length ? b.payments.map(p => `
+      const paymentsHtml = (b.payments || []).length ? b.payments.map(p => {
+        const isPelunasan = p.payment_type === 'pelunasan';
+        const labelText = isPelunasan ? 'Bukti Pelunasan' : 'Bukti DP';
+        return `
         <div class="bg-surface-container-low border border-outline-variant/30 rounded-lg p-4 mb-3">
           <div class="flex justify-between items-center mb-3">
-            <span class="font-bold text-on-surface">${fmtMoney(p.amount)}</span>
+            <div>
+              <span class="font-bold text-on-surface">${fmtMoney(p.amount)}</span>
+              <span class="text-xs text-on-surface-variant font-medium ml-1.5 uppercase">(${labelText})</span>
+            </div>
             <span class="badge badge-${p.status === 'approved' ? 'completed' : p.status === 'rejected' ? 'cancelled' : 'pending_dp'}">${p.status}</span>
           </div>
           ${p.proof_url ? (() => {
             const secureUrl = '/api/upload/private/payments/' + p.id + '?token=' + (window.TOKEN || localStorage.getItem('sf_token'));
-            const isPdf = (p.proof_filename || p.proof_url).endsWith('.pdf');
+            const isPdf = ((p.proof_filename || p.proof_url || '').toLowerCase()).includes('.pdf');
             return `
             <div class="rounded-lg overflow-hidden border border-outline-variant/30 bg-black/5 flex flex-col">
               ${isPdf
-            ? `<a href="${secureUrl}" target="_blank" class="p-3 text-center text-primary font-semibold text-sm hover:bg-black/5">📄 Buka Bukti PDF</a>`
-            : `<img src="${secureUrl}" alt="Bukti" class="w-full max-h-[200px] object-contain bg-black/10">
+            ? `<a href="${secureUrl}" target="_blank" class="p-3 text-center text-primary font-semibold text-sm hover:bg-black/5">📄 Buka ${labelText} (PDF)</a>`
+            : `<img src="${secureUrl}" alt="${labelText}" class="w-full max-h-[200px] object-contain bg-black/10">
                    <a href="${secureUrl}" target="_blank" class="p-2 text-center text-primary font-semibold text-xs border-t border-outline-variant/30 hover:bg-black/5">🔍 Lihat Full Size</a>`}
             </div>`
           })() : ''}
           ${p.reject_reason ? `<div class="mt-2 text-xs text-error font-medium bg-error/10 p-2 rounded">Alasan: ${p.reject_reason}</div>` : ''}
         </div>
-      `).join('') : '<p class="text-sm text-on-surface-variant">Belum ada pembayaran</p>';
+      `;
+      }).join('') : '<p class="text-sm text-on-surface-variant">Belum ada pembayaran</p>';
 
       document.getElementById('panel-body').innerHTML = `
         <div class="flex justify-end mb-2">
@@ -1234,7 +1241,7 @@
         </div>
         
         <div>
-          <div class="detail-section-title mt-2">Riwayat Pembayaran DP</div>
+          <div class="detail-section-title mt-2">Riwayat Pembayaran</div>
           ${paymentsHtml}
         </div>
 

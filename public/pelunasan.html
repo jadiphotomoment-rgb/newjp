@@ -612,10 +612,12 @@
 
   // ─── Render metode pembayaran ────────────────────────────────
   function renderPaymentMethod(p, sisa) {
-    var method = p.method; // 'qris' | 'bank' | 'both'
+    p = p || {};
+    var qrisUrl = p.qris_image_url || '/img/Qris Jadiphoto.webp';
+    var method = p.method || 'both'; // 'qris' | 'bank' | 'both'
 
     if (method === 'qris' || method === 'both') {
-      renderQris(p.qris_image_url, sisa);
+      renderQris(qrisUrl, sisa);
     }
     if (method === 'bank' || method === 'both') {
       renderBank(p.bank_accounts);
@@ -624,7 +626,7 @@
     if (method === 'both') {
       show('method-tabs');
       // Default tab: qris jika ada gambar, bank jika tidak
-      if (p.qris_image_url) {
+      if (qrisUrl) {
         switchTab('qris');
       } else {
         switchTab('bank');
@@ -638,15 +640,15 @@
     }
 
     // Jika tidak ada QRIS dan tidak ada bank, tampilkan empty
-    if (!p.qris_image_url && (!p.bank_accounts || p.bank_accounts.length === 0)) {
+    if (!qrisUrl && (!p.bank_accounts || p.bank_accounts.length === 0)) {
       hide('panel-qris'); hide('panel-bank'); hide('method-tabs');
       show('panel-empty');
     }
   }
 
   function renderQris(qrisUrl, sisa) {
-    if (!qrisUrl) return;
-    document.getElementById('qris-img').src = qrisUrl;
+    var finalUrl = qrisUrl || '/img/Qris Jadiphoto.webp';
+    document.getElementById('qris-img').src = finalUrl;
     var formatted = 'Rp ' + sisa.toLocaleString('id-ID');
     document.getElementById('qris-nominal').textContent = formatted;
     document.getElementById('qris-nominal-plain').textContent = sisa.toLocaleString('id-ID');

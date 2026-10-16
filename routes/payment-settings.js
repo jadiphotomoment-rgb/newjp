@@ -34,7 +34,7 @@ router.get('/', async (req, res) => {
       ),
     ]);
     res.json({
-      qris_image_url: qrisRes.rows[0]?.qris_image_url || null,
+      qris_image_url: qrisRes.rows[0]?.qris_image_url || '/img/Qris Jadiphoto.webp',
       bank_accounts: banksRes.rows,
     });
   } catch (err) {

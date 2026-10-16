@@ -37,12 +37,11 @@ function fmtDate(d) {
   return new Date(d).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
 }
 
+const { buildPublicUrl } = require('../utils/url');
+
 // ── Helper: Build URL halaman pelunasan publik ──────────────────
 function buildPelunasanUrl(token) {
-  const base = process.env.BASE_URL || process.env.VERCEL_URL
-    ? `https://${process.env.VERCEL_URL}`
-    : 'http://localhost:3000';
-  return `${base}/pelunasan?token=${token}`;
+  return buildPublicUrl(`/pelunasan?token=${token}`);
 }
 
 // ── Helper: Kirim WhatsApp via Fonnte ───────────────────────────
@@ -149,7 +148,7 @@ router.get('/token/:token', async (req, res) => {
       },
       payment: {
         method: payment_method,          // 'qris' | 'bank' | 'both'
-        qris_image_url: qrisRes.rows[0]?.qris_image_url || null,
+        qris_image_url: qrisRes.rows[0]?.qris_image_url || '/img/Qris Jadiphoto.webp',
         bank_accounts: banksRes.rows,
       },
     });
@@ -535,7 +534,7 @@ router.patch('/:id/verify', auth, auth.requirePermission('payment.verify'), asyn
     // Lock baris tagihan dengan FOR UPDATE agar tidak ada race condition double-approve
     const tagRes = await db.query(
       `SELECT p.id, p.status, p.booking_id, p.sisa_kekurangan, p.total_tagihan,
-              p.dp_terbayar, p.token,
+              p.dp_terbayar, p.token, p.bukti_file_url, p.bukti_filename, p.bukti_blob_key,
               b.client_name, b.client_phone, b.event_date, b.package_name
        FROM pelunasan p
        JOIN bookings b ON p.booking_id = b.id
@@ -565,12 +564,14 @@ router.patch('/:id/verify', auth, auth.requirePermission('payment.verify'), asyn
 
       // 2. Catat pemasukan di tabel payments (otomatis masuk finance.html)
       await client.query(
-        `INSERT INTO payments (booking_id, amount, payment_type, proof_url, status, approved_by, approved_at, created_by, updated_by)
-         VALUES ($1, $2, 'pelunasan', $3, 'approved', $4, now(), $4, $4)`,
+        `INSERT INTO payments (booking_id, amount, payment_type, proof_url, proof_filename, blob_key, status, approved_by, approved_at, created_by, updated_by)
+         VALUES ($1, $2, 'pelunasan', $3, $4, $5, 'approved', $6, now(), $6, $6)`,
         [
           tagihan.booking_id,
           tagihan.sisa_kekurangan,
-          null,                   // proof_url di payments cukup null (ada di pelunasan.bukti_file_url)
+          tagihan.bukti_file_url || null,
+          tagihan.bukti_filename || null,
+          tagihan.bukti_blob_key || null,
           req.user.id,
         ]
       );

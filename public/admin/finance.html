@@ -897,17 +897,19 @@
       const popup = document.createElement('div');
       popup.className = 'proof-popup';
 
-      const isImg = p.proof_url && !(p.proof_filename || p.proof_url).endsWith('.pdf');
+      const isPdf = ((p.proof_filename || p.proof_url || '').toLowerCase()).includes('.pdf');
+      const isImg = p.proof_url && !isPdf;
       const secureUrl = p.proof_url ? '/api/upload/private/payments/' + p.id + '?token=' + TOKEN : '';
+      const proofLabel = p.payment_type === 'pelunasan' ? 'Bukti Pelunasan' : 'Bukti DP';
       popup.innerHTML = `
         <div class="font-headline-sm text-on-surface mb-4 border-b border-outline-variant/30 pb-2 flex justify-between items-center">
-          <span>Bukti Pembayaran</span>
+          <span>${proofLabel}</span>
           <button class="btn btn-icon btn-outline border-none hover:bg-surface-container" onclick="closeProofPopup()">
             <span class="material-symbols-outlined">close</span>
           </button>
         </div>
-        </div>
-        ${isImg ? `<div class="rounded-lg overflow-hidden border border-outline-variant/30 bg-black/5 mb-4 flex items-center justify-center min-h-[150px]"><img src="${secureUrl}" alt="Bukti Transfer" class="w-full max-h-[300px] object-contain"></div>` : ''}
+        ${isImg ? `<div class="rounded-lg overflow-hidden border border-outline-variant/30 bg-black/5 mb-4 flex items-center justify-center min-h-[150px]"><img src="${secureUrl}" alt="${proofLabel}" class="w-full max-h-[300px] object-contain"></div>` : ''}
+        ${isPdf && p.proof_url ? `<div class="p-4 bg-surface-container-low border border-outline-variant/30 rounded-lg text-center mb-4"><span class="material-symbols-outlined text-4xl text-primary mb-2">picture_as_pdf</span><p class="text-sm font-semibold mb-2">${p.proof_filename || 'Dokumen PDF'}</p><a href="${secureUrl}" target="_blank" class="btn btn-primary btn-sm inline-flex">📄 Buka ${proofLabel} (PDF)</a></div>` : ''}
         
         <div class="flex flex-col gap-2 text-sm mb-4 bg-surface-container-low p-4 rounded-lg">
           <div class="flex"><span class="text-on-surface-variant w-24">Klien</span><span class="font-semibold">${p.client_name}</span></div>
