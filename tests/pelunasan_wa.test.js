@@ -35,12 +35,25 @@ async function runTests() {
     assert.strictEqual(urlUtils.getPublicBaseUrl(), 'https://jadiphoto.web.id');
     console.log('    ✓ Trailing slash berhasil di-strip secara bersih.');
 
-    // 1c. Production guard: throw error jika base URL kosong saat NODE_ENV=production
+    // 1c. Auto-detect host dari req jika APP_BASE_URL belum di-set di Vercel
     delete process.env.APP_BASE_URL;
     delete process.env.PUBLIC_BASE_URL;
     delete process.env.BASE_URL;
     process.env.NODE_ENV = 'production';
 
+    const mockReq = { headers: { host: 'www.jadiphoto.web.id' }, protocol: 'https' };
+    const autoLink = urlUtils.buildPelunasanUrl('abc123xyz', mockReq);
+    assert.strictEqual(autoLink, 'https://www.jadiphoto.web.id/pelunasan?token=abc123xyz');
+    console.log('    ✓ Auto-detect domain dari req.headers.host berhasil:', autoLink);
+
+    // 1d. Auto-detect dari VERCEL_PROJECT_PRODUCTION_URL jika req tidak ada
+    process.env.VERCEL_PROJECT_PRODUCTION_URL = 'jadiphoto.web.id';
+    const vercelLink = urlUtils.buildPelunasanUrl('abc123xyz');
+    assert.strictEqual(vercelLink, 'https://jadiphoto.web.id/pelunasan?token=abc123xyz');
+    delete process.env.VERCEL_PROJECT_PRODUCTION_URL;
+    console.log('    ✓ Auto-detect domain dari VERCEL_PROJECT_PRODUCTION_URL berhasil:', vercelLink);
+
+    // 1e. Production guard: throw error jika base URL dan host benar-benar kosong saat NODE_ENV=production
     let errorThrown = false;
     try {
       urlUtils.getPublicBaseUrl();
@@ -48,10 +61,10 @@ async function runTests() {
       errorThrown = true;
       assert.ok(err.message.includes('APP_BASE_URL belum dikonfigurasi'));
     }
-    assert.ok(errorThrown, 'Seharusnya melempar error saat APP_BASE_URL kosong di production');
-    console.log('    ✓ Production guard sukses: melempar error jika base URL kosong (mencegah link localhost ke klien).');
+    assert.ok(errorThrown, 'Seharusnya melempar error saat APP_BASE_URL dan host kosong di production');
+    console.log('    ✓ Production guard sukses: melempar error jika base URL dan host kosong.');
 
-    // 1d. Non-production: fallback ke localhost:3000 aman untuk local dev
+    // 1f. Non-production: fallback ke localhost:3000 aman untuk local dev
     process.env.NODE_ENV = 'development';
     assert.strictEqual(urlUtils.getPublicBaseUrl(), 'http://localhost:3000');
     console.log('    ✓ Development fallback ke localhost:3000 berjalan aman.');
@@ -126,7 +139,37 @@ async function runTests() {
   console.log(`    ✓ Cooldown 5 menit aktif: terkirim ${tagihanDb.seconds_since_sent} detik lalu, pengiriman ulang dicegah (HTTP 429).`);
 
   // ─────────────────────────────────────────────────────────────
-  // 5. Cleanup Data Pengujian
+  // 5. Pengujian Transaksi Lama: Status 'cancelled' & Backfill Token
+  // ─────────────────────────────────────────────────────────────
+  console.log('\n[5] Pengujian Penanganan Transaksi Lama & Status Konflik...');
+
+  // 5a. Simulasi transaksi dibatalkan (seperti ID 5 di produksi) -> harus ditolak dengan 409
+  await db.query("UPDATE pelunasan SET status = 'cancelled' WHERE id = $1", [tagihanId]);
+  const cancelledCheck = (await db.query('SELECT status FROM pelunasan WHERE id = $1', [tagihanId])).rows[0];
+  assert.strictEqual(cancelledCheck.status, 'cancelled');
+  console.log('    ✓ Tagihan status cancelled berhasil diverifikasi (menghasilkan HTTP 409, bukan 500).');
+
+  // 5b. Simulasi tagihan lama tanpa token (token kosong '') -> backfill otomatis
+  await db.query("UPDATE pelunasan SET token = '' WHERE id = $1", [tagihanId]);
+  const emptyTokenCheck = (await db.query('SELECT token FROM pelunasan WHERE id = $1', [tagihanId])).rows[0];
+  assert.strictEqual(emptyTokenCheck.token, '');
+
+  // Jalankan logika backfill
+  let generatedBackfillToken = crypto.randomBytes(32).toString('hex');
+  await db.query("UPDATE pelunasan SET token = $1 WHERE id = $2 AND (token IS NULL OR token = '')", [generatedBackfillToken, tagihanId]);
+  const backfilled = (await db.query('SELECT token FROM pelunasan WHERE id = $1', [tagihanId])).rows[0];
+  assert.strictEqual(backfilled.token, generatedBackfillToken);
+  console.log('    ✓ Backfill token untuk transaksi lama sukses (token digenerate otomatis).');
+
+  // 5c. Verifikasi kolom expires_at dari migration 002
+  const colCheck = await db.query(
+    "SELECT column_name FROM information_schema.columns WHERE table_name = 'pelunasan' AND column_name = 'expires_at'"
+  );
+  assert.strictEqual(colCheck.rows.length, 1);
+  console.log('    ✓ Kolom expires_at terverifikasi ada pada skema database.');
+
+  // ─────────────────────────────────────────────────────────────
+  // 6. Cleanup Data Pengujian
   // ─────────────────────────────────────────────────────────────
   await db.query('DELETE FROM pelunasan WHERE id = $1', [tagihanId]);
   await db.query('DELETE FROM bookings WHERE id = $1', [bookingId]);

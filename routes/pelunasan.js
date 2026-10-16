@@ -42,6 +42,12 @@ const { buildPelunasanUrl } = require('../utils/url');
 // ── Helper: Kirim WhatsApp via Fonnte ───────────────────────────
 function sendWhatsApp(target, message) {
   return new Promise((resolve) => {
+    if (!process.env.FONNTE_TOKEN) {
+      return resolve({
+        status: false,
+        message: 'FONNTE_TOKEN belum dikonfigurasi di environment server. Mohon isi FONNTE_TOKEN di environment variables.'
+      });
+    }
     const body = JSON.stringify({ target, message, countryCode: '62' });
     const options = {
       hostname: 'api.fonnte.com', path: '/send', method: 'POST',
@@ -59,7 +65,7 @@ function sendWhatsApp(target, message) {
         catch (_) { resolve({ status: res.statusCode >= 200 && res.statusCode < 300 }); }
       });
     });
-    req.on('error', () => resolve({ status: false }));
+    req.on('error', (err) => resolve({ status: false, message: err.message }));
     req.write(body);
     req.end();
   });
@@ -312,16 +318,20 @@ router.get('/:id', auth, auth.requirePermission('booking.view'), async (req, res
 router.post('/', auth, auth.requirePermission('tagihan.send'), async (req, res) => {
   const { booking_id, total_tagihan, catatan } = req.body;
 
-  if (!booking_id) return res.status(400).json({ error: 'booking_id wajib diisi' });
+  // 1. Validasi input awal (400)
+  if (!booking_id || isNaN(parseInt(booking_id, 10))) {
+    return res.status(400).json({ error: 'booking_id wajib diisi dan berupa angka' });
+  }
   if (!total_tagihan || isNaN(Number(total_tagihan)) || Number(total_tagihan) <= 0) {
-    return res.status(400).json({ error: 'Total tagihan harus angka positif' });
+    return res.status(400).json({ error: 'Total tagihan harus berupa angka positif' });
   }
 
+  const bId = parseInt(booking_id, 10);
   const totalInt = Math.round(Number(total_tagihan));
 
   let dbClient;
   try {
-    // Ambil data booking + DP terbayar yang sudah disetujui
+    // 2. Ambil data booking + DP terbayar yang sudah disetujui
     const bookRes = await db.query(
       `SELECT b.id, b.client_name, b.client_phone, b.event_date, b.package_name, b.package_price,
               b.status, b.deleted_at, b.version,
@@ -332,13 +342,24 @@ router.post('/', auth, auth.requirePermission('tagihan.send'), async (req, res) 
               ) AS dp_terbayar_aktual
        FROM bookings b
        WHERE b.id = $1`,
-      [parseInt(booking_id, 10)]
+      [bId]
     );
 
-    if (!bookRes.rows[0]) return res.status(404).json({ error: 'Booking tidak ditemukan' });
+    // 404 jika booking tidak ditemukan
+    if (!bookRes.rows[0]) {
+      return res.status(404).json({ error: 'Data booking tidak ditemukan' });
+    }
     const booking = bookRes.rows[0];
 
-    if (booking.deleted_at) return res.status(410).json({ error: 'Booking ini sudah dihapus (soft delete)' });
+    if (booking.deleted_at) {
+      return res.status(404).json({ error: 'Booking ini sudah dihapus (soft delete)' });
+    }
+    if (booking.status === 'cancelled') {
+      return res.status(400).json({ error: 'Booking ini sudah dibatalkan, tagihan tidak dapat dibuat' });
+    }
+    if (booking.status === 'lunas') {
+      return res.status(409).json({ error: 'Booking ini sudah berstatus lunas' });
+    }
 
     // Jika staff mengubah total_tagihan berbeda dari package_price, cek approval
     const pkgPrice = booking.package_price != null ? Math.round(Number(booking.package_price)) : null;
@@ -367,8 +388,8 @@ router.post('/', auth, auth.requirePermission('tagihan.send'), async (req, res) 
     const sisaInt = totalInt - dpInt;
 
     if (sisaInt <= 0) {
-      return res.status(422).json({
-        error: `Sisa kekurangan (Rp${fmtRp(sisaInt)}) tidak valid. DP terbayar melebihi atau sama dengan total tagihan.`,
+      return res.status(400).json({
+        error: `Sisa kekurangan (Rp ${fmtRp(sisaInt)}) tidak valid. DP terbayar (Rp ${fmtRp(dpInt)}) sudah memenuhi atau melebihi total tagihan (Rp ${fmtRp(totalInt)}).`,
       });
     }
 
@@ -390,14 +411,14 @@ router.post('/', auth, auth.requirePermission('tagihan.send'), async (req, res) 
     if (existingRows.length > 0) {
       // Gunakan token yang sudah ada agar link tetap konsisten dan valid
       const existing = existingRows[0];
-      token = existing.token;
+      token = existing.token || crypto.randomBytes(32).toString('hex');
 
       const { rows: updatedRows } = await dbClient.query(
         `UPDATE pelunasan 
-         SET total_tagihan = $1, dp_terbayar = $2, sisa_kekurangan = $3, catatan = $4
-         WHERE id = $5
+         SET total_tagihan = $1, dp_terbayar = $2, sisa_kekurangan = $3, catatan = $4, token = $5
+         WHERE id = $6
          RETURNING *`,
-        [totalInt, dpInt, sisaInt, catatan?.trim() || null, existing.id]
+        [totalInt, dpInt, sisaInt, catatan?.trim() || null, token, existing.id]
       );
       tagihan = updatedRows[0];
     } else {
@@ -432,7 +453,7 @@ router.post('/', auth, auth.requirePermission('tagihan.send'), async (req, res) 
     });
 
     await dbClient.query('COMMIT');
-    const linkPelunasan = buildPelunasanUrl(token);
+    const linkPelunasan = buildPelunasanUrl(token, req);
 
     res.status(201).json({
       message: 'Tagihan pelunasan berhasil dibuat',
@@ -452,8 +473,14 @@ router.post('/', auth, auth.requirePermission('tagihan.send'), async (req, res) 
     });
   } catch (err) {
     if (dbClient) await dbClient.query('ROLLBACK');
-    console.error('[pelunasan] POST / error:', err);
-    res.status(500).json({ error: 'Database error' });
+    console.error('[pelunasan] ERROR on POST /api/pelunasan:', {
+      endpoint: 'POST /api/pelunasan',
+      booking_id,
+      error: err.message,
+      stack: err.stack,
+      body: req.body
+    });
+    res.status(500).json({ error: 'Terjadi kesalahan sistem saat membuat tagihan pelunasan' });
   } finally {
     if (dbClient) dbClient.release();
   }
@@ -466,7 +493,7 @@ router.post('/', auth, auth.requirePermission('tagihan.send'), async (req, res) 
  */
 router.post('/:id/send-wa', auth, auth.requirePermission('tagihan.send'), async (req, res) => {
   const id = parseInt(req.params.id, 10);
-  if (isNaN(id)) return res.status(400).json({ error: 'ID tidak valid' });
+  if (isNaN(id)) return res.status(400).json({ error: 'ID tagihan tidak valid' });
 
   try {
     const { rows } = await db.query(
@@ -486,29 +513,39 @@ router.post('/:id/send-wa', auth, auth.requirePermission('tagihan.send'), async 
        WHERE p.id = $1`,
       [id]
     );
-    if (!rows[0]) return res.status(404).json({ error: 'Tagihan tidak ditemukan' });
+
+    // 404 jika tagihan tidak ditemukan
+    if (!rows[0]) return res.status(404).json({ error: 'Tagihan pelunasan tidak ditemukan' });
     const tagihan = rows[0];
 
+    // Status conflict check (409)
     if (tagihan.status === 'lunas') {
       return res.status(409).json({ error: 'Tagihan sudah lunas, tidak perlu kirim ulang.' });
     }
     if (tagihan.status === 'cancelled') {
-      return res.status(409).json({ error: 'Tagihan sudah dibatalkan.' });
+      return res.status(409).json({ error: 'Tagihan sudah dibatalkan, pesan tidak dapat dikirim.' });
     }
     if (!tagihan.client_phone) {
-      return res.status(422).json({ error: 'Nomor WhatsApp klien tidak tersedia.' });
+      return res.status(400).json({ error: 'Nomor WhatsApp klien tidak tersedia pada data booking.' });
     }
 
     // Cooldown 5 menit (300 detik) untuk mencegah pesan terkirim ganda (idempotency guard)
     const COOLDOWN_SECONDS = 300;
     if (tagihan.seconds_since_sent !== null && tagihan.seconds_since_sent !== undefined && tagihan.seconds_since_sent < COOLDOWN_SECONDS) {
       const sisaMenit = Math.ceil((COOLDOWN_SECONDS - tagihan.seconds_since_sent) / 60);
-      return res.status(429).json({
+      return res.status(409).json({
         error: `Pesan tagihan baru saja dikirim ke klien. Mohon tunggu ${sisaMenit} menit sebelum mengirim ulang untuk mencegah pesan ganda.`
       });
     }
 
-    const linkPelunasan = buildPelunasanUrl(tagihan.token);
+    // Fallback/backfill token untuk data transaksi lama jika token NULL
+    let token = tagihan.token;
+    if (!token) {
+      token = crypto.randomBytes(32).toString('hex');
+      await db.query('UPDATE pelunasan SET token = $1 WHERE id = $2', [token, id]);
+    }
+
+    const linkPelunasan = buildPelunasanUrl(token, req);
     const packageName = tagihan.resolved_package_name || 'Layanan Fotografi';
     const catatan_section = tagihan.catatan ? `\n📌 *Catatan:* ${tagihan.catatan}\n` : '';
 
@@ -554,11 +591,13 @@ router.post('/:id/send-wa', auth, auth.requirePermission('tagihan.send'), async 
       link_pelunasan: linkPelunasan,
     });
   } catch (err) {
-    console.error('[pelunasan] POST /:id/send-wa error:', err);
-    if (err.message && err.message.includes('APP_BASE_URL')) {
-      return res.status(500).json({ error: err.message });
-    }
-    res.status(500).json({ error: err.message || 'Database error' });
+    console.error('[pelunasan] ERROR on POST /api/pelunasan/:id/send-wa:', {
+      endpoint: `POST /api/pelunasan/${id}/send-wa`,
+      id,
+      error: err.message,
+      stack: err.stack
+    });
+    res.status(500).json({ error: 'Terjadi kesalahan sistem saat memproses pengiriman WhatsApp' });
   }
 });
 
@@ -701,7 +740,7 @@ router.patch('/:id/verify', auth, auth.requirePermission('payment.verify'), asyn
 
       // Notif WA alasan penolakan + link upload ulang
       if (tagihan.client_phone) {
-        const linkPelunasan = buildPelunasanUrl(tagihan.token);
+        const linkPelunasan = buildPelunasanUrl(tagihan.token, req);
         let msg = await getWaTemplate('pelunasan_rejected', {
           client_name: tagihan.client_name,
           reject_reason: reason.trim(),

@@ -70,6 +70,7 @@ async function migrateUp() {
     await client.query('BEGIN');
     await runSqlFile(client, path.join(__dirname, '../migrations/001_rbac_and_approvals.sql'));
     await seedOwnerAndBackfill(client);
+    await runSqlFile(client, path.join(__dirname, '../migrations/002_pelunasan_enhancements.sql'));
     await client.query('COMMIT');
     console.log('[migrate] Migrasi UP berhasil!');
   } catch (err) {
@@ -86,6 +87,7 @@ async function migrateDown() {
   try {
     console.log('[migrate] Menjalankan migrasi DOWN (Rollback)...');
     await client.query('BEGIN');
+    await runSqlFile(client, path.join(__dirname, '../migrations/002_pelunasan_enhancements_down.sql'));
     await runSqlFile(client, path.join(__dirname, '../migrations/001_rbac_and_approvals_down.sql'));
     await client.query('COMMIT');
     console.log('[migrate] Migrasi DOWN berhasil!');

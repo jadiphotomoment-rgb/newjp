@@ -780,9 +780,21 @@
           })
         });
 
-        const data = await res.json();
+        let data = {};
+        try {
+          data = await res.json();
+        } catch (_) {}
+
         if (!res.ok) {
-          throw new Error(data.error || 'Gagal membuat tagihan');
+          throw new Error(data.error || `Gagal membuat tagihan (${res.status}: ${res.statusText || 'Server Error'})`);
+        }
+
+        if (res.status === 202 && data.status === 'pending_approval') {
+          showToast(data.message || 'Perubahan nilai tagihan diajukan ke Owner untuk approval.', 'info');
+          this.closeTagihModal();
+          if (typeof window.openPanel === 'function') window.openPanel(bookingId);
+          if (typeof window.loadBookings === 'function') window.loadBookings();
+          return;
         }
 
         const tagihan = data.tagihan;
@@ -796,14 +808,18 @@
               method: 'POST',
               headers: getHeaders()
             });
-            const waData = await waRes.json();
+            let waData = {};
+            try {
+              waData = await waRes.json();
+            } catch (_) {}
+
             if (!waRes.ok) {
-              showToast(waData.error || 'Tagihan tersimpan, namun WA gagal terkirim.', 'warning');
+              showToast(waData.error || `Tagihan tersimpan, namun WA gagal terkirim (Status ${waRes.status}).`, 'warning');
             } else {
               showToast('Pesan WhatsApp tagihan berhasil dikirim ke klien!', 'success');
             }
-          } catch (_) {
-            showToast('Tagihan tersimpan, namun koneksi gateway WA bermasalah.', 'info');
+          } catch (waErr) {
+            showToast(waErr.message || 'Tagihan tersimpan, namun koneksi gateway WA bermasalah.', 'warning');
           }
         }
 
@@ -817,7 +833,7 @@
           window.loadBookings();
         }
       } catch (err) {
-        showToast(err.message || 'Terjadi kesalahan sistem', 'error');
+        showToast(err.message || 'Terjadi kesalahan sistem saat membuat tagihan', 'error');
       } finally {
         this._isSubmittingTagihan = false;
         btn.disabled = false;
@@ -952,8 +968,9 @@
           method: 'POST',
           headers: getHeaders()
         });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Gagal mengirim WA');
+        let data = {};
+        try { data = await res.json(); } catch (_) {}
+        if (!res.ok) throw new Error(data.error || `Gagal mengirim WA (HTTP ${res.status})`);
         showToast('Pesan tagihan berhasil dikirim ke WhatsApp klien!', 'success');
       } catch (err) {
         showToast(err.message || 'Gagal menghubungi WhatsApp gateway', 'error');

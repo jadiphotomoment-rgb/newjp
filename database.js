@@ -323,12 +323,20 @@ const db = {
           created_at  TIMESTAMP DEFAULT now()
         );
 
-        -- Indexes pelunasan
         CREATE INDEX IF NOT EXISTS idx_pelunasan_booking  ON pelunasan(booking_id);
         CREATE INDEX IF NOT EXISTS idx_pelunasan_token    ON pelunasan(token);
         CREATE INDEX IF NOT EXISTS idx_pelunasan_status   ON pelunasan(status);
+        CREATE INDEX IF NOT EXISTS idx_pelunasan_sent_at  ON pelunasan(sent_at);
         CREATE INDEX IF NOT EXISTS idx_bookings_deleted   ON bookings(deleted_at);
         CREATE INDEX IF NOT EXISTS idx_bookings_sumber    ON bookings(sumber_informasi);
+
+        DO $$
+        BEGIN
+          IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='pelunasan' AND column_name='expires_at') THEN
+            ALTER TABLE pelunasan ADD COLUMN expires_at TIMESTAMP NULL;
+          END IF;
+        END
+        $$;
       `);
 
       // Seed payment_settings default row jika belum ada

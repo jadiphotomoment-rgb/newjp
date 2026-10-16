@@ -149,6 +149,21 @@
       color: var(--text-1); cursor: pointer; transition: all 0.2s; white-space: nowrap;
     }
     .btn-copy-nominal:hover { background: var(--purple); color: #fff; border-color: var(--purple); }
+    .btn-download-qris {
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      background: var(--bg-2); border: 1.5px solid var(--border); border-radius: 9999px;
+      padding: 8px 18px; font-size: 0.82rem; font-weight: 600; color: var(--text-0);
+      cursor: pointer; transition: all 0.2s ease; text-decoration: none;
+      margin: var(--sp-2) auto var(--sp-1);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+    .btn-download-qris:hover {
+      background: var(--purple); color: #fff; border-color: var(--purple);
+      transform: translateY(-1px); box-shadow: 0 4px 12px rgba(124,58,237,0.25);
+    }
+    .btn-download-qris:active {
+      transform: translateY(0);
+    }
 
     /* Bank section */
     .bank-list { display: flex; flex-direction: column; gap: var(--sp-3); }
@@ -407,6 +422,12 @@
             <div class="qris-frame">
               <img id="qris-img" src="" alt="QRIS Jadiphoto.Moment">
             </div>
+            <div>
+              <a id="btn-download-qris" href="/img/Qris Jadiphoto.webp" download="QRIS_Jadiphoto.webp" class="btn-download-qris" onclick="downloadQrisImage(event)">
+                <span aria-hidden="true">⬇️</span>
+                <span>Download QRIS</span>
+              </a>
+            </div>
           </div>
           <!-- Nominal hint yang jelas dan bisa disalin -->
           <div class="qris-nominal-hint">
@@ -649,9 +670,46 @@
   function renderQris(qrisUrl, sisa) {
     var finalUrl = qrisUrl || '/img/Qris Jadiphoto.webp';
     document.getElementById('qris-img').src = finalUrl;
+    var dlBtn = document.getElementById('btn-download-qris');
+    if (dlBtn) dlBtn.href = finalUrl;
     var formatted = 'Rp ' + sisa.toLocaleString('id-ID');
     document.getElementById('qris-nominal').textContent = formatted;
     document.getElementById('qris-nominal-plain').textContent = sisa.toLocaleString('id-ID');
+  }
+
+  async function downloadQrisImage(e) {
+    if (e && e.preventDefault) e.preventDefault();
+    var imgEl = document.getElementById('qris-img');
+    var src = imgEl && imgEl.src ? imgEl.src : '/img/Qris Jadiphoto.webp';
+    var btn = document.getElementById('btn-download-qris');
+    var originalHtml = btn ? btn.innerHTML : '';
+    if (btn) btn.innerHTML = '<span aria-hidden="true">⏳</span><span>Mengunduh...</span>';
+
+    try {
+      var res = await fetch(src, { mode: 'cors' });
+      if (!res.ok) throw new Error('Fetch failed');
+      var blob = await res.blob();
+      var blobUrl = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = blobUrl;
+      var ext = src.includes('.png') ? 'png' : (src.includes('.jpg') || src.includes('.jpeg') ? 'jpg' : 'webp');
+      a.download = 'QRIS_Jadiphoto.' + ext;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(function() { URL.revokeObjectURL(blobUrl); }, 1000);
+      if (btn) btn.innerHTML = '<span aria-hidden="true">✅</span><span>Tersimpan!</span>';
+      setTimeout(function() { if (btn) btn.innerHTML = originalHtml; }, 2000);
+    } catch (_) {
+      var a = document.createElement('a');
+      a.href = src;
+      a.download = 'QRIS_Jadiphoto.png';
+      a.target = '_blank';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      if (btn) btn.innerHTML = originalHtml;
+    }
   }
 
   function renderBank(accounts) {
