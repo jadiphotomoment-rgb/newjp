@@ -8,7 +8,7 @@
     "dev": "nodemon server.js",
     "build:css": "tailwindcss -i ./public/css/input.css -o ./public/css/style.css",
     "dev:css": "tailwindcss -i ./public/css/input.css -o ./public/css/style.css --watch",
-    "test": "node tests/phase1_migration_permission.test.js && node tests/phase2_booking_approval.test.js && node tests/phase2_auth.test.js && node tests/phase3_audit.test.js && node tests/phase4_approval.test.js && node tests/phase5_rbac.test.js && node tests/phase7_performance_e2e.test.js && node tests/pelunasan_wa.test.js",
+    "test": "node tests/phase1_migration_permission.test.js && node tests/phase2_booking_approval.test.js && node tests/phase3_endpoints_monitoring.test.js && node tests/phase2_auth.test.js && node tests/phase3_audit.test.js && node tests/phase4_approval.test.js && node tests/phase5_rbac.test.js && node tests/phase7_performance_e2e.test.js && node tests/pelunasan_wa.test.js",
     "owner:create": "node scripts/create-owner.js",
     "db:migrate": "node scripts/migrate.js"
   },

@@ -6,7 +6,9 @@ const db       = require('../database');
 const auth     = require('../middleware/auth');
 const audit    = require('../services/audit');
 const approvalSvc = require('../services/approval');
+const { approveBooking, rejectBooking } = require('../services/bookingApproval');
 const https    = require('https');
+
 const { getWaTemplate } = require('../utils/template');
 const { buildPublicUrl } = require('../utils/url');
 const { google }           = require('googleapis');
@@ -686,7 +688,115 @@ async function handleEditBooking(req, res) {
 router.put('/admin/:id', auth, auth.requirePermission('booking.update'), handleEditBooking);
 router.put('/:id', auth, auth.requirePermission('booking.update'), handleEditBooking);
 
+// ── POST /api/bookings/:id/approve — Approve DP langsung oleh Staff/Owner ────────
+router.post('/:id/approve', auth, auth.requirePermission('booking.approve'), async (req, res) => {
+  try {
+    const { version, nominal_diterima, alasan_selisih } = req.body || {};
+    const result = await approveBooking({
+      bookingId: req.params.id,
+      expectedVersion: version !== undefined && version !== null ? parseInt(version, 10) : undefined,
+      nominalDiterima: nominal_diterima,
+      alasanSelisih: alasan_selisih,
+      actor: req.user,
+      req
+    });
+    res.json(result);
+  } catch (err) {
+    const status = err.status || 500;
+    res.status(status).json({
+      error: err.message || 'Terjadi kesalahan pada server',
+      code: err.code || (status === 409 ? 'CONFLICT' : status === 403 ? 'FORBIDDEN' : status === 404 ? 'NOT_FOUND' : 'SERVER_ERROR')
+    });
+  }
+});
+
+// ── POST /api/bookings/:id/reject — Reject DP langsung oleh Staff/Owner ──────────
+router.post('/:id/reject', auth, auth.requirePermission('booking.approve'), async (req, res) => {
+  try {
+    const { version, alasan } = req.body || {};
+    if (!alasan || !alasan.trim()) {
+      return res.status(400).json({ error: 'Alasan penolakan DP wajib diisi' });
+    }
+    const result = await rejectBooking({
+      bookingId: req.params.id,
+      expectedVersion: version !== undefined && version !== null ? parseInt(version, 10) : undefined,
+      alasan: alasan.trim(),
+      actor: req.user,
+      req
+    });
+    res.json(result);
+  } catch (err) {
+    const status = err.status || 500;
+    res.status(status).json({
+      error: err.message || 'Terjadi kesalahan pada server',
+      code: err.code || (status === 409 ? 'CONFLICT' : status === 403 ? 'FORBIDDEN' : status === 404 ? 'NOT_FOUND' : 'SERVER_ERROR')
+    });
+  }
+});
+
+// ── POST /api/bookings/:id/cancel-approval — Pembatalan approve (Owner Only) ─────
+router.post('/:id/cancel-approval', auth, async (req, res) => {
+  if (req.user.role !== 'owner' && req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'Akses ditolak: Hanya Owner yang dapat membatalkan persetujuan booking' });
+  }
+
+  const { alasan } = req.body || {};
+  const client = await db.getClient();
+  try {
+    await client.query('BEGIN');
+    const bRes = await client.query(
+      `SELECT id, status, version, dp_amount FROM bookings WHERE id = $1 FOR UPDATE`,
+      [req.params.id]
+    );
+    if (!bRes.rows[0]) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Booking tidak ditemukan' });
+    }
+    const booking = bRes.rows[0];
+    if (booking.status !== 'confirmed') {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: `Booking bukan dalam status confirmed (status saat ini: '${booking.status}')` });
+    }
+
+    await client.query(
+      `UPDATE bookings SET status = 'dp_review', updated_by = $1, version = version + 1 WHERE id = $2`,
+      [req.user.id, booking.id]
+    );
+
+    await client.query(
+      `UPDATE payments SET status = 'pending', updated_by = $1, version = version + 1 WHERE booking_id = $2 AND payment_type = 'dp'`,
+      [req.user.id, booking.id]
+    );
+
+    await client.query(
+      `UPDATE financial_entries SET status = 'batal', catatan = catatan || ' (Dibatalkan oleh Owner)' WHERE sumber_tipe = 'booking_dp' AND sumber_id = $1 AND status = 'aktif'`,
+      [booking.id]
+    );
+
+    await audit.record(client, {
+      req,
+      aktor_id: req.user.id,
+      aktor_role: req.user.role,
+      aksi: 'booking.cancel_approval',
+      entitas: 'booking',
+      entitas_id: booking.id,
+      data_sebelum: { status: 'confirmed' },
+      data_setelah: { status: 'dp_review', alasan: alasan || null }
+    });
+
+    await client.query('COMMIT');
+    res.json({ success: true, message: 'Persetujuan booking berhasil dibatalkan oleh Owner' });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error('[bookings] cancel-approval error:', err);
+    res.status(500).json({ error: 'Database error' });
+  } finally {
+    client.release();
+  }
+});
+
 // PATCH /api/admin/bookings/:id/approve-dp — approve DP
+
 router.patch('/admin/:id/approve-dp', auth, auth.requirePermission('payment.verify'), async (req, res) => {
   let client;
   try {
