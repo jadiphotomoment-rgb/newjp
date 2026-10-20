@@ -1,4 +1,17 @@
-# PROGRESS - Akun Staff, RBAC & Approval Tracking
+# PROGRESS - Staff Approve Booking Langsung
+
+## Status Fitur (Staff Approve Booking Langsung)
+- [x] Fase 0: Pemetaan (MAP.md terverifikasi dari kode) - Selesai
+- [ ] Fase 1: Fondasi Permission & Migrasi (Peta role, CHECK rule, migrasi keuangan & outbox) - Siap Mulai
+- [ ] Fase 2: Service Approve/Reject (TDD, transaksi atomik, lock row, outbox WA)
+- [ ] Fase 3: Endpoint & Monitoring Owner (POST /api/bookings/:id/approve & reject, daily summary)
+- [ ] Fase 4: Frontend (UI button, dialog konfirmasi, anti double-submit, reload version)
+- [ ] Fase 5: Review Keamanan & Rilis (Audit diff, panduan rilis, checklist)
+
+---
+
+# PROGRESS SEBELUMNYA - Akun Staff, RBAC & Approval Tracking
+
 
 ## Ringkasan Keputusan Inti (crm.md)
 1. Peran: 2 role (`owner`, `staff`). RBAC via permission keys, bukan hardcode role.
