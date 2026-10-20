@@ -3,7 +3,7 @@
 ## Status Fitur (CRUD Admin Owner)
 - [x] Tahap 0: Persiapan & Klarifikasi - Selesai
 - [x] Fitur D: Hardening Hak Akses & Route Guard (Owner-only 403 di server) - Selesai
-- [ ] Fitur C: CRUD User via Admin (/admin/users.html)
+- [x] Fitur C: CRUD User via Admin (/admin/users.html) - Selesai
 - [ ] Fitur A: CRUD Transaksi Keuangan (/admin/finance.html)
 - [ ] Fitur B: CRUD Booking & Edit "Jumlah Dibayar" (/admin/bookings.html)
 - [ ] Final: Checklist Akhir & Verifikasi

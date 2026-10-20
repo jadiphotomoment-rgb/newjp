@@ -118,8 +118,8 @@ router.put('/:id', async (req, res) => {
   const userId = parseInt(req.params.id, 10);
   if (isNaN(userId)) return res.status(400).json({ error: 'ID user tidak valid' });
 
-  const { name, nama, role, is_active } = req.body;
-  const userName = (nama || name || '').trim();
+  const { name, nama, email, role, is_active } = req.body;
+  const userName = (nama || name) !== undefined ? (nama || name || '').trim() : undefined;
 
   let dbClient;
   try {
@@ -127,26 +127,69 @@ router.put('/:id', async (req, res) => {
     if (!currentRes.rows[0]) return res.status(404).json({ error: 'User tidak ditemukan' });
     const current = currentRes.rows[0];
 
-    // Mencegah owner menonaktifkan dirinya sendiri
+    // Mencegah owner menonaktifkan akun sendiri
     if (req.user.id === userId && is_active === false) {
       return res.status(400).json({ error: 'Tidak dapat menonaktifkan akun sendiri' });
     }
 
+    // Mencegah owner mengubah role dirinya sendiri menjadi non-owner
+    if (req.user.id === userId && current.role === 'owner' && role !== undefined && role !== 'owner') {
+      return res.status(400).json({ error: 'Tidak dapat mengubah peran akun sendiri dari owner' });
+    }
+
+    // Validasi role jika dikirim
+    const validRoles = ['owner', 'staff'];
+    if (role !== undefined && !validRoles.includes(role)) {
+      return res.status(400).json({ error: 'Role tidak valid (owner atau staff)' });
+    }
+
     const updatedRole = role !== undefined ? role : current.role;
     const updatedActive = is_active !== undefined ? Boolean(is_active) : current.is_active;
+
+    // Proteksi: sistem tidak boleh kehilangan owner aktif terakhir
+    if (current.role === 'owner' && (updatedActive === false || updatedRole !== 'owner')) {
+      const ownerCountRes = await db.query(
+        "SELECT COUNT(*) AS total FROM users WHERE role = 'owner' AND is_active = true AND id != $1",
+        [userId]
+      );
+      if (parseInt(ownerCountRes.rows[0].total, 10) === 0) {
+        return res.status(400).json({
+          error: 'Tidak dapat menonaktifkan atau mengubah peran owner terakhir. Sistem wajib memiliki minimal satu owner aktif.'
+        });
+      }
+    }
+
+    // Validasi email unik jika diubah
+    let updatedEmail = current.email;
+    if (email !== undefined) {
+      const cleanEmail = email.trim().toLowerCase();
+      if (!cleanEmail || !cleanEmail.includes('@')) {
+        return res.status(400).json({ error: 'Format email tidak valid' });
+      }
+      const dupRes = await db.query(
+        'SELECT id FROM users WHERE lower(email) = $1 AND id != $2',
+        [cleanEmail, userId]
+      );
+      if (dupRes.rows.length > 0) {
+        return res.status(409).json({ error: 'Email sudah terdaftar untuk pengguna lain' });
+      }
+      updatedEmail = cleanEmail;
+    }
 
     dbClient = await db.getClient();
     await dbClient.query('BEGIN');
 
     const updateRes = await dbClient.query(
       `UPDATE users
-       SET nama = COALESCE(NULLIF($1, ''), nama),
-           role = $2,
-           is_active = $3
-       WHERE id = $4
+       SET nama = COALESCE($1, nama),
+           email = $2,
+           role = $3,
+           is_active = $4
+       WHERE id = $5
        RETURNING id, nama, nama AS name, email, role, is_active, must_change_password`,
       [
-        userName || null,
+        userName !== undefined ? (userName || current.nama) : null,
+        updatedEmail,
         updatedRole,
         updatedActive,
         userId
@@ -174,11 +217,13 @@ router.put('/:id', async (req, res) => {
       entitas_id: userId,
       data_sebelum: {
         nama: current.nama,
+        email: current.email,
         role: current.role,
         is_active: current.is_active
       },
       data_setelah: {
         nama: updated.nama,
+        email: updated.email,
         role: updated.role,
         is_active: updated.is_active
       }
@@ -189,6 +234,70 @@ router.put('/:id', async (req, res) => {
   } catch (err) {
     if (dbClient) await dbClient.query('ROLLBACK');
     console.error('[users] PUT error:', err);
+    res.status(500).json({ error: 'Database error' });
+  } finally {
+    if (dbClient) dbClient.release();
+  }
+});
+
+// DELETE /api/users/:id — Nonaktifkan pengguna (soft deactivate)
+router.delete('/:id', async (req, res) => {
+  const userId = parseInt(req.params.id, 10);
+  if (isNaN(userId)) return res.status(400).json({ error: 'ID user tidak valid' });
+
+  if (req.user.id === userId) {
+    return res.status(400).json({ error: 'Tidak dapat menonaktifkan akun sendiri' });
+  }
+
+  let dbClient;
+  try {
+    const currentRes = await db.query('SELECT * FROM users WHERE id = $1', [userId]);
+    if (!currentRes.rows[0]) return res.status(404).json({ error: 'User tidak ditemukan' });
+    const current = currentRes.rows[0];
+
+    if (!current.is_active) {
+      return res.status(400).json({ error: 'Akun user sudah dalam status nonaktif' });
+    }
+
+    if (current.role === 'owner') {
+      const ownerCountRes = await db.query(
+        "SELECT COUNT(*) AS total FROM users WHERE role = 'owner' AND is_active = true AND id != $1",
+        [userId]
+      );
+      if (parseInt(ownerCountRes.rows[0].total, 10) === 0) {
+        return res.status(400).json({
+          error: 'Tidak dapat menonaktifkan owner terakhir. Sistem wajib memiliki minimal satu owner aktif.'
+        });
+      }
+    }
+
+    dbClient = await db.getClient();
+    await dbClient.query('BEGIN');
+
+    await dbClient.query(
+      `UPDATE users SET is_active = false, token_version = token_version + 1 WHERE id = $1`,
+      [userId]
+    );
+    await dbClient.query(
+      `UPDATE refresh_tokens SET revoked_at = now() WHERE user_id = $1 AND revoked_at IS NULL`,
+      [userId]
+    );
+    invalidateUserState(userId);
+
+    await audit.record(dbClient, {
+      req,
+      aksi: 'user.deactivate',
+      entitas: 'user',
+      entitas_id: userId,
+      data_sebelum: { is_active: true },
+      data_setelah: { is_active: false, sessions_revoked: true }
+    });
+
+    await dbClient.query('COMMIT');
+    res.json({ message: 'User berhasil dinonaktifkan', user_id: userId, is_active: false });
+  } catch (err) {
+    if (dbClient) await dbClient.query('ROLLBACK');
+    console.error('[users] DELETE error:', err);
     res.status(500).json({ error: 'Database error' });
   } finally {
     if (dbClient) dbClient.release();
