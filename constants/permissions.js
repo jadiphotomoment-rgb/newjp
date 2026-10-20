@@ -5,12 +5,15 @@
  */
 const ROLE_PERMISSIONS = {
   owner: [
+    '*',
     'dashboard.view',
     'dashboard.view_revenue',
     'booking.view',
     'booking.create',
     'booking.update',
     'booking.view_amount',
+    'booking.approve',
+    'booking.approve_without_dp',
     'booking.cancel',
     'booking.delete',
     'payment.verify',
@@ -33,6 +36,7 @@ const ROLE_PERMISSIONS = {
     'booking.create',
     'booking.update',
     'booking.view_amount',
+    'booking.approve',          // Staff boleh approve & reject booking langsung tanpa persetujuan Admin
     'booking.cancel',          // Jika ada DP: dialihkan ke approval
     'booking.delete',          // Dialihkan ke approval
     'payment.verify',
@@ -49,11 +53,15 @@ ROLE_PERMISSIONS.admin = ROLE_PERMISSIONS.owner;
 
 /**
  * Cek apakah sebuah role memiliki permission tertentu.
+ * Owner memiliki semua permission implisit.
  * Mendukung wildcard (misal 'finance.*' mencakup 'finance.view').
  */
 function hasPermission(role, requiredPermission) {
   if (!role) return false;
-  const userPerms = ROLE_PERMISSIONS[role.toLowerCase()] || [];
+  const roleLower = role.toLowerCase();
+  if (roleLower === 'owner' || roleLower === 'admin') return true;
+
+  const userPerms = ROLE_PERMISSIONS[roleLower] || [];
 
   return userPerms.some(perm => {
     if (perm === '*' || perm === requiredPermission) return true;
@@ -75,3 +83,4 @@ module.exports = {
   hasPermission,
   getPermissionsForRole
 };
+
