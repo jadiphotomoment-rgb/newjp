@@ -460,9 +460,12 @@ async function handleAdminDetail(req, res) {
   try {
     const { rows } = await db.query(
       `SELECT b.*, bc.name AS category_name, bc.slug AS category_slug,
-              bc.color, bc.dp_type, bc.dp_value, bc.fields AS category_fields
+              bc.color, bc.dp_type, bc.dp_value, bc.fields AS category_fields,
+              COALESCE(u_up.nama, a_up.name) AS updated_by_name
        FROM bookings b
        JOIN booking_categories bc ON b.category_id = bc.id
+       LEFT JOIN users u_up ON b.updated_by = u_up.id
+       LEFT JOIN admins a_up ON b.updated_by = a_up.id
        WHERE b.id = $1`,
       [req.params.id]
     );
@@ -471,12 +474,14 @@ async function handleAdminDetail(req, res) {
     const booking = rows[0];
     const [payRes, attachRes, pelRes] = await Promise.all([
       db.query(
-        `SELECT p.*, a.name AS approved_by_name
+        `SELECT p.*, COALESCE(u.nama, a.name) AS approved_by_name
          FROM payments p
+         LEFT JOIN users u ON p.approved_by = u.id
          LEFT JOIN admins a ON p.approved_by = a.id
          WHERE p.booking_id = $1 ORDER BY p.created_at DESC`,
         [booking.id]
       ),
+
       db.query(
         `SELECT id, file_url, blob_key, file_name, file_type, mime_type, file_size, created_at
          FROM attachments
@@ -740,13 +745,17 @@ router.post('/:id/cancel-approval', auth, async (req, res) => {
     return res.status(403).json({ error: 'Akses ditolak: Hanya Owner yang dapat membatalkan persetujuan booking' });
   }
 
+  const bId = parseInt(req.params.id, 10);
+  if (isNaN(bId) || bId <= 0) {
+    return res.status(400).json({ error: 'ID Booking tidak valid' });
+  }
   const { alasan } = req.body || {};
   const client = await db.getClient();
   try {
     await client.query('BEGIN');
     const bRes = await client.query(
       `SELECT id, status, version, dp_amount FROM bookings WHERE id = $1 FOR UPDATE`,
-      [req.params.id]
+      [bId]
     );
     if (!bRes.rows[0]) {
       await client.query('ROLLBACK');
@@ -795,7 +804,73 @@ router.post('/:id/cancel-approval', auth, async (req, res) => {
   }
 });
 
-// PATCH /api/admin/bookings/:id/approve-dp — approve DP
+// ── GET /api/bookings/admin/daily-approvals — Ringkasan approve harian untuk Owner ─
+router.get('/admin/daily-approvals', auth, async (req, res) => {
+  if (req.user.role !== 'owner' && req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'Akses ditolak: Hanya Owner yang dapat melihat ringkasan approve' });
+  }
+  const { date, cursor_id, limit: limitStr } = req.query;
+  const targetDate = date || new Date().toISOString().slice(0, 10);
+  const limit = Math.min(parseInt(limitStr, 10) || 50, 100);
+  const cursorId = cursor_id ? parseInt(cursor_id, 10) : null;
+  try {
+    const params = [targetDate];
+    let cursorClause = '';
+    if (cursorId && !isNaN(cursorId)) {
+      cursorClause = ' AND al.id < $2';
+      params.push(cursorId);
+    }
+    params.push(limit + 1);
+    const { rows } = await db.query(`
+      SELECT al.id, al.actor_id, al.actor_role, al.entitas_id AS booking_id,
+             al.sesudah, al.created_at,
+             COALESCE(u.nama, a.name) AS aktor_name,
+             b.client_name, b.dp_amount,
+             (al.sesudah->>'nominal_diterima')::NUMERIC AS nominal_diterima,
+             (al.sesudah->>'anomali')::BOOLEAN AS anomali,
+             (al.sesudah->>'selisih')::NUMERIC AS selisih
+      FROM audit_log al
+      LEFT JOIN users u ON al.actor_id = u.id AND al.actor_role = 'staff'
+      LEFT JOIN admins a ON al.actor_id = a.id AND al.actor_role = 'owner'
+      LEFT JOIN bookings b ON al.entitas_id = b.id
+      WHERE al.aksi = 'booking.approve'
+        AND al.created_at::date = $1 AT TIME ZONE 'Asia/Jakarta'${cursorClause}
+      ORDER BY al.id DESC
+      LIMIT $${params.length}
+    `, params);
+
+    const hasMore = rows.length > limit;
+    const items = hasMore ? rows.slice(0, limit) : rows;
+    const nextCursor = hasMore ? items[items.length - 1].id : null;
+
+    const totalDP = items.reduce((s, r) => s + Number(r.nominal_diterima || 0), 0);
+    const anomalyCount = items.filter(r => r.anomali).length;
+
+    res.json({
+      date: targetDate,
+      total: items.length,
+      total_dp: totalDP,
+      anomaly_count: anomalyCount,
+      items: items.map(r => ({
+        id: r.id,
+        booking_id: r.booking_id,
+        client_name: r.client_name,
+        aktor_name: r.aktor_name,
+        aktor_role: r.aktor_role,
+        nominal_diterima: Number(r.nominal_diterima || 0),
+        selisih: Number(r.selisih || 0),
+        anomali: !!r.anomali,
+        created_at: r.created_at
+      })),
+      next_cursor: nextCursor
+    });
+  } catch (err) {
+    console.error('[bookings] daily-approvals error:', err);
+    res.status(500).json({ error: 'Database error' });
+  }
+});
+
+// PATCH /api/admin/bookings/:id/approve-dp — approve DP (legacy)
 
 router.patch('/admin/:id/approve-dp', auth, auth.requirePermission('payment.verify'), async (req, res) => {
   let client;
@@ -1253,6 +1328,59 @@ async function handleBookingHistory(req, res) {
 
 router.get('/admin/:id/history', auth, auth.requirePermission('booking.view'), handleBookingHistory);
 router.get('/:id/history', auth, auth.requirePermission('booking.view'), handleBookingHistory);
+
+// GET /api/bookings/:id/session-prefill — data prefill buat sesi sortir (admin)
+router.get('/:id/session-prefill', auth, auth.requirePermission('booking.view'), async (req, res) => {
+  try {
+    const { rows } = await db.query(
+      `SELECT b.id, b.client_name, b.client_phone, b.event_date, b.package_name, b.status, b.session_created_at,
+              bc.name AS category_name, bc.packages
+       FROM bookings b
+       JOIN booking_categories bc ON b.category_id = bc.id
+       WHERE b.id = $1`,
+      [req.params.id]
+    );
+    if (!rows[0]) return res.status(404).json({ error: 'Booking tidak ditemukan' });
+    const b = rows[0];
+
+    // Ekstrak photo_limit dari deskripsi paket yang cocok (cari angka diikuti kata foto/photo/edited)
+    let photoLimit = null;
+    const pkgs = b.packages || [];
+    const matchedPkg = pkgs.find(p => p.name === b.package_name) || pkgs[0];
+    if (matchedPkg && matchedPkg.description) {
+      const m = matchedPkg.description.match(/(\d+)\s*(edited\s*photo|foto\s*edit|photo)/i);
+      if (m) photoLimit = parseInt(m[1], 10);
+    }
+
+    const eventDate = b.event_date
+      ? (b.event_date instanceof Date ? b.event_date.toISOString().slice(0, 10) : String(b.event_date).slice(0, 10))
+      : null;
+    const note = [b.category_name, b.package_name, eventDate].filter(Boolean).join(' | ');
+
+    res.json({
+      name: b.client_name || '',
+      wa: b.client_phone || '',
+      photoLimit,
+      note,
+      status: b.status,
+      sessionCreatedAt: b.session_created_at || null
+    });
+  } catch (err) {
+    console.error('[bookings] session-prefill error:', err);
+    res.status(500).json({ error: 'Database error' });
+  }
+});
+
+// PATCH /api/admin/bookings/:id/mark-session-created — tandai sesi sudah dibuat dari booking
+router.patch('/admin/:id/mark-session-created', auth, auth.requirePermission('booking.update'), async (req, res) => {
+  try {
+    await db.query('UPDATE bookings SET session_created_at = now() WHERE id = $1', [req.params.id]);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[bookings] mark-session-created error:', err);
+    res.status(500).json({ error: 'Database error' });
+  }
+});
 
 // PATCH /api/admin/bookings/:id/link-session — hubungkan ke sesi sortir
 router.patch('/admin/:id/link-session', auth, auth.requirePermission('booking.update'), async (req, res) => {

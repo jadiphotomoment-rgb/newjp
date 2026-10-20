@@ -133,6 +133,9 @@ const db = {
           IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='bookings' AND column_name='package_name') THEN
             ALTER TABLE bookings ADD COLUMN package_name VARCHAR(150);
           END IF;
+          IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='bookings' AND column_name='session_created_at') THEN
+            ALTER TABLE bookings ADD COLUMN session_created_at TIMESTAMP NULL;
+          END IF;
         END
         $$;
 

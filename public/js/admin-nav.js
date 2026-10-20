@@ -19,14 +19,46 @@
     admin = JSON.parse(adminStr || '{}');
   } catch (_) {}
 
-  // Simpan data admin global
+  // Simpan data admin global & permissions
   window.currentUser = admin;
+  window.userPermissions = new Set(admin.permissions || []);
+
+  window.hasPermission = function (permKey) {
+    if (!permKey) return true;
+    if (admin.role === 'owner' || admin.role === 'admin') return true;
+    if (window.userPermissions && window.userPermissions.has('*')) return true;
+    return Boolean(window.userPermissions && window.userPermissions.has(permKey));
+  };
+
+  // Fetch /api/auth/me untuk sinkronisasi state user & permissions terbaru
+  async function syncAuthMe() {
+    if (!token) return;
+    try {
+      const res = await fetch('/api/auth/me', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.user) {
+          admin = Object.assign(admin, data.user);
+          window.currentUser = admin;
+        }
+        if (Array.isArray(data.permissions)) {
+          window.userPermissions = new Set(data.permissions);
+        }
+        window.dispatchEvent(new CustomEvent('auth:ready', { detail: { user: admin, permissions: data.permissions } }));
+        applyRbacUI();
+      }
+    } catch (_) {}
+  }
 
   // 2. DOM Ready Initializer
   document.addEventListener('DOMContentLoaded', () => {
     applyRbacUI();
     fetchPendingApprovalsCount();
+    syncAuthMe();
   });
+
 
   // 3. Terapkan RBAC pada Antarmuka (Navigasi & Badge)
   function applyRbacUI() {

@@ -5,10 +5,59 @@
 - [x] Fase 1: Fondasi Permission & Migrasi (Peta role, CHECK rule, migrasi keuangan & outbox) - Selesai
 - [x] Fase 2: Service Approve/Reject (TDD, transaksi atomik, lock row, outbox WA) - Selesai
 - [x] Fase 3: Endpoint & Monitoring Owner (POST /api/bookings/:id/approve & reject, daily summary) - Selesai
-- [ ] Fase 4: Frontend (UI button, dialog konfirmasi, anti double-submit, reload version) - Siap Mulai
-- [ ] Fase 5: Review Keamanan & Rilis (Audit diff, panduan rilis, checklist)
+- [x] Fase 4: Frontend (UI button, dialog konfirmasi, anti double-submit, reload version) - Selesai
+- [x] Fase 5: Review Keamanan & Rilis - **SELESAI**
 
+## Catatan Fase 5 — Security Review & Release
 
+### Temuan & Perbaikan
+| Level | Temuan | Status | Fix |
+|-------|--------|--------|-----|
+| **High** | XSS: client_name/phone/location masuk `innerHTML` tanpa escape di panel detail booking | ✅ Fixed | Tambah `esc()` helper, apply ke semua field user-controlled di `bookings.html` |
+| **High** | Gap Fase 3: endpoint daily-approvals (Spesifikasi 7) tidak ada | ✅ Fixed | `GET /api/bookings/admin/daily-approvals` + keyset pagination |
+| **Medium** | IDOR/type confusion: `cancel-approval` tidak validasi `req.params.id` sebagai integer | ✅ Fixed | `parseInt` + isNaN check sebelum query |
+| **Low** | npm audit: 1 critical (proxy-addr IP spoofing), 12 high (brace-expansion DoS, multer, undici, tailwindcss) | ⚠️ Open | Semua di dev dependencies (nodemon, tailwind) atau tidak di attack surface prod; `multer` perlu update terpisah di sprint berikut |
+| **Low** | `client_phone` dikembalikan di response approve/reject ke staf | Accepted | Staf memang sudah punya akses detail booking; level akseptabel |
+| **OK** | Race condition: FOR UPDATE + WHERE status = 'dp_review' + rowCount check | ✅ Sudah benar |
+| **OK** | WA dikirim via setImmediate setelah COMMIT | ✅ Sudah benar |
+| **OK** | Keuangan idempoten: ON CONFLICT (sumber_tipe, sumber_id) WHERE status='aktif' DO NOTHING | ✅ Sudah benar |
+| **OK** | Permission check server-side via requirePermission('booking.approve') | ✅ Sudah benar |
+| **OK** | Query berparameter ($1, $2, ...) di semua endpoint baru | ✅ Sudah benar |
+| **OK** | Error response tidak bocorkan stack trace/DB error mentah | ✅ Sudah benar |
+| **OK** | Logging: tidak ada plaintext password/token/PII di console | ✅ Sudah benar |
+
+### Urutan Rilis (PROD)
+```
+1. git pull origin main (di server prod)
+2. node -r dotenv/config scripts/migrate.js   # jalankan migrasi idempoten
+3. Verifikasi: SELECT column_name FROM information_schema.columns
+               WHERE table_name='bookings' AND column_name IN ('version','session_created_at');
+4. Verifikasi: SELECT COUNT(*), SUM(dp_amount) FROM bookings;  # jumlah & nominal harus sama seperti sebelum
+5. pm2 restart app  (atau deploy Vercel)
+6. Uji smoke test: login staff → buka booking dp_review → klik Approve DP → cek status confirmed
+7. Uji smoke test: login owner → GET /api/bookings/admin/daily-approvals → 200 OK
+```
+
+### Rollback
+- Jika rollback diperlukan: `git revert a6df454 bb5a8dd 990a2d7` dan redeploy
+- Kolom `version`, `session_created_at` yang ditambah bersifat nullable; tidak merusak data lama jika di-drop
+- Nonaktifkan fitur tanpa rollback: set `RBAC_ENABLED=false` di env (fallback ke single-admin)
+
+### Checklist Pasca-Rilis
+- [ ] Staff berhasil approve booking dp_review tanpa eskalasi ke Owner
+- [ ] Owner berhasil approve booking dp_review
+- [ ] User tanpa login → 401 di /api/bookings/:id/approve
+- [ ] User login tanpa permission → 403
+- [ ] Approve ganda bersamaan → hanya 1 entri keuangan (cek di tabel financial_entries)
+- [ ] Audit log tercatat di tabel audit_log dengan aksi 'booking.approve'
+- [ ] WA outbox tercatat (tabel wa_outbox status pending)
+- [ ] GET /api/bookings/admin/daily-approvals → 200 untuk Owner, 403 untuk Staff
+- [ ] Tidak ada error console JS di /admin/bookings.html
+
+### npm audit — Tindakan Berikutnya (bukan blocker rilis)
+- `multer`: update ke versi non-vulnerable setelah validasi kompatibilitas upload flow
+- `proxy-addr`: update `express` ke versi terbaru (ikuti changelog breaking change)
+- dev-deps (nodemon, tailwindcss): tidak di prod, dapat diabaikan untuk rilis ini
 
 
 ---

@@ -208,7 +208,8 @@
       border: 1px solid rgba(167, 139, 250, 0.3);
     }
 
-    .badge-cancelled {
+    .badge-cancelled,
+    .badge-dp_rejected {
       background: rgba(248, 113, 113, 0.15);
       color: #f87171;
       border: 1px solid rgba(248, 113, 113, 0.3);
@@ -256,7 +257,8 @@
       border-color: rgba(124, 58, 237, 0.3);
     }
 
-    html.light .badge-cancelled {
+    html.light .badge-cancelled,
+    html.light .badge-dp_rejected {
       background: #fff1f2;
       color: #dc2626;
       border-color: rgba(220, 38, 38, 0.3);
@@ -967,6 +969,7 @@
 
     function fmtDate(d) { return d ? new Date(d).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'; }
     function fmtMoney(n) { return n ? 'Rp ' + Number(n).toLocaleString('id-ID') : '—'; }
+    function esc(s) { if (s == null) return '—'; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
     const STATUS_LABELS = {
       pending_dp: 'Menunggu DP', dp_review: 'Review DP',
       confirmed: 'Dikonfirmasi', completed: 'Selesai', cancelled: 'Dibatalkan',
@@ -1082,7 +1085,8 @@
             <div class="flex justify-end gap-2 flex-wrap">
               <button class="btn btn-outline btn-sm bg-surface-container-lowest" onclick="openPanel(${b.id})">👁 Detail</button>
               ${b.status === 'dp_review' ? `
-                <button class="btn btn-primary btn-sm" onclick="approveDP(${b.id})">Approve DP</button>
+                <button id="btn-approve-tbl-${b.id}" class="btn btn-primary btn-sm" onclick="approveBookingDirect(${b.id}, ${b.version ?? 'undefined'}, this)">✔ Approve DP</button>
+                <button id="btn-reject-tbl-${b.id}" class="btn btn-danger btn-sm" onclick="rejectBookingDirect(${b.id}, ${b.version ?? 'undefined'}, this)">✘ Reject</button>
               ` : ''}
               ${Number(b.pending_pelunasan || 0) > 0 ? `
                 <button class="btn btn-primary btn-sm bg-sky-600 hover:bg-sky-700 text-white flex items-center gap-1" onclick="openPanel(${b.id})" title="Review Bukti Pelunasan">
@@ -1126,7 +1130,8 @@
           <div class="flex gap-2">
             <button class="btn btn-outline btn-sm flex-1" onclick="openPanel(${b.id})">Detail</button>
             ${b.status === 'dp_review' ? `
-              <button class="btn btn-primary btn-sm flex-1" onclick="approveDP(${b.id})">Approve DP</button>
+              <button id="btn-approve-card-${b.id}" class="btn btn-primary btn-sm flex-1" onclick="approveBookingDirect(${b.id}, ${b.version ?? 'undefined'}, this)">✔ Approve</button>
+              <button id="btn-reject-card-${b.id}" class="btn btn-danger btn-sm flex-1" onclick="rejectBookingDirect(${b.id}, ${b.version ?? 'undefined'}, this)">✘ Reject</button>
             ` : ''}
             ${Number(b.pending_pelunasan || 0) > 0 ? `
               <button class="btn btn-primary btn-sm flex-1 bg-sky-600 hover:bg-sky-700 text-white flex items-center justify-center gap-1" onclick="openPanel(${b.id})">
@@ -1211,17 +1216,17 @@
         
         <div class="bg-surface-container-lowest border border-outline-variant/30 p-4 rounded-lg">
           <div class="detail-section-title">Data Klien</div>
-          <div class="detail-row"><span class="dk">Nama</span><span class="dv">${b.client_name}</span></div>
-          <div class="detail-row"><span class="dk">WhatsApp</span><span class="dv">${b.client_phone}</span></div>
-          <div class="detail-row"><span class="dk">Kategori</span><span class="dv">${b.category_name}</span></div>
+          <div class="detail-row"><span class="dk">Nama</span><span class="dv">${esc(b.client_name)}</span></div>
+          <div class="detail-row"><span class="dk">WhatsApp</span><span class="dv">${esc(b.client_phone)}</span></div>
+          <div class="detail-row"><span class="dk">Kategori</span><span class="dv">${esc(b.category_name)}</span></div>
           <div class="detail-row"><span class="dk">Tanggal</span><span class="dv">${fmtDate(b.event_date)}</span></div>
-          <div class="detail-row"><span class="dk">Jam</span><span class="dv">${b.event_time ? b.event_time.slice(0, 5) : '—'}</span></div>
-          <div class="detail-row"><span class="dk">Lokasi</span><span class="dv">${b.location || '—'}</span></div>
+          <div class="detail-row"><span class="dk">Jam</span><span class="dv">${b.event_time ? esc(b.event_time.slice(0, 5)) : '—'}</span></div>
+          <div class="detail-row"><span class="dk">Lokasi</span><span class="dv">${esc(b.location)}</span></div>
           ${b.sumber_informasi ? `
             <div class="detail-row">
               <span class="dk">Sumber Info</span>
               <span class="dv capitalize font-semibold text-primary">
-                ${b.sumber_informasi}${b.sumber_informasi_detail ? ` <span class="text-xs text-on-surface-variant font-normal">(${b.sumber_informasi_detail})</span>` : ''}
+                ${esc(b.sumber_informasi)}${b.sumber_informasi_detail ? ` <span class="text-xs text-on-surface-variant font-normal">(${esc(b.sumber_informasi_detail)})</span>` : ''}
               </span>
             </div>
           ` : ''}
@@ -1266,17 +1271,22 @@
           </div>
         </div>
           ${b.status === 'dp_review' ? `
-            <button class="btn btn-primary justify-center w-full" onclick="approveDP(${b.id}, true)">
+            <button id="btn-approve-panel-${b.id}" class="btn btn-primary justify-center w-full" onclick="approveBookingDirect(${b.id}, ${b.version ?? 'undefined'}, this, true)">
               <span class="material-symbols-outlined text-[18px]">check_circle</span> Approve DP & Konfirmasi
             </button>
-            <button class="btn btn-danger justify-center w-full" onclick="rejectDP(${b.id}, true)">
+            <button id="btn-reject-panel-${b.id}" class="btn btn-danger justify-center w-full" onclick="rejectBookingDirect(${b.id}, ${b.version ?? 'undefined'}, this, true)">
               <span class="material-symbols-outlined text-[18px]">cancel</span> Reject & Minta Upload Ulang
             </button>
           ` : ''}
-          ${b.status === 'confirmed' && !b.session_id ? `
-            <button class="btn btn-outline justify-center w-full text-primary border-primary/30 bg-primary/5 hover:bg-primary/10" onclick="linkSession(${b.id})">
-              <span class="material-symbols-outlined text-[18px]">link</span> Hubungkan ke Sesi Sortir
-            </button>
+          ${(b.status === 'confirmed' || b.status === 'lunas') && !b.session_id ? `
+            <div class="flex gap-2">
+              <button class="btn btn-primary flex-1 justify-center" onclick="openCreateSessionModal(${b.id})">
+                <span class="material-symbols-outlined text-[16px]">add_circle</span> Buat Sesi Sortir
+              </button>
+              <button class="btn btn-outline flex-1 justify-center text-primary border-primary/30" onclick="linkSession(${b.id})">
+                <span class="material-symbols-outlined text-[16px]">link</span> Hubungkan Existing
+              </button>
+            </div>
           ` : ''}
           ${(b.status === 'confirmed' || b.status === 'completed' || b.status === 'lunas') ? `
             <button class="btn btn-outline justify-center w-full text-[#25D366] border-[#25D366]/30 bg-[#25D366]/5 hover:bg-[#25D366]/10 mt-2" onclick="sendWAConfirmation(${b.id})">
@@ -1421,6 +1431,62 @@
         if (fromPanel) closePanel();
         loadBookings();
       } catch (e) { toast('Gagal. Coba lagi.', 'error'); }
+    }
+
+    // ── Approve/Reject langsung (Staff & Owner) via POST /api/bookings/:id/approve|reject ──
+    async function approveBookingDirect(id, version, btn, fromPanel = false) {
+      if (!confirm('Approve DP dan konfirmasi booking ini?')) return;
+      const origText = btn ? btn.innerHTML : '';
+      if (btn) { btn.disabled = true; btn.innerHTML = 'Memproses...'; }
+      try {
+        const body = {};
+        if (version !== undefined && version !== null) body.version = version;
+        const res = await fetch(`/api/bookings/${id}/approve`, {
+          method: 'POST', headers: H, body: JSON.stringify(body)
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          if (res.status === 409) toast('⚠ Data sudah berubah. Halaman akan diperbarui.', 'warning');
+          else toast(data.error || 'Gagal approve', 'error');
+          loadBookings();
+          if (fromPanel) closePanel();
+          return;
+        }
+        toast('✅ DP disetujui! Booking dikonfirmasi.', 'success');
+        if (fromPanel) closePanel();
+        loadBookings();
+        if (typeof calendar !== 'undefined' && calendar) calendar.refetchEvents();
+      } catch (e) { toast('Gagal. Coba lagi.', 'error'); }
+      finally { if (btn) { btn.disabled = false; btn.innerHTML = origText; } }
+    }
+
+    async function rejectBookingDirect(id, version, btn, fromPanel = false) {
+      const reason = prompt('Alasan penolakan DP (wajib diisi):');
+      if (reason === null || !reason.trim()) {
+        if (reason !== null) toast('Alasan penolakan wajib diisi', 'error');
+        return;
+      }
+      const origText = btn ? btn.innerHTML : '';
+      if (btn) { btn.disabled = true; btn.innerHTML = 'Memproses...'; }
+      try {
+        const body = { alasan: reason.trim() };
+        if (version !== undefined && version !== null) body.version = version;
+        const res = await fetch(`/api/bookings/${id}/reject`, {
+          method: 'POST', headers: H, body: JSON.stringify(body)
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          if (res.status === 409) toast('⚠ Data sudah berubah. Halaman akan diperbarui.', 'warning');
+          else toast(data.error || 'Gagal reject', 'error');
+          loadBookings();
+          if (fromPanel) closePanel();
+          return;
+        }
+        toast('DP ditolak. Klien akan diberitahu.', 'info');
+        if (fromPanel) closePanel();
+        loadBookings();
+      } catch (e) { toast('Gagal. Coba lagi.', 'error'); }
+      finally { if (btn) { btn.disabled = false; btn.innerHTML = origText; } }
     }
 
     async function setPrice(id) {
@@ -1778,6 +1844,8 @@
     window.closePanel = closePanel;
     window.approveDP = approveDP;
     window.rejectDP = rejectDP;
+    window.approveBookingDirect = approveBookingDirect;
+    window.rejectBookingDirect = rejectBookingDirect;
     window.sendWAConfirmation = sendWAConfirmation;
     window.changeStatus = changeStatus;
     window.toast = toast;
@@ -1803,6 +1871,156 @@
     loadBookings();
   </script>
   <script src="/js/admin-nav.js?v=5"></script>
+
+  <!-- Modal: Buat Sesi Sortir dari Booking -->
+  <div id="modal-create-session"
+       class="fixed inset-0 z-[200] flex items-center justify-center hidden"
+       role="dialog" aria-modal="true" aria-labelledby="modal-session-title">
+    <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" onclick="closeCreateSessionModal()"></div>
+    <div class="relative bg-surface rounded-2xl shadow-2xl w-full max-w-md mx-4 p-6 z-10">
+      <div class="flex items-center justify-between mb-4">
+        <h2 id="modal-session-title" class="font-bold text-lg text-on-surface">Buat Sesi Sortir Baru</h2>
+        <button class="btn btn-icon text-on-surface-variant" onclick="closeCreateSessionModal()" aria-label="Tutup">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+      <p id="modal-session-note" class="text-xs text-on-surface-variant bg-surface-container rounded px-3 py-2 mb-4"></p>
+      <form id="form-create-session" onsubmit="submitCreateSession(event)" autocomplete="off" novalidate>
+        <input type="hidden" id="fcs-booking-id" value="">
+        <div class="flex flex-col gap-3">
+          <label class="flex flex-col gap-1">
+            <span class="text-xs font-semibold text-on-surface-variant uppercase">Nama Klien *</span>
+            <input id="fcs-name" type="text" required class="px-3 py-2 border border-outline-variant rounded-lg text-sm bg-surface-container focus:outline-none focus:border-primary" placeholder="Nama klien">
+          </label>
+          <label class="flex flex-col gap-1">
+            <span class="text-xs font-semibold text-on-surface-variant uppercase">Nomor WA</span>
+            <input id="fcs-wa" type="text" class="px-3 py-2 border border-outline-variant rounded-lg text-sm bg-surface-container focus:outline-none focus:border-primary" placeholder="08xxxxxxxxxx">
+          </label>
+          <label class="flex flex-col gap-1">
+            <span class="text-xs font-semibold text-on-surface-variant uppercase">Link/ID Folder Google Drive *</span>
+            <input id="fcs-folder" type="text" required class="px-3 py-2 border border-outline-variant rounded-lg text-sm bg-surface-container focus:outline-none focus:border-primary" placeholder="https://drive.google.com/drive/folders/...">
+            <span class="text-[11px] text-on-surface-variant">Isi setelah pemotretan selesai dan folder sudah dibuat.</span>
+          </label>
+          <label class="flex flex-col gap-1">
+            <span class="text-xs font-semibold text-on-surface-variant uppercase">Limit Foto *</span>
+            <input id="fcs-limit" type="number" min="1" max="500" required class="px-3 py-2 border border-outline-variant rounded-lg text-sm bg-surface-container focus:outline-none focus:border-primary" placeholder="mis. 50">
+            <span class="text-[11px] text-on-surface-variant">Diisi otomatis dari paket jika terdeteksi; ubah sesuai kebutuhan.</span>
+          </label>
+        </div>
+        <div id="fcs-result" class="mt-4 hidden"></div>
+        <div class="flex gap-2 mt-5">
+          <button type="button" class="btn btn-outline flex-1" onclick="closeCreateSessionModal()">Batal</button>
+          <button id="fcs-submit" type="submit" class="btn btn-primary flex-1">Buat Sesi</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    // ── Buat Sesi Sortir dari Booking ──────────────────────────────
+    async function openCreateSessionModal(bookingId) {
+      const modal = document.getElementById('modal-create-session');
+      document.getElementById('fcs-booking-id').value = bookingId;
+      document.getElementById('fcs-result').classList.add('hidden');
+      document.getElementById('fcs-result').innerHTML = '';
+      document.getElementById('form-create-session').reset();
+      document.getElementById('fcs-booking-id').value = bookingId;
+      modal.classList.remove('hidden');
+      // Fetch prefill
+      try {
+        const res = await fetch(`/api/bookings/${bookingId}/session-prefill`, { headers: H });
+        if (!res.ok) return;
+        const d = await res.json();
+        if (d.sessionCreatedAt) {
+          if (!confirm(`Sesi sortir sudah pernah dibuat dari booking ini (${new Date(d.sessionCreatedAt).toLocaleDateString('id-ID')}). Buat lagi?`)) {
+            modal.classList.add('hidden'); return;
+          }
+        }
+        document.getElementById('fcs-name').value = d.name || '';
+        document.getElementById('fcs-wa').value = d.wa || '';
+        if (d.photoLimit) document.getElementById('fcs-limit').value = d.photoLimit;
+        document.getElementById('modal-session-note').textContent = d.note || '';
+      } catch (e) { /* prefill gagal, biarkan kosong */ }
+    }
+
+    function closeCreateSessionModal() {
+      document.getElementById('modal-create-session').classList.add('hidden');
+    }
+
+    async function submitCreateSession(e) {
+      e.preventDefault();
+      const bookingId = document.getElementById('fcs-booking-id').value;
+      const btn = document.getElementById('fcs-submit');
+      const origText = btn.innerHTML;
+      btn.disabled = true; btn.innerHTML = 'Membuat...';
+      const body = {
+        clientName: document.getElementById('fcs-name').value.trim(),
+        clientPhone: document.getElementById('fcs-wa').value.trim() || null,
+        folderUrl: document.getElementById('fcs-folder').value.trim(),
+        photoLimit: parseInt(document.getElementById('fcs-limit').value, 10)
+      };
+      try {
+        const res = await fetch('/api/sessions', { method: 'POST', headers: H, body: JSON.stringify(body) });
+        const data = await res.json();
+        if (!res.ok) { toast(data.error || 'Gagal membuat sesi', 'error'); return; }
+        // Tandai booking
+        await fetch(`/api/bookings/admin/${bookingId}/mark-session-created`, { method: 'PATCH', headers: H });
+        // Tampilkan hasil
+        const shortUrl = data.shortUrl || '';
+        const waValid = body.clientPhone && /^\d{8,15}$/.test(body.clientPhone.replace(/[^\d]/g, ''));
+        const resultEl = document.getElementById('fcs-result');
+        resultEl.innerHTML = `
+          <div class="bg-surface-container rounded-lg p-3 flex flex-col gap-2">
+            <div class="text-xs font-bold text-emerald-500">✅ Sesi berhasil dibuat!</div>
+            <a href="${shortUrl}" target="_blank" class="text-xs text-primary underline break-all">${shortUrl}</a>
+            <button type="button" id="btn-send-wa-session"
+              class="btn btn-sm ${waValid ? 'text-[#25D366] border-[#25D366]/40 bg-[#25D366]/5 hover:bg-[#25D366]/10 btn-outline' : 'btn-outline opacity-50 cursor-not-allowed'}"
+              ${waValid ? '' : 'disabled title="Nomor WA tidak valid atau kosong"'}
+              onclick="sendSessionLinkWA('${body.clientPhone}', '${body.clientName}', '${shortUrl}', '${data.uuid}')"
+            >
+              <span class="material-symbols-outlined text-[14px]">send</span>
+              Kirim Link ke WA Klien
+            </button>
+          </div>
+        `;
+        resultEl.classList.remove('hidden');
+        document.getElementById('fcs-submit').classList.add('hidden');
+        toast('Sesi sortir berhasil dibuat!', 'success');
+      } catch (err) { toast('Gagal. Coba lagi.', 'error'); }
+      finally { btn.disabled = false; btn.innerHTML = origText; }
+    }
+
+    async function sendSessionLinkWA(phone, name, shortUrl, sessionUuid) {
+      const cleanPhone = phone ? phone.replace(/[^\d]/g, '') : '';
+      if (!cleanPhone) { toast('Nomor WA tidak valid', 'error'); return; }
+      const btn = document.getElementById('btn-send-wa-session');
+      if (btn) { btn.disabled = true; btn.innerHTML = '<span class="material-symbols-outlined text-[14px]">hourglass_empty</span> Mengirim...'; }
+      try {
+        const res = await fetch(`/api/sessions/${sessionUuid}/notify-done`, {
+          method: 'POST', headers: H,
+          body: JSON.stringify({ clientPhone: cleanPhone, editStatus: 'done', sendWa: true,
+            editNote: `Link seleksi foto Anda: ${shortUrl}` })
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          // fallback: buka WA web jika endpoint gagal
+          const msg = encodeURIComponent(`Halo ${name}, link seleksi foto Anda: ${shortUrl}`);
+          window.open(`https://wa.me/${cleanPhone}?text=${msg}`, '_blank');
+          return;
+        }
+        toast('Pesan WA berhasil dikirim!', 'success');
+        if (btn) btn.innerHTML = '<span class="material-symbols-outlined text-[14px]">check</span> Terkirim';
+      } catch (e) {
+        const msg = encodeURIComponent(`Halo ${name}, link seleksi foto Anda: ${shortUrl}`);
+        window.open(`https://wa.me/${cleanPhone}?text=${msg}`, '_blank');
+      }
+    }
+
+    window.openCreateSessionModal = openCreateSessionModal;
+    window.closeCreateSessionModal = closeCreateSessionModal;
+    window.submitCreateSession = submitCreateSession;
+    window.sendSessionLinkWA = sendSessionLinkWA;
+  </script>
 </body>
 
 </html>
