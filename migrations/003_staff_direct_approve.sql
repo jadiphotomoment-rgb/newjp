@@ -30,7 +30,13 @@ BEGIN
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='payments' AND column_name='updated_by') THEN
     ALTER TABLE payments ADD COLUMN updated_by INT REFERENCES users(id) ON DELETE SET NULL;
   END IF;
+
+  -- Lepaskan foreign key legacy ke tabel admins agar approved_by mencatat user staff
+  IF EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'payments_approved_by_fkey') THEN
+    ALTER TABLE payments DROP CONSTRAINT payments_approved_by_fkey;
+  END IF;
 END $$;
+
 
 -- 3. Tabel financial_entries (Entri Keuangan Idempoten dengan unique index sumber_tipe + sumber_id)
 CREATE TABLE IF NOT EXISTS financial_entries (

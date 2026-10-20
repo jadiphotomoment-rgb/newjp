@@ -3,10 +3,11 @@
 ## Status Fitur (Staff Approve Booking Langsung)
 - [x] Fase 0: Pemetaan (MAP.md terverifikasi dari kode) - Selesai
 - [x] Fase 1: Fondasi Permission & Migrasi (Peta role, CHECK rule, migrasi keuangan & outbox) - Selesai
-- [ ] Fase 2: Service Approve/Reject (TDD, transaksi atomik, lock row, outbox WA) - Siap Mulai
-- [ ] Fase 3: Endpoint & Monitoring Owner (POST /api/bookings/:id/approve & reject, daily summary)
+- [x] Fase 2: Service Approve/Reject (TDD, transaksi atomik, lock row, outbox WA) - Selesai
+- [ ] Fase 3: Endpoint & Monitoring Owner (POST /api/bookings/:id/approve & reject, daily summary) - Siap Mulai
 - [ ] Fase 4: Frontend (UI button, dialog konfirmasi, anti double-submit, reload version)
 - [ ] Fase 5: Review Keamanan & Rilis (Audit diff, panduan rilis, checklist)
+
 
 
 ---
