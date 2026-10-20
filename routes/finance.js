@@ -34,8 +34,9 @@ function sendWhatsApp(target, message) {
   });
 }
 
-// Semua rute finance memerlukan autentikasi dan permission finance.view (Owner only)
+// Semua rute finance memerlukan autentikasi dan role Owner (finance.view & finance.manage)
 router.use(auth);
+router.use(auth.requireRole('owner'));
 router.use(auth.requirePermission('finance.view'));
 
 // GET /api/finance/summary — ringkasan keuangan

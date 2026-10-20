@@ -512,7 +512,7 @@ async function handleAdminDetail(req, res) {
 router.get('/admin/detail/:id', auth, auth.requirePermission('booking.view'), handleAdminDetail);
 
 // PATCH /api/admin/bookings/:id/set-price — set harga paket & dp_amount (legacy, kept for compat)
-router.patch('/admin/:id/set-price', auth, auth.requirePermission('booking.update'), async (req, res) => {
+router.patch('/admin/:id/set-price', auth, auth.requireRole('owner'), auth.requirePermission('booking.update'), async (req, res) => {
   const { packagePrice } = req.body;
   const price = parseFloat(packagePrice);
   if (isNaN(price) || price < 0) return res.status(400).json({ error: 'Harga tidak valid' });

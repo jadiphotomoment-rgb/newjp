@@ -8,8 +8,9 @@ const auth = require('../middleware/auth');
 const audit = require('../services/audit');
 const { invalidateUserState } = require('../utils/tokenVersionCache');
 
-// Semua endpoint users membutuhkan user.manage (hanya Owner)
+// Semua endpoint users membutuhkan user.manage & role Owner
 router.use(auth);
+router.use(auth.requireRole('owner'));
 router.use(auth.requirePermission('user.manage'));
 
 // GET /api/users — List semua user / staff

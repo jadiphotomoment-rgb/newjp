@@ -117,7 +117,33 @@ function requirePermission(permissionKey) {
   };
 }
 
+function requireRole(expectedRole) {
+  return (req, res, next) => {
+    if (!req.user) {
+      return res.status(401).json({ error: 'Autentikasi diperlukan' });
+    }
+
+    const rbacEnabled = process.env.RBAC_ENABLED !== 'false';
+    if (!rbacEnabled) {
+      return next();
+    }
+
+    const userRole = req.user.role === 'admin' ? 'owner' : req.user.role;
+    const targetRole = expectedRole === 'admin' ? 'owner' : expectedRole;
+
+    if (userRole !== targetRole) {
+      return res.status(403).json({
+        error: `Akses ditolak: endpoint ini memerlukan hak akses '${expectedRole}'`
+      });
+    }
+
+    next();
+  };
+}
+
 authenticate.authenticate = authenticate;
 authenticate.requirePermission = requirePermission;
+authenticate.requireRole = requireRole;
 
 module.exports = authenticate;
+
