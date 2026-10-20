@@ -166,6 +166,44 @@ async function run() {
     });
     assert(selfDel.status === 400, 'DELETE /api/users/:id tolak menonaktifkan akun sendiri');
 
+    // 11. DELETE /api/users/:id?permanent=true — tolak hapus permanen akun sendiri
+    const selfPerm = await request(`/api/users/${owner.id}?permanent=true`, {
+      method: 'DELETE',
+      token: ownerToken
+    });
+    assert(selfPerm.status === 400, 'Tolak hapus permanen akun sendiri');
+
+    // 12. Buat user aktif baru, coba hapus permanen langsung -> harus tolak (harus nonaktif dulu)
+    const activeEmail = `active.${Date.now()}@jadiphoto.test`;
+    const actRes = await request('/api/users', {
+      method: 'POST',
+      token: ownerToken,
+      body: { nama: 'Staf Masih Aktif', email: activeEmail, password: 'password1234', role: 'staff' }
+    });
+    const activeStaffId = actRes.data?.user?.id;
+    const directPerm = await request(`/api/users/${activeStaffId}?permanent=true`, {
+      method: 'DELETE',
+      token: ownerToken
+    });
+    assert(directPerm.status === 400, 'Tolak hapus permanen user yang masih aktif (harus dinonaktifkan dulu)');
+
+    // 13. DELETE /api/users/:id?permanent=true — hapus permanen user yang sudah nonaktif (createdStaffId sudah nonaktif dari test 9)
+    const permRes = await request(`/api/users/${createdStaffId}?permanent=true`, {
+      method: 'DELETE',
+      token: ownerToken
+    });
+    assert(permRes.status === 200 && permRes.data.deleted === true, 'DELETE ?permanent=true sukses menghapus user yang sudah nonaktif');
+
+    // Verifikasi user benar-benar terhapus dari database
+    const checkDb = await db.query('SELECT id FROM users WHERE id = $1', [createdStaffId]);
+    assert(checkDb.rows.length === 0, 'User yang dihapus permanen tidak ditemukan lagi di DB');
+    createdStaffId = null; // sudah terhapus, tidak perlu cleanup
+
+    // Cleanup activeStaffId
+    if (activeStaffId) {
+      await db.query('DELETE FROM users WHERE id = $1', [activeStaffId]).catch(() => {});
+    }
+
     console.log(`\nHasil: ${passed}/${total} test lulus.`);
     if (passed !== total) process.exit(1);
   } finally {

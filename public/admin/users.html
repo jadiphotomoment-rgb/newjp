@@ -428,6 +428,11 @@
                 ${toggleActionLabel}
               </button>
             ` : ''}
+            ${!u.is_active && !isSelf ? `
+              <button onclick="deletePermanentUser(${u.id}, '${esc(u.nama || u.name)}')" class="px-2.5 py-1 rounded-lg text-xs font-semibold text-error border border-error/30 hover:bg-error hover:text-white transition-all" title="Hapus Permanen dari Database">
+                Hapus
+              </button>
+            ` : ''}
           </td>
         </tr>
       `;
@@ -492,6 +497,28 @@
           alert('Semua sesi user berhasil dicabut.');
         } else {
           alert(data.error || 'Gagal mencabut sesi.');
+        }
+      } catch (_) {
+        alert('Terjadi kesalahan jaringan.');
+      }
+    }
+
+    async function deletePermanentUser(id, nama) {
+      if (!confirm(`PERINGATAN: Apakah Anda yakin ingin MENGHAPUS PERMANEN akun "${nama}" dari sistem? Data akun akan dihapus total dan tindakan ini tidak dapat dibatalkan.`)) return;
+
+      try {
+        const res = await fetch(`/api/users/${id}?permanent=true`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        const data = await res.json();
+        if (res.ok) {
+          alert(data.message || 'Akun berhasil dihapus permanen.');
+          loadUsers();
+        } else {
+          alert(data.error || 'Gagal menghapus user.');
         }
       } catch (_) {
         alert('Terjadi kesalahan jaringan.');

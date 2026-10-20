@@ -240,14 +240,16 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-// DELETE /api/users/:id — Nonaktifkan pengguna (soft deactivate)
+// DELETE /api/users/:id — Nonaktifkan pengguna atau Hapus Permanen jika sudah nonaktif
 router.delete('/:id', async (req, res) => {
   const userId = parseInt(req.params.id, 10);
   if (isNaN(userId)) return res.status(400).json({ error: 'ID user tidak valid' });
 
   if (req.user.id === userId) {
-    return res.status(400).json({ error: 'Tidak dapat menonaktifkan akun sendiri' });
+    return res.status(400).json({ error: 'Tidak dapat menghapus atau menonaktifkan akun sendiri' });
   }
+
+  const isPermanent = req.query.permanent === 'true' || req.query.permanent === true;
 
   let dbClient;
   try {
@@ -255,6 +257,55 @@ router.delete('/:id', async (req, res) => {
     if (!currentRes.rows[0]) return res.status(404).json({ error: 'User tidak ditemukan' });
     const current = currentRes.rows[0];
 
+    // Jika opsi hapus permanen diminta
+    if (isPermanent) {
+      if (current.is_active) {
+        return res.status(400).json({
+          error: 'Akun masih aktif. Hanya user yang sudah tidak aktif (nonaktif) yang dapat dihapus permanen.'
+        });
+      }
+
+      if (current.role === 'owner') {
+        const ownerCountRes = await db.query(
+          "SELECT COUNT(*) AS total FROM users WHERE role = 'owner' AND is_active = true AND id != $1",
+          [userId]
+        );
+        if (parseInt(ownerCountRes.rows[0].total, 10) === 0) {
+          return res.status(400).json({
+            error: 'Tidak dapat menghapus owner terakhir. Sistem wajib memiliki minimal satu owner aktif.'
+          });
+        }
+      }
+
+      dbClient = await db.getClient();
+      await dbClient.query('BEGIN');
+
+      await dbClient.query('DELETE FROM users WHERE id = $1', [userId]);
+      invalidateUserState(userId);
+
+      await audit.record(dbClient, {
+        req,
+        aksi: 'user.delete_permanent',
+        entitas: 'user',
+        entitas_id: userId,
+        data_sebelum: {
+          id: userId,
+          nama: current.nama,
+          email: current.email,
+          role: current.role,
+          is_active: false
+        }
+      });
+
+      await dbClient.query('COMMIT');
+      return res.json({
+        message: 'User nonaktif berhasil dihapus permanen dari sistem',
+        user_id: userId,
+        deleted: true
+      });
+    }
+
+    // Jika soft deactivation biasa
     if (!current.is_active) {
       return res.status(400).json({ error: 'Akun user sudah dalam status nonaktif' });
     }
