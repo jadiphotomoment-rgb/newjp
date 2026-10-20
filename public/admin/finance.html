@@ -554,14 +554,126 @@
         </div>
       </div>
 
-      <!-- Payments Table Area -->
-      <div
-        class="bg-surface-container-lowest rounded-xl border border-outline-variant/30 flex flex-col overflow-hidden">
+      <!-- Tabs Switcher: Transaksi Kas vs Verifikasi Pembayaran -->
+      <div class="flex items-center gap-2 border-b border-outline-variant/30 pb-3">
+        <button id="tab-btn-tx" onclick="switchFinanceTab('transactions')" class="px-4 py-2.5 rounded-xl font-bold text-sm bg-primary text-on-primary shadow-sm flex items-center gap-2 transition-all">
+          <span class="material-symbols-outlined text-[18px]">account_balance_wallet</span>
+          <span>Buku Kas & Transaksi</span>
+        </button>
+        <button id="tab-btn-payments" onclick="switchFinanceTab('payments')" class="px-4 py-2.5 rounded-xl font-bold text-sm text-on-surface-variant hover:bg-surface-container flex items-center gap-2 transition-all">
+          <span class="material-symbols-outlined text-[18px]">receipt_long</span>
+          <span>Verifikasi Pembayaran Client</span>
+          <span id="tab-pending-badge" class="hidden px-2 py-0.5 rounded-full text-xs font-bold bg-amber-500 text-black">0</span>
+        </button>
+      </div>
 
-        <div
-          class="p-5 border-b border-outline-variant/30 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-surface-bright">
+      <!-- Section 1: Transaksi Keuangan & Kas -->
+      <div id="container-transactions" class="space-y-4">
+        <!-- Rekap Ringkas Transaksi Kas -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div class="bg-surface-container-lowest p-5 rounded-xl border border-outline-variant/30 shadow-sm">
+            <div class="text-xs text-on-surface-variant font-semibold uppercase flex items-center gap-1.5">
+              <span class="material-symbols-outlined text-emerald-500 text-base">arrow_downward</span> Total Pemasukan
+            </div>
+            <div class="text-2xl font-bold text-emerald-500 mt-2" id="tx-summary-income">Rp 0</div>
+          </div>
+          <div class="bg-surface-container-lowest p-5 rounded-xl border border-outline-variant/30 shadow-sm">
+            <div class="text-xs text-on-surface-variant font-semibold uppercase flex items-center gap-1.5">
+              <span class="material-symbols-outlined text-error text-base">arrow_upward</span> Total Pengeluaran
+            </div>
+            <div class="text-2xl font-bold text-error mt-2" id="tx-summary-expense">Rp 0</div>
+          </div>
+          <div class="bg-surface-container-lowest p-5 rounded-xl border border-outline-variant/30 shadow-sm">
+            <div class="text-xs text-on-surface-variant font-semibold uppercase flex items-center gap-1.5">
+              <span class="material-symbols-outlined text-primary text-base">account_balance</span> Saldo Bersih
+            </div>
+            <div class="text-2xl font-bold text-on-surface mt-2" id="tx-summary-balance">Rp 0</div>
+          </div>
+        </div>
+
+        <!-- Tabel Transaksi Kas -->
+        <div class="bg-surface-container-lowest rounded-xl border border-outline-variant/30 flex flex-col overflow-hidden shadow-sm">
+          <div class="p-5 border-b border-outline-variant/30 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-surface-bright">
+            <div class="flex items-center gap-2">
+              <span class="material-symbols-outlined text-primary">account_balance_wallet</span>
+              <h2 class="font-headline-md text-on-surface">Daftar Transaksi Kas</h2>
+            </div>
+            <button class="btn btn-primary btn-sm flex items-center gap-2 px-3.5 py-2 rounded-lg font-semibold shadow-sm" onclick="openCreateTxModal()">
+              <span class="material-symbols-outlined text-[18px]">add</span> Tambah Transaksi
+            </button>
+          </div>
+
+          <!-- Filter Bar Transaksi -->
+          <div class="px-5 py-4 flex flex-wrap items-center gap-3 border-b border-outline-variant/20 bg-surface-container-lowest">
+            <div>
+              <label class="block text-[10px] uppercase font-semibold text-on-surface-variant mb-1">Mulai</label>
+              <input type="date" id="tx-filter-start" class="border border-outline-variant rounded-lg px-3 py-1.5 text-xs bg-surface-container-low text-on-surface focus:outline-none focus:border-primary">
+            </div>
+            <div>
+              <label class="block text-[10px] uppercase font-semibold text-on-surface-variant mb-1">Sampai</label>
+              <input type="date" id="tx-filter-end" class="border border-outline-variant rounded-lg px-3 py-1.5 text-xs bg-surface-container-low text-on-surface focus:outline-none focus:border-primary">
+            </div>
+            <div>
+              <label class="block text-[10px] uppercase font-semibold text-on-surface-variant mb-1">Tipe</label>
+              <select id="tx-filter-tipe" class="border border-outline-variant rounded-lg px-3 py-1.5 text-xs bg-surface-container-low text-on-surface focus:outline-none focus:border-primary">
+                <option value="all">Semua Tipe</option>
+                <option value="masuk">Pemasukan (+)</option>
+                <option value="keluar">Pengeluaran (-)</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-[10px] uppercase font-semibold text-on-surface-variant mb-1">Sumber</label>
+              <select id="tx-filter-source" class="border border-outline-variant rounded-lg px-3 py-1.5 text-xs bg-surface-container-low text-on-surface focus:outline-none focus:border-primary">
+                <option value="all">Semua Sumber</option>
+                <option value="manual">Manual Kas</option>
+                <option value="booking">Dari Booking</option>
+              </select>
+            </div>
+            <div class="flex-1 min-w-[150px]">
+              <label class="block text-[10px] uppercase font-semibold text-on-surface-variant mb-1">Cari</label>
+              <input type="text" id="tx-filter-search" placeholder="Keterangan / Kategori / Klien..." class="w-full border border-outline-variant rounded-lg px-3 py-1.5 text-xs bg-surface-container-low text-on-surface focus:outline-none focus:border-primary">
+            </div>
+            <div class="flex items-end gap-2 pt-4">
+              <button class="btn btn-primary btn-sm px-4 text-xs font-semibold" onclick="loadTransactions()">Filter</button>
+              <button class="btn btn-outline btn-sm px-4 text-xs font-semibold" onclick="resetTxFilter()">Reset</button>
+            </div>
+          </div>
+
+          <!-- Loading & Empty State -->
+          <div id="tx-loading" class="loading-overlay h-40">
+            <div class="spinner border-primary"></div>
+          </div>
+          <div id="tx-empty" class="hidden flex flex-col items-center justify-center p-12 text-center h-48">
+            <span class="material-symbols-outlined text-on-surface-variant text-[36px] mb-2">payments</span>
+            <p class="text-sm text-on-surface-variant">Belum ada transaksi pada periode ini.</p>
+          </div>
+
+          <!-- Table Content -->
+          <div class="hidden overflow-x-auto" id="tx-table-wrap">
+            <table class="w-full text-left text-sm">
+              <thead class="bg-surface-container-low text-xs uppercase text-on-surface-variant border-b border-outline-variant/30">
+                <tr>
+                  <th class="px-5 py-3.5">Tanggal</th>
+                  <th class="px-5 py-3.5">Tipe</th>
+                  <th class="px-5 py-3.5">Kategori</th>
+                  <th class="px-5 py-3.5">Sumber</th>
+                  <th class="px-5 py-3.5">Nominal</th>
+                  <th class="px-5 py-3.5">Keterangan</th>
+                  <th class="px-5 py-3.5">Dicatat Oleh</th>
+                  <th class="px-5 py-3.5 text-right">Aksi</th>
+                </tr>
+              </thead>
+              <tbody id="tx-tbody" class="divide-y divide-outline-variant/10 text-on-surface"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 2: Payments Table Area (Verifikasi Pembayaran Client) -->
+      <div id="container-payments" class="hidden bg-surface-container-lowest rounded-xl border border-outline-variant/30 flex flex-col overflow-hidden">
+        <div class="p-5 border-b border-outline-variant/30 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-surface-bright">
           <h2 class="font-headline-md text-on-surface flex items-center gap-2">
-            <span class="material-symbols-outlined">receipt_long</span> Daftar Pembayaran
+            <span class="material-symbols-outlined">receipt_long</span> Daftar Pembayaran Client
           </h2>
           <button class="btn btn-outline border-outline-variant/50 bg-surface-container-lowest" id="btn-export-csv"
             onclick="exportCsv()">
@@ -647,6 +759,84 @@
             <div id="btn-del-payment-spinner" class="spinner hidden w-4 h-4 border-2 border-white/30 border-l-white"></div>
           </button>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Tambah / Edit Transaksi Kas -->
+  <div id="modal-tx" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm hidden">
+    <div class="bg-surface-container-lowest border border-outline-variant/30 rounded-2xl w-full max-w-md p-6 shadow-2xl relative text-on-surface">
+      <h3 class="text-lg font-bold mb-1" id="modal-tx-title">Tambah Transaksi Keuangan</h3>
+      <p class="text-xs text-on-surface-variant mb-4">Catat pemasukan atau pengeluaran kas studio secara rapi.</p>
+      <form id="form-tx" class="space-y-4">
+        <input type="hidden" id="form-tx-id">
+        <div id="form-tx-alert" class="hidden p-3 rounded-lg text-xs bg-error-container text-on-error-container"></div>
+        
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold mb-1 text-on-surface-variant uppercase">Tanggal</label>
+            <input type="date" id="form-tx-tanggal" required class="w-full bg-surface-container-low border border-outline-variant/40 rounded-lg p-2.5 text-sm focus:outline-none focus:border-primary">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold mb-1 text-on-surface-variant uppercase">Tipe</label>
+            <select id="form-tx-tipe" required class="w-full bg-surface-container-low border border-outline-variant/40 rounded-lg p-2.5 text-sm focus:outline-none focus:border-primary">
+              <option value="masuk">Pemasukan (+)</option>
+              <option value="keluar">Pengeluaran (-)</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold mb-1 text-on-surface-variant uppercase">Kategori</label>
+          <input type="text" id="form-tx-kategori" required list="kategori-datalist" placeholder="Contoh: Operasional, DP Booking, Gaji" class="w-full bg-surface-container-low border border-outline-variant/40 rounded-lg p-2.5 text-sm focus:outline-none focus:border-primary">
+          <datalist id="kategori-datalist">
+            <option value="DP Booking">
+            <option value="Pelunasan Booking">
+            <option value="Operasional Studio">
+            <option value="Perlengkapan & Properti">
+            <option value="Gaji & Fee Fotografer">
+            <option value="Transportasi">
+            <option value="Cetak Foto & Album">
+            <option value="Marketing & Iklan">
+            <option value="Lain-lain">
+          </datalist>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold mb-1 text-on-surface-variant uppercase">Nominal (Rupiah)</label>
+          <input type="number" id="form-tx-nominal" required min="0" step="1" placeholder="Contoh: 250000" class="w-full bg-surface-container-low border border-outline-variant/40 rounded-lg p-2.5 text-sm focus:outline-none focus:border-primary">
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold mb-1 text-on-surface-variant uppercase">Keterangan / Catatan</label>
+          <textarea id="form-tx-keterangan" rows="2" placeholder="Catatan transaksi..." class="w-full bg-surface-container-low border border-outline-variant/40 rounded-lg p-2.5 text-sm focus:outline-none focus:border-primary"></textarea>
+        </div>
+
+        <div id="form-tx-booking-wrap">
+          <label class="block text-xs font-semibold mb-1 text-on-surface-variant uppercase">Booking ID (Opsional)</label>
+          <input type="number" id="form-tx-booking-id" placeholder="ID booking terkait (jika ada)" class="w-full bg-surface-container-low border border-outline-variant/40 rounded-lg p-2.5 text-sm focus:outline-none focus:border-primary">
+          <span class="text-[11px] text-on-surface-variant">Jika diisi, total biaya dibayar pada booking akan otomatis disinkronkan.</span>
+        </div>
+
+        <div class="flex justify-end gap-2 pt-2">
+          <button type="button" onclick="closeTxModal()" class="px-4 py-2 rounded-lg text-sm font-semibold hover:bg-surface-container">Batal</button>
+          <button type="submit" id="btn-submit-tx" class="px-4 py-2 bg-primary text-on-primary rounded-lg text-sm font-semibold hover:opacity-90 transition-all">Simpan Transaksi</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Konfirmasi Hapus Transaksi (Soft Delete) -->
+  <div id="modal-del-tx" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm hidden">
+    <div class="bg-surface-container-lowest border border-outline-variant/30 rounded-2xl w-full max-w-sm p-6 shadow-2xl relative text-on-surface text-center">
+      <div class="w-12 h-12 rounded-full bg-error/15 text-error flex items-center justify-center mx-auto mb-3">
+        <span class="material-symbols-outlined text-2xl">delete</span>
+      </div>
+      <h3 class="text-base font-bold mb-1">Hapus Transaksi?</h3>
+      <p class="text-xs text-on-surface-variant mb-4" id="modal-del-tx-desc">Transaksi ini akan dihapus (soft delete) dari buku kas dan rekap saldo.</p>
+      <div class="flex gap-2">
+        <button type="button" onclick="closeDelTxModal()" class="btn btn-outline flex-1">Batal</button>
+        <button type="button" id="btn-confirm-del-tx" onclick="executeDeleteTx()" class="btn btn-danger flex-1">Hapus</button>
       </div>
     </div>
   </div>
@@ -1007,8 +1197,267 @@
       }
     }
 
+    // ── CRUD TRANSAKSI KEUANGAN & KAS ──────────────────────────────
+    let transactionsData = [];
+    let _deleteTxId = null;
+
+    function esc(str) {
+      if (str == null) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    function switchFinanceTab(tab) {
+      const btnTx = document.getElementById('tab-btn-tx');
+      const btnPay = document.getElementById('tab-btn-payments');
+      const secTx = document.getElementById('container-transactions');
+      const secPay = document.getElementById('container-payments');
+
+      if (tab === 'transactions') {
+        btnTx.className = 'px-4 py-2.5 rounded-xl font-bold text-sm bg-primary text-on-primary shadow-sm flex items-center gap-2 transition-all';
+        btnPay.className = 'px-4 py-2.5 rounded-xl font-bold text-sm text-on-surface-variant hover:bg-surface-container flex items-center gap-2 transition-all';
+        secTx.classList.remove('hidden');
+        secPay.classList.add('hidden');
+        loadTransactions();
+      } else {
+        btnPay.className = 'px-4 py-2.5 rounded-xl font-bold text-sm bg-primary text-on-primary shadow-sm flex items-center gap-2 transition-all';
+        btnTx.className = 'px-4 py-2.5 rounded-xl font-bold text-sm text-on-surface-variant hover:bg-surface-container flex items-center gap-2 transition-all';
+        secPay.classList.remove('hidden');
+        secTx.classList.add('hidden');
+        loadPayments();
+      }
+    }
+
+    async function loadTransactions() {
+      const loading = document.getElementById('tx-loading');
+      const empty = document.getElementById('tx-empty');
+      const wrap = document.getElementById('tx-table-wrap');
+
+      loading.classList.remove('hidden');
+      empty.classList.add('hidden');
+      wrap.classList.add('hidden');
+
+      const start = document.getElementById('tx-filter-start').value;
+      const end = document.getElementById('tx-filter-end').value;
+      const tipe = document.getElementById('tx-filter-tipe').value;
+      const source = document.getElementById('tx-filter-source').value;
+      const search = document.getElementById('tx-filter-search').value.trim();
+
+      const params = new URLSearchParams();
+      if (start) params.set('start_date', start);
+      if (end) params.set('end_date', end);
+      if (tipe && tipe !== 'all') params.set('tipe', tipe);
+      if (source && source !== 'all') params.set('source', source);
+      if (search) params.set('search', search);
+
+      try {
+        const res = await fetch(`/api/finance/transactions?${params.toString()}`, { headers: H });
+        if (res.status === 403) {
+          toast('Hanya Owner yang berhak mengakses transaksi keuangan', 'error');
+          return;
+        }
+        if (!res.ok) throw new Error('Gagal memuat transaksi');
+
+        const data = await res.json();
+        transactionsData = data.transactions || [];
+
+        // Update ringkasan kas
+        const sm = data.summary || { total_income: 0, total_expense: 0, balance: 0 };
+        document.getElementById('tx-summary-income').textContent = fmtMoney(sm.total_income);
+        document.getElementById('tx-summary-expense').textContent = fmtMoney(sm.total_expense);
+        document.getElementById('tx-summary-balance').textContent = fmtMoney(sm.balance);
+
+        loading.classList.add('hidden');
+        if (transactionsData.length === 0) {
+          empty.classList.remove('hidden');
+          return;
+        }
+
+        renderTransactionsTable(transactionsData);
+      } catch (err) {
+        loading.classList.add('hidden');
+        toast('Gagal memuat daftar transaksi kas', 'error');
+      }
+    }
+
+    function renderTransactionsTable(list) {
+      const tbody = document.getElementById('tx-tbody');
+      tbody.innerHTML = list.map(tx => {
+        const isMasuk = tx.tipe === 'masuk';
+        const tipeBadge = isMasuk
+          ? '<span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-500/15 text-emerald-500 border border-emerald-500/30">Pemasukan</span>'
+          : '<span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-error/15 text-error border border-error/30">Pengeluaran</span>';
+
+        const isBooking = tx.source === 'booking';
+        const sourceBadge = isBooking
+          ? `<span class="px-2 py-0.5 rounded-md text-xs font-semibold bg-primary/10 text-primary" title="Terkait Booking ID: ${tx.booking_id || '-'}">Booking ${tx.booking_id ? '#' + tx.booking_id : ''}</span>`
+          : '<span class="px-2 py-0.5 rounded-md text-xs font-semibold bg-surface-container text-on-surface-variant">Manual</span>';
+
+        const nominalColor = isMasuk ? 'text-emerald-500' : 'text-error';
+        const nominalSign = isMasuk ? '+' : '-';
+
+        return `
+          <tr class="hover:bg-surface-container-low transition-colors">
+            <td class="px-5 py-3.5 whitespace-nowrap text-xs font-mono">${esc(tx.tanggal)}</td>
+            <td class="px-5 py-3.5 whitespace-nowrap">${tipeBadge}</td>
+            <td class="px-5 py-3.5 font-medium">${esc(tx.kategori)}</td>
+            <td class="px-5 py-3.5">${sourceBadge}</td>
+            <td class="px-5 py-3.5 whitespace-nowrap font-bold font-mono ${nominalColor}">${nominalSign} ${fmtMoney(tx.nominal)}</td>
+            <td class="px-5 py-3.5 text-xs text-on-surface-variant max-w-xs truncate" title="${esc(tx.keterangan || tx.catatan || '')}">
+              ${esc(tx.keterangan || tx.catatan || '-')}
+              ${tx.client_name ? `<div class="text-[11px] text-primary font-medium">Klien: ${esc(tx.client_name)}</div>` : ''}
+            </td>
+            <td class="px-5 py-3.5 text-xs text-on-surface-variant whitespace-nowrap">${esc(tx.created_by_name || 'Admin')}</td>
+            <td class="px-5 py-3.5 text-right space-x-1 whitespace-nowrap">
+              <button onclick="openEditTxModal(${tx.id})" class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-surface-container hover:bg-surface-container-high transition-all" title="Edit Transaksi">
+                Edit
+              </button>
+              <button onclick="confirmDeleteTx(${tx.id}, '${esc((tx.keterangan || tx.kategori || '').replace(/'/g, ''))}', ${tx.nominal})" class="px-2.5 py-1 rounded-lg text-xs font-semibold text-error hover:bg-error/10 transition-all" title="Hapus Transaksi (Soft Delete)">
+                Hapus
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+
+      document.getElementById('tx-table-wrap').classList.remove('hidden');
+    }
+
+    function resetTxFilter() {
+      document.getElementById('tx-filter-start').value = '';
+      document.getElementById('tx-filter-end').value = '';
+      document.getElementById('tx-filter-tipe').value = 'all';
+      document.getElementById('tx-filter-source').value = 'all';
+      document.getElementById('tx-filter-search').value = '';
+      loadTransactions();
+    }
+
+    function openCreateTxModal() {
+      document.getElementById('form-tx-id').value = '';
+      document.getElementById('modal-tx-title').textContent = 'Tambah Transaksi Keuangan';
+      document.getElementById('form-tx-tanggal').value = new Date().toISOString().slice(0, 10);
+      document.getElementById('form-tx-tipe').value = 'masuk';
+      document.getElementById('form-tx-kategori').value = '';
+      document.getElementById('form-tx-nominal').value = '';
+      document.getElementById('form-tx-keterangan').value = '';
+      document.getElementById('form-tx-booking-id').value = '';
+      document.getElementById('form-tx-booking-wrap').classList.remove('hidden');
+      document.getElementById('form-tx-alert').classList.add('hidden');
+      document.getElementById('modal-tx').classList.remove('hidden');
+    }
+
+    function openEditTxModal(id) {
+      const tx = transactionsData.find(x => x.id === id);
+      if (!tx) return;
+
+      document.getElementById('form-tx-id').value = tx.id;
+      document.getElementById('modal-tx-title').textContent = 'Edit Transaksi Keuangan';
+      document.getElementById('form-tx-tanggal').value = tx.tanggal || new Date().toISOString().slice(0, 10);
+      document.getElementById('form-tx-tipe').value = tx.tipe || 'masuk';
+      document.getElementById('form-tx-kategori').value = tx.kategori || '';
+      document.getElementById('form-tx-nominal').value = tx.nominal || 0;
+      document.getElementById('form-tx-keterangan').value = tx.keterangan || tx.catatan || '';
+      document.getElementById('form-tx-booking-id').value = tx.booking_id || '';
+      document.getElementById('form-tx-booking-wrap').classList.add('hidden');
+      document.getElementById('form-tx-alert').classList.add('hidden');
+      document.getElementById('modal-tx').classList.remove('hidden');
+    }
+
+    function closeTxModal() {
+      document.getElementById('modal-tx').classList.add('hidden');
+    }
+
+    document.getElementById('form-tx').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const submitBtn = document.getElementById('btn-submit-tx');
+      const alertEl = document.getElementById('form-tx-alert');
+      submitBtn.disabled = true;
+
+      const id = document.getElementById('form-tx-id').value;
+      const tanggal = document.getElementById('form-tx-tanggal').value;
+      const tipe = document.getElementById('form-tx-tipe').value;
+      const kategori = document.getElementById('form-tx-kategori').value.trim();
+      const nominal = parseInt(document.getElementById('form-tx-nominal').value, 10);
+      const keterangan = document.getElementById('form-tx-keterangan').value.trim();
+      const booking_id = document.getElementById('form-tx-booking-id').value.trim();
+
+      const isEdit = Boolean(id);
+      const url = isEdit ? `/api/finance/transactions/${id}` : '/api/finance/transactions';
+      const method = isEdit ? 'PUT' : 'POST';
+
+      const payload = { tanggal, tipe, kategori, nominal, keterangan };
+      if (!isEdit && booking_id) {
+        payload.booking_id = parseInt(booking_id, 10);
+      }
+
+      try {
+        const res = await fetch(url, {
+          method,
+          headers: H,
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (res.ok) {
+          toast(data.message || (isEdit ? 'Transaksi diperbarui' : 'Transaksi ditambahkan'), 'success');
+          closeTxModal();
+          loadTransactions();
+          loadSummary();
+        } else {
+          alertEl.textContent = data.error || 'Gagal menyimpan transaksi.';
+          alertEl.classList.remove('hidden');
+        }
+      } catch (err) {
+        alertEl.textContent = 'Terjadi kesalahan jaringan.';
+        alertEl.classList.remove('hidden');
+      } finally {
+        submitBtn.disabled = false;
+      }
+    });
+
+    function confirmDeleteTx(id, keterangan, nominal) {
+      _deleteTxId = id;
+      document.getElementById('modal-del-tx-desc').textContent = `Transaksi "${keterangan || 'ID ' + id}" sebesar ${fmtMoney(nominal)} akan dihapus dari buku kas.`;
+      document.getElementById('modal-del-tx').classList.remove('hidden');
+    }
+
+    function closeDelTxModal() {
+      document.getElementById('modal-del-tx').classList.add('hidden');
+      _deleteTxId = null;
+    }
+
+    async function executeDeleteTx() {
+      if (!_deleteTxId) return;
+      const btn = document.getElementById('btn-confirm-del-tx');
+      btn.disabled = true;
+
+      try {
+        const res = await fetch(`/api/finance/transactions/${_deleteTxId}`, {
+          method: 'DELETE',
+          headers: H
+        });
+        const data = await res.json();
+        if (res.ok) {
+          toast(data.message || 'Transaksi berhasil dihapus', 'success');
+          closeDelTxModal();
+          loadTransactions();
+          loadSummary();
+        } else {
+          toast(data.error || 'Gagal menghapus transaksi', 'error');
+        }
+      } catch (err) {
+        toast('Terjadi kesalahan jaringan', 'error');
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
     loadCategories();
     loadSummary();
+    loadTransactions();
     loadPayments();
   </script>
   <script src="/js/admin-nav.js?v=5"></script>

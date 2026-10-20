@@ -4,6 +4,7 @@ const express = require('express');
 const router  = express.Router();
 const db      = require('../database');
 const auth    = require('../middleware/auth');
+const audit   = require('../services/audit');
 const https   = require('https');
 const { getWaTemplate } = require('../utils/template');
 const { buildPublicUrl } = require('../utils/url');
@@ -346,4 +347,422 @@ router.delete('/payments/:id', auth, async (req, res) => {
   }
 });
 
+// ── Helper Sinkronisasi Booking Paid Amount ──────────────────────
+async function recalculateBookingPaidAmount(client, bookingId) {
+  if (!bookingId) return 0;
+  const res = await client.query(
+    `SELECT COALESCE(SUM(
+       CASE WHEN tipe = 'masuk' THEN nominal
+            WHEN tipe = 'keluar' THEN -nominal
+            ELSE 0 END
+     ), 0) AS total_paid
+     FROM financial_entries
+     WHERE booking_id = $1 AND deleted_at IS NULL AND status = 'aktif'`,
+    [bookingId]
+  );
+  const totalPaid = Math.max(0, parseInt(res.rows[0].total_paid, 10) || 0);
+  await client.query(
+    `UPDATE bookings
+     SET paid_amount = $1, version = version + 1
+     WHERE id = $2`,
+    [totalPaid, bookingId]
+  );
+  return totalPaid;
+}
+
+// ── CRUD TRANSAKSI KEUANGAN (financial_entries) ──────────────────
+
+// GET /api/finance/transactions — list transaksi kas dengan filter & total rekap
+router.get('/transactions', async (req, res) => {
+  const { start_date, end_date, tipe, category, source, search, limit = 50, offset = 0 } = req.query;
+
+  const conditions = ['fe.deleted_at IS NULL'];
+  const params = [];
+
+  if (start_date) {
+    params.push(start_date);
+    conditions.push(`fe.tanggal >= $${params.length}`);
+  }
+  if (end_date) {
+    params.push(end_date);
+    conditions.push(`fe.tanggal <= $${params.length}`);
+  }
+  if (tipe && tipe !== 'all') {
+    const normTipe = tipe === 'pemasukan' ? 'masuk' : (tipe === 'pengeluaran' ? 'keluar' : tipe);
+    params.push(normTipe);
+    conditions.push(`fe.tipe = $${params.length}`);
+  }
+  if (category && category !== 'all' && category.trim() !== '') {
+    params.push(category.trim());
+    conditions.push(`fe.kategori = $${params.length}`);
+  }
+  if (source && source !== 'all') {
+    params.push(source);
+    conditions.push(`fe.source = $${params.length}`);
+  }
+  if (search && search.trim() !== '') {
+    params.push(`%${search.trim()}%`);
+    conditions.push(`(fe.catatan ILIKE $${params.length} OR fe.kategori ILIKE $${params.length} OR b.client_name ILIKE $${params.length})`);
+  }
+
+  const whereClause = conditions.length > 0 ? 'WHERE ' + conditions.join(' AND ') : '';
+
+  try {
+    // 1. Rekap Total di Server (Pemasukan, Pengeluaran, Saldo)
+    const summaryQuery = `
+      SELECT
+        COALESCE(SUM(CASE WHEN fe.tipe = 'masuk' THEN fe.nominal ELSE 0 END), 0) AS total_income,
+        COALESCE(SUM(CASE WHEN fe.tipe = 'keluar' THEN fe.nominal ELSE 0 END), 0) AS total_expense,
+        COUNT(fe.id) AS total_count
+      FROM financial_entries fe
+      LEFT JOIN bookings b ON fe.booking_id = b.id
+      ${whereClause}
+    `;
+    const summaryRes = await db.query(summaryQuery, params);
+    const totalIncome = parseInt(summaryRes.rows[0].total_income, 10) || 0;
+    const totalExpense = parseInt(summaryRes.rows[0].total_expense, 10) || 0;
+    const totalCount = parseInt(summaryRes.rows[0].total_count, 10) || 0;
+    const balance = totalIncome - totalExpense;
+
+    // 2. Data Transaksi
+    const listParams = [...params];
+    listParams.push(parseInt(limit, 10) || 50);
+    listParams.push(parseInt(offset, 10) || 0);
+
+    const listQuery = `
+      SELECT
+        fe.id,
+        TO_CHAR(fe.tanggal, 'YYYY-MM-DD') AS tanggal,
+        fe.tipe,
+        fe.kategori,
+        fe.nominal,
+        fe.catatan,
+        fe.catatan AS keterangan,
+        fe.source,
+        fe.booking_id,
+        fe.status,
+        fe.created_at,
+        fe.created_by,
+        u.nama AS created_by_name,
+        b.client_name,
+        b.client_phone
+      FROM financial_entries fe
+      LEFT JOIN users u ON fe.created_by = u.id
+      LEFT JOIN bookings b ON fe.booking_id = b.id
+      ${whereClause}
+      ORDER BY fe.tanggal DESC, fe.id DESC
+      LIMIT $${listParams.length - 1} OFFSET $${listParams.length}
+    `;
+    const { rows } = await db.query(listQuery, listParams);
+
+    res.json({
+      summary: {
+        total_income: totalIncome,
+        total_expense: totalExpense,
+        balance,
+        total_count: totalCount
+      },
+      transactions: rows
+    });
+  } catch (err) {
+    console.error('[finance] transactions error:', err);
+    res.status(500).json({ error: 'Database error' });
+  }
+});
+
+// POST /api/finance/transactions — buat transaksi baru
+router.post('/transactions', async (req, res) => {
+  const { tanggal, tipe, kategori, nominal, keterangan, catatan, booking_id } = req.body;
+
+  // Normalisasi tipe
+  const rawTipe = (tipe || '').toLowerCase().trim();
+  const normTipe = (rawTipe === 'pemasukan' || rawTipe === 'masuk') ? 'masuk' : ((rawTipe === 'pengeluaran' || rawTipe === 'keluar') ? 'keluar' : null);
+  if (!normTipe) {
+    return res.status(400).json({ error: 'Tipe transaksi harus masuk/pemasukan atau keluar/pengeluaran' });
+  }
+
+  // Validasi kategori
+  const cleanKategori = (kategori || '').trim();
+  if (!cleanKategori) {
+    return res.status(400).json({ error: 'Kategori wajib diisi' });
+  }
+
+  // Validasi nominal (harus integer >= 0)
+  const parsedNominal = parseInt(nominal, 10);
+  if (isNaN(parsedNominal) || parsedNominal < 0) {
+    return res.status(400).json({ error: 'Nominal harus berupa bilangan bulat positif (>= 0)' });
+  }
+
+  // Validasi tanggal
+  const cleanTanggal = tanggal ? tanggal.trim() : new Date().toISOString().slice(0, 10);
+  if (isNaN(new Date(cleanTanggal).getTime())) {
+    return res.status(400).json({ error: 'Format tanggal tidak valid (YYYY-MM-DD)' });
+  }
+
+  const cleanKeterangan = (keterangan || catatan || '').trim();
+
+  let client;
+  try {
+    let validBookingId = null;
+    let bookingSource = 'manual';
+
+    if (booking_id !== undefined && booking_id !== null && booking_id !== '') {
+      validBookingId = parseInt(booking_id, 10);
+      if (isNaN(validBookingId)) {
+        return res.status(400).json({ error: 'Booking ID tidak valid' });
+      }
+      const bRes = await db.query('SELECT id, client_name, package_price FROM bookings WHERE id = $1 AND deleted_at IS NULL', [validBookingId]);
+      if (!bRes.rows[0]) {
+        return res.status(404).json({ error: 'Booking tidak ditemukan atau telah dihapus' });
+      }
+      bookingSource = 'booking';
+    }
+
+    client = await db.getClient();
+    await client.query('BEGIN');
+
+    const insertRes = await client.query(
+      `INSERT INTO financial_entries (
+         tanggal, tipe, kategori, nominal, catatan, source, booking_id,
+         sumber_tipe, sumber_id, status, created_by
+       ) VALUES (
+         $1, $2, $3, $4, $5, $6, $7,
+         $8, $9, 'aktif', $10
+       )
+       RETURNING *`,
+      [
+        cleanTanggal,
+        normTipe,
+        cleanKategori,
+        parsedNominal,
+        cleanKeterangan || null,
+        bookingSource,
+        validBookingId,
+        validBookingId ? 'booking_manual' : 'manual',
+        validBookingId || 0,
+        req.user.id
+      ]
+    );
+    const newEntry = insertRes.rows[0];
+
+    // Jika terkait booking, hitung ulang total paid booking
+    if (validBookingId) {
+      await recalculateBookingPaidAmount(client, validBookingId);
+    }
+
+    await audit.record(client, {
+      req,
+      aksi: 'finance.transaction_create',
+      entitas: 'financial_entry',
+      entitas_id: newEntry.id,
+      data_setelah: {
+        id: newEntry.id,
+        tanggal: cleanTanggal,
+        tipe: normTipe,
+        kategori: cleanKategori,
+        nominal: parsedNominal,
+        source: bookingSource,
+        booking_id: validBookingId
+      }
+    });
+
+    await client.query('COMMIT');
+    res.status(201).json({ message: 'Transaksi berhasil ditambahkan', transaction: newEntry });
+  } catch (err) {
+    if (client) await client.query('ROLLBACK');
+    console.error('[finance] create transaction error:', err);
+    res.status(500).json({ error: 'Database error' });
+  } finally {
+    if (client) client.release();
+  }
+});
+
+// GET /api/finance/transactions/:id — detail transaksi
+router.get('/transactions/:id', async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (isNaN(id)) return res.status(400).json({ error: 'ID transaksi tidak valid' });
+
+  try {
+    const { rows } = await db.query(
+      `SELECT fe.*,
+              TO_CHAR(fe.tanggal, 'YYYY-MM-DD') AS tanggal,
+              fe.catatan AS keterangan,
+              u.nama AS created_by_name,
+              b.client_name, b.client_phone
+       FROM financial_entries fe
+       LEFT JOIN users u ON fe.created_by = u.id
+       LEFT JOIN bookings b ON fe.booking_id = b.id
+       WHERE fe.id = $1 AND fe.deleted_at IS NULL`,
+      [id]
+    );
+    if (!rows[0]) return res.status(404).json({ error: 'Transaksi tidak ditemukan' });
+    res.json(rows[0]);
+  } catch (err) {
+    console.error('[finance] get transaction error:', err);
+    res.status(500).json({ error: 'Database error' });
+  }
+});
+
+// PUT /api/finance/transactions/:id — update transaksi
+router.put('/transactions/:id', async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (isNaN(id)) return res.status(400).json({ error: 'ID transaksi tidak valid' });
+
+  const { tanggal, tipe, kategori, nominal, keterangan, catatan } = req.body;
+
+  let client;
+  try {
+    const curRes = await db.query('SELECT * FROM financial_entries WHERE id = $1 AND deleted_at IS NULL', [id]);
+    if (!curRes.rows[0]) return res.status(404).json({ error: 'Transaksi tidak ditemukan atau telah dihapus' });
+    const current = curRes.rows[0];
+
+    // Normalisasi & validasi
+    let updatedTipe = current.tipe;
+    if (tipe !== undefined) {
+      const raw = tipe.toLowerCase().trim();
+      const norm = (raw === 'pemasukan' || raw === 'masuk') ? 'masuk' : ((raw === 'pengeluaran' || raw === 'keluar') ? 'keluar' : null);
+      if (!norm) return res.status(400).json({ error: 'Tipe transaksi harus masuk/pemasukan atau keluar/pengeluaran' });
+      updatedTipe = norm;
+    }
+
+    let updatedNominal = current.nominal;
+    if (nominal !== undefined) {
+      const pNom = parseInt(nominal, 10);
+      if (isNaN(pNom) || pNom < 0) return res.status(400).json({ error: 'Nominal harus bilangan bulat positif (>= 0)' });
+      updatedNominal = pNom;
+    }
+
+    let updatedTanggal = current.tanggal;
+    if (tanggal !== undefined) {
+      if (isNaN(new Date(tanggal).getTime())) return res.status(400).json({ error: 'Format tanggal tidak valid' });
+      updatedTanggal = tanggal;
+    }
+
+    const updatedKategori = (kategori !== undefined ? kategori : current.kategori).trim();
+    if (!updatedKategori) return res.status(400).json({ error: 'Kategori tidak boleh kosong' });
+
+    const updatedKeterangan = (keterangan !== undefined || catatan !== undefined) ? (keterangan || catatan || '').trim() : current.catatan;
+
+    client = await db.getClient();
+    await client.query('BEGIN');
+
+    const updateRes = await client.query(
+      `UPDATE financial_entries
+       SET tanggal = $1,
+           tipe = $2,
+           kategori = $3,
+           nominal = $4,
+           catatan = $5,
+           updated_by = $6,
+           updated_at = now()
+       WHERE id = $7
+       RETURNING *`,
+      [
+        updatedTanggal,
+        updatedTipe,
+        updatedKategori,
+        updatedNominal,
+        updatedKeterangan,
+        req.user.id,
+        id
+      ]
+    );
+    const updated = updateRes.rows[0];
+
+    // Jika terkait booking, hitung ulang total dibayar booking
+    if (current.booking_id) {
+      await recalculateBookingPaidAmount(client, current.booking_id);
+    }
+
+    await audit.record(client, {
+      req,
+      aksi: 'finance.transaction_update',
+      entitas: 'financial_entry',
+      entitas_id: id,
+      data_sebelum: {
+        tanggal: current.tanggal,
+        tipe: current.tipe,
+        kategori: current.kategori,
+        nominal: current.nominal,
+        catatan: current.catatan
+      },
+      data_setelah: {
+        tanggal: updated.tanggal,
+        tipe: updated.tipe,
+        kategori: updated.kategori,
+        nominal: updated.nominal,
+        catatan: updated.catatan
+      }
+    });
+
+    await client.query('COMMIT');
+    res.json({ message: 'Transaksi berhasil diperbarui', transaction: updated });
+  } catch (err) {
+    if (client) await client.query('ROLLBACK');
+    console.error('[finance] update transaction error:', err);
+    res.status(500).json({ error: 'Database error' });
+  } finally {
+    if (client) client.release();
+  }
+});
+
+// DELETE /api/finance/transactions/:id — soft delete transaksi
+router.delete('/transactions/:id', async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (isNaN(id)) return res.status(400).json({ error: 'ID transaksi tidak valid' });
+
+  let client;
+  try {
+    const curRes = await db.query('SELECT * FROM financial_entries WHERE id = $1 AND deleted_at IS NULL', [id]);
+    if (!curRes.rows[0]) return res.status(404).json({ error: 'Transaksi tidak ditemukan atau sudah dihapus' });
+    const current = curRes.rows[0];
+
+    client = await db.getClient();
+    await client.query('BEGIN');
+
+    await client.query(
+      `UPDATE financial_entries
+       SET deleted_at = now(),
+           status = 'batal',
+           updated_by = $1,
+           updated_at = now()
+       WHERE id = $2`,
+      [req.user.id, id]
+    );
+
+    // Jika terkait booking, hitung ulang total dibayar booking
+    if (current.booking_id) {
+      await recalculateBookingPaidAmount(client, current.booking_id);
+    }
+
+    await audit.record(client, {
+      req,
+      aksi: 'finance.transaction_delete',
+      entitas: 'financial_entry',
+      entitas_id: id,
+      data_sebelum: {
+        id: current.id,
+        tipe: current.tipe,
+        nominal: current.nominal,
+        status: current.status,
+        deleted_at: null
+      },
+      data_setelah: {
+        status: 'batal',
+        deleted_at: new Date()
+      }
+    });
+
+    await client.query('COMMIT');
+    res.json({ message: 'Transaksi berhasil dihapus (soft delete)', id });
+  } catch (err) {
+    if (client) await client.query('ROLLBACK');
+    console.error('[finance] delete transaction error:', err);
+    res.status(500).json({ error: 'Database error' });
+  } finally {
+    if (client) client.release();
+  }
+});
+
 module.exports = router;
+
