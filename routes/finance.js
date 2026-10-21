@@ -539,7 +539,7 @@ router.post('/transactions', async (req, res) => {
         bookingSource,
         validBookingId,
         validBookingId ? 'booking_manual' : 'manual',
-        validBookingId || 0,
+        Date.now() + Math.floor(Math.random() * 1000),
         req.user.id
       ]
     );

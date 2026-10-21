@@ -5,8 +5,25 @@
 - [x] Fitur D: Hardening Hak Akses & Route Guard (Owner-only 403 di server) - Selesai
 - [x] Fitur C: CRUD User via Admin (/admin/users.html) - Selesai
 - [x] Fitur A: CRUD Transaksi Keuangan (/admin/finance.html) - Selesai
-- [ ] Fitur B: CRUD Booking & Edit "Jumlah Dibayar" (/admin/bookings.html)
+- [x] Fitur B: CRUD Booking & Edit "Jumlah Dibayar" (/admin/bookings.html) - Selesai
 - [ ] Final: Checklist Akhir & Verifikasi
+
+## Catatan Fitur B — CRUD Booking & Edit "Jumlah Dibayar"
+- **Migrasi Database (005_booking_crud.sql)**:
+  - Kolom `notes TEXT` pada tabel `bookings`.
+  - Index pendukung `ix_bookings_status_paid` untuk pencarian status & paid_amount.
+  - Perintah eksekusi: `node scripts/migrate.js up` (idempotent).
+- **Backend API (`routes/bookings.js`)**:
+  - `GET /api/bookings/admin/list`: Mendukung filter `payment_status` (`belum_bayar`, `sebagian`, `lunas`) dan pencarian via kolom `notes`.
+  - `PUT /api/bookings/admin/:id`: Edit penuh (kategori, nama paket, tanggal, jam, lokasi, status, catatan, paid_amount, price). Dilengkapi OCC concurrency locking (`version`). Role guard: staff dilarang ubah `paid_amount` & `package_price` (403 Forbidden).
+  - `PATCH /api/bookings/admin/:id/paid-amount`: Endpoint owner-only untuk update instan jumlah dibayar dengan pencatatan otomatis transaksi penyesuaian kas masuk/keluar di `financial_entries`.
+  - `DELETE /api/bookings/admin/:id`: Soft delete dengan proteksi dua lapis (blokir 400 jika ada sesi sortir aktif; blokir 400 jika ada transaksi keuangan aktif kecuali `?force=true`).
+- **Frontend UI (`public/admin/bookings.html`)**:
+  - Filter pembayaran (Semua, Belum Bayar, DP/Sebagian, Lunas).
+  - Tabel dan panel detail menampilkan kolom Total / Dibayar / Sisa, badge status bayar, modal edit cepat jumlah dibayar, kalkulator sisa otomatis, dan konfirmasi hapus / force delete.
+- **Hasil Pengujian**:
+  - `node tests/phase_b_bookings_crud.test.js`: 27/27 PASS (100% SUKSES).
+  - Regresi penuh (`npm test` & Phase D, C, A, B): 100% Lulus.
 
 ---
 

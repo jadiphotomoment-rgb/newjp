@@ -746,6 +746,13 @@
               <option value="completed">Selesai</option>
               <option value="cancelled">Dibatalkan</option>
             </select>
+            <select id="filter-payment-status" aria-label="Filter pembayaran"
+              class="border border-outline-variant rounded-lg px-3 py-1.5 text-sm bg-surface-container-low text-on-surface focus:ring-1 focus:ring-primary focus:outline-none">
+              <option value="">Semua Pembayaran</option>
+              <option value="belum_bayar">Belum Bayar</option>
+              <option value="sebagian">DP / Sebagian</option>
+              <option value="lunas">Lunas</option>
+            </select>
             <input type="month" id="filter-month" aria-label="Filter bulan"
               class="border border-outline-variant rounded-lg px-3 py-1.5 text-sm bg-surface-container-low text-on-surface focus:ring-1 focus:ring-primary focus:outline-none">
             <button class="btn btn-primary btn-sm px-4" id="btn-filter">Filter</button>
@@ -776,7 +783,7 @@
                   <th>Kategori</th>
                   <th>Tanggal Acara</th>
                   <th>Status</th>
-                  <th>Harga / DP</th>
+                  <th>Total / Dibayar / Sisa</th>
                   <th class="text-center">Kalender</th>
                   <th class="text-right">Aksi</th>
                 </tr>
@@ -997,23 +1004,29 @@
       try {
         const res = await fetch('/api/bookings/categories');
         const cats = await res.json();
+        window.availableCategories = cats;
         const sel = document.getElementById('filter-category');
-        cats.forEach(c => {
-          const opt = document.createElement('option'); opt.value = c.slug; opt.textContent = c.name;
-          sel.appendChild(opt);
-        });
+        if (sel) {
+          sel.innerHTML = '<option value="">Semua Kategori</option>';
+          cats.forEach(c => {
+            const opt = document.createElement('option'); opt.value = c.slug; opt.textContent = c.name;
+            sel.appendChild(opt);
+          });
+        }
       } catch (e) { }
     }
 
     let bookings = [];
     async function loadBookings() {
-      const category = document.getElementById('filter-category').value;
-      const status = document.getElementById('filter-status').value;
-      const month = document.getElementById('filter-month').value;
+      const category = document.getElementById('filter-category')?.value;
+      const status = document.getElementById('filter-status')?.value;
+      const payment_status = document.getElementById('filter-payment-status')?.value;
+      const month = document.getElementById('filter-month')?.value;
       const search = document.getElementById('filter-search')?.value?.trim();
       const qs = new URLSearchParams({
         ...(category && { category }),
         ...(status && { status }),
+        ...(payment_status && { payment_status }),
         ...(month && { month }),
         ...(search && { search })
       });
@@ -1043,6 +1056,16 @@
       document.getElementById('stat-confirmed').textContent = list.filter(b => b.status === 'confirmed' || b.status === 'lunas').length;
     }
 
+    function getPaymentBadgeHtml(paidAmt, pkgPrice) {
+      if (paidAmt <= 0) {
+        return '<span class="badge badge-rejected text-[10px] py-0.5 px-1.5" title="Belum ada pembayaran">Belum Bayar</span>';
+      }
+      if (pkgPrice > 0 && paidAmt >= pkgPrice) {
+        return '<span class="badge badge-approved text-[10px] py-0.5 px-1.5" title="Sudah lunas">Lunas</span>';
+      }
+      return '<span class="badge badge-warning text-[10px] py-0.5 px-1.5" title="Sebagian / DP">DP / Sebagian</span>';
+    }
+
     function renderBookings(list) {
       if (!list.length) {
         document.getElementById('bookings-empty').classList.remove('hidden');
@@ -1050,24 +1073,46 @@
       }
 
       const tbody = document.getElementById('bookings-tbody');
-      tbody.innerHTML = list.map(b => `
+      tbody.innerHTML = list.map(b => {
+        const paidAmt = Number(b.paid_amount || 0);
+        const pkgPrice = Number(b.package_price || 0);
+        const sisaAmt = Math.max(0, pkgPrice - paidAmt);
+        const payBadge = getPaymentBadgeHtml(paidAmt, pkgPrice);
+
+        return `
         <tr>
           <td>
-            <div class="font-semibold text-on-surface">${b.client_name}</div>
+            <div class="font-semibold text-on-surface">${esc(b.client_name)}</div>
             <div class="text-xs text-on-surface-variant flex items-center gap-1.5 flex-wrap">
-              <span>${b.client_phone}</span>
-              ${b.sumber_informasi ? `<span class="text-[10px] bg-surface-container px-1.5 py-0.5 rounded text-on-surface-variant">via ${b.sumber_informasi}</span>` : ''}
+              <span>${esc(b.client_phone)}</span>
+              ${b.sumber_informasi ? `<span class="text-[10px] bg-surface-container px-1.5 py-0.5 rounded text-on-surface-variant">via ${esc(b.sumber_informasi)}</span>` : ''}
+              ${b.notes ? `<span class="text-[10px] bg-amber-500/10 text-amber-600 px-1 py-0.2 rounded flex items-center gap-0.5" title="${esc(b.notes)}"><span class="material-symbols-outlined text-[11px]">notes</span> Catatan</span>` : ''}
             </div>
           </td>
-          <td><span class="badge" style="background:color-mix(in srgb,${b.color} 15%,transparent);color:${b.color};">${b.category_name}</span></td>
+          <td>
+            <span class="badge" style="background:color-mix(in srgb,${b.color || '#6366f1'} 15%,transparent);color:${b.color || '#6366f1'};">${esc(b.category_name || '-')}</span>
+            ${b.package_name ? `<div class="text-[11px] text-on-surface-variant truncate max-w-[120px] mt-0.5">${esc(b.package_name)}</div>` : ''}
+          </td>
           <td>
             <div class="font-medium text-on-surface">${fmtDate(b.event_date)}</div>
-            <div class="text-xs text-on-surface-variant max-w-[150px] truncate">${b.location || '-'}</div>
+            <div class="text-xs text-on-surface-variant max-w-[150px] truncate">${b.location ? esc(b.location) : '-'}</div>
           </td>
-          <td><span class="badge badge-${b.status}">${STATUS_LABELS[b.status] || b.status}</span></td>
           <td>
-            <div class="font-semibold text-on-surface">${fmtMoney(b.package_price)}</div>
-            <div class="text-xs text-on-surface-variant">DP: ${fmtMoney(b.dp_amount)}</div>
+            <div class="flex flex-col gap-1 items-start">
+              <span class="badge badge-${b.status}">${STATUS_LABELS[b.status] || b.status}</span>
+              ${payBadge}
+            </div>
+          </td>
+          <td>
+            <div class="text-xs text-on-surface-variant">Total: <span class="font-semibold text-on-surface">${fmtMoney(b.package_price)}</span></div>
+            <div class="text-xs flex items-center gap-1 my-0.5">
+              <span>Dibayar:</span>
+              <span class="font-bold text-emerald-600 dark:text-emerald-400">${fmtMoney(paidAmt)}</span>
+              <button class="text-primary hover:underline ml-1 p-0.5 rounded hover:bg-primary/10 inline-flex items-center" onclick="openPaidModal(${b.id}, ${paidAmt}, ${pkgPrice}, '${esc(b.client_name)}', ${b.version || 1})" title="Ubah Jumlah Dibayar">
+                <span class="material-symbols-outlined text-[13px]">edit</span>
+              </button>
+            </div>
+            <div class="text-xs ${sisaAmt > 0 ? 'text-amber-600 dark:text-amber-400 font-semibold' : 'text-on-surface-variant'}">Sisa: ${fmtMoney(sisaAmt)}</div>
           </td>
           <td class="text-center">
             <div class="flex flex-col items-center gap-1">
@@ -1082,42 +1127,67 @@
             </div>
           </td>
           <td class="text-right">
-            <div class="flex justify-end gap-2 flex-wrap">
-              <button class="btn btn-outline btn-sm bg-surface-container-lowest" onclick="openPanel(${b.id})">👁 Detail</button>
+            <div class="flex justify-end gap-1.5 flex-wrap">
+              <button class="btn btn-outline btn-sm bg-surface-container-lowest" onclick="openPanel(${b.id})" title="Detail Booking">👁 Detail</button>
+              <button class="btn btn-outline btn-sm bg-surface-container-lowest" onclick="openPanelThenEdit(${b.id})" title="Edit Booking">✏️ Edit</button>
+              <button class="btn btn-outline btn-sm text-error hover:bg-error/10 border-error/30" onclick="confirmDeleteBooking(${b.id}, '${esc(b.client_name)}')" title="Hapus Booking">🗑</button>
               ${b.status === 'dp_review' ? `
                 <button id="btn-approve-tbl-${b.id}" class="btn btn-primary btn-sm" onclick="approveBookingDirect(${b.id}, ${b.version ?? 'undefined'}, this)">✔ Approve DP</button>
                 <button id="btn-reject-tbl-${b.id}" class="btn btn-danger btn-sm" onclick="rejectBookingDirect(${b.id}, ${b.version ?? 'undefined'}, this)">✘ Reject</button>
               ` : ''}
               ${Number(b.pending_pelunasan || 0) > 0 ? `
                 <button class="btn btn-primary btn-sm bg-sky-600 hover:bg-sky-700 text-white flex items-center gap-1" onclick="openPanel(${b.id})" title="Review Bukti Pelunasan">
-                  <span class="material-symbols-outlined text-[14px]">payments</span> Review Pelunasan
+                  <span class="material-symbols-outlined text-[14px]">payments</span> Review
                 </button>
               ` : ''}
             </div>
           </td>
         </tr>
-      `).join('');
+      `}).join('');
 
       const cards = document.getElementById('bookings-cards');
-      cards.innerHTML = list.map(b => `
+      cards.innerHTML = list.map(b => {
+        const paidAmt = Number(b.paid_amount || 0);
+        const pkgPrice = Number(b.package_price || 0);
+        const sisaAmt = Math.max(0, pkgPrice - paidAmt);
+        const payBadge = getPaymentBadgeHtml(paidAmt, pkgPrice);
+
+        return `
         <div class="bg-surface-container-lowest rounded-xl border border-outline-variant/30 p-4">
           <div class="flex justify-between items-start mb-3">
             <div>
-              <div class="font-bold text-on-surface">${b.client_name}</div>
+              <div class="font-bold text-on-surface">${esc(b.client_name)}</div>
               <div class="text-xs text-on-surface-variant flex items-center gap-1.5 flex-wrap">
-                <span>${b.client_phone} · ${b.category_name}</span>
-                ${b.sumber_informasi ? `<span class="text-[10px] bg-surface-container px-1.5 py-0.5 rounded text-on-surface-variant">via ${b.sumber_informasi}</span>` : ''}
+                <span>${esc(b.client_phone)} · ${esc(b.category_name || '-')}</span>
+                ${b.sumber_informasi ? `<span class="text-[10px] bg-surface-container px-1.5 py-0.5 rounded text-on-surface-variant">via ${esc(b.sumber_informasi)}</span>` : ''}
               </div>
             </div>
-            <span class="badge badge-${b.status}">${STATUS_LABELS[b.status] || b.status}</span>
+            <div class="flex flex-col items-end gap-1">
+              <span class="badge badge-${b.status}">${STATUS_LABELS[b.status] || b.status}</span>
+              ${payBadge}
+            </div>
           </div>
           <div class="text-sm flex flex-col gap-1 mb-3 bg-surface-container-low p-2 rounded">
             <div class="flex gap-2"><span class="material-symbols-outlined text-[16px] text-on-surface-variant">event</span> ${fmtDate(b.event_date)}</div>
-            ${b.location ? `<div class="flex gap-2"><span class="material-symbols-outlined text-[16px] text-on-surface-variant">location_on</span> ${b.location}</div>` : ''}
+            ${b.location ? `<div class="flex gap-2"><span class="material-symbols-outlined text-[16px] text-on-surface-variant">location_on</span> ${esc(b.location)}</div>` : ''}
+            ${b.notes ? `<div class="text-xs text-on-surface-variant pt-1 border-t border-outline-variant/30 flex gap-1"><span class="material-symbols-outlined text-[14px]">notes</span> ${esc(b.notes)}</div>` : ''}
           </div>
-          <div class="text-sm font-semibold mb-3 flex justify-between">
-            <span>Harga: ${fmtMoney(b.package_price)}</span>
-            <span class="text-on-surface-variant">DP: ${fmtMoney(b.dp_amount)}</span>
+          <div class="text-sm bg-surface-container-lowest border border-outline-variant/30 p-2.5 rounded-lg mb-3 flex flex-col gap-1">
+            <div class="flex justify-between">
+              <span class="text-on-surface-variant">Total:</span>
+              <span class="font-bold text-on-surface">${fmtMoney(b.package_price)}</span>
+            </div>
+            <div class="flex justify-between items-center">
+              <span class="text-on-surface-variant">Dibayar:</span>
+              <div class="flex items-center gap-1">
+                <span class="font-bold text-emerald-600 dark:text-emerald-400">${fmtMoney(paidAmt)}</span>
+                <button class="text-primary hover:underline text-xs" onclick="openPaidModal(${b.id}, ${paidAmt}, ${pkgPrice}, '${esc(b.client_name)}', ${b.version || 1})">Edit</button>
+              </div>
+            </div>
+            <div class="flex justify-between border-t border-outline-variant/30 pt-1">
+              <span class="text-on-surface-variant">Sisa:</span>
+              <span class="font-semibold ${sisaAmt > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-on-surface-variant'}">${fmtMoney(sisaAmt)}</span>
+            </div>
           </div>
           <div class="mb-3 pt-3 border-t border-outline-variant/30 flex justify-between items-center">
             <div class="text-xs text-on-surface-variant">Google Calendar: 
@@ -1127,8 +1197,10 @@
               <span class="material-symbols-outlined text-[14px]">sync</span> Sync
             </button>
           </div>
-          <div class="flex gap-2">
+          <div class="flex gap-2 flex-wrap">
             <button class="btn btn-outline btn-sm flex-1" onclick="openPanel(${b.id})">Detail</button>
+            <button class="btn btn-outline btn-sm flex-1" onclick="openPanelThenEdit(${b.id})">Edit</button>
+            <button class="btn btn-outline btn-sm text-error border-error/30" onclick="confirmDeleteBooking(${b.id}, '${esc(b.client_name)}')">Hapus</button>
             ${b.status === 'dp_review' ? `
               <button id="btn-approve-card-${b.id}" class="btn btn-primary btn-sm flex-1" onclick="approveBookingDirect(${b.id}, ${b.version ?? 'undefined'}, this)">✔ Approve</button>
               <button id="btn-reject-card-${b.id}" class="btn btn-danger btn-sm flex-1" onclick="rejectBookingDirect(${b.id}, ${b.version ?? 'undefined'}, this)">✘ Reject</button>
@@ -1140,7 +1212,11 @@
             ` : ''}
           </div>
         </div>
-      `).join('');
+      `}).join('');
+
+      document.getElementById('bookings-table-wrap').classList.remove('hidden');
+      document.getElementById('bookings-cards').classList.remove('hidden');
+    }
 
       document.getElementById('bookings-table-wrap').classList.remove('hidden');
       document.getElementById('bookings-cards').classList.remove('hidden');
@@ -1175,6 +1251,11 @@
       document.getElementById('panel-status-badge').className = `badge badge-${b.status}`;
       document.getElementById('panel-status-badge').textContent = STATUS_LABELS[b.status] || b.status;
 
+      const paidAmt = Number(b.paid_amount || 0);
+      const pkgPrice = Number(b.package_price || 0);
+      const sisaAmt = Math.max(0, pkgPrice - paidAmt);
+      const payBadge = getPaymentBadgeHtml(paidAmt, pkgPrice);
+
       const formDataRows = Object.entries(b.form_data || {}).map(([k, v]) =>
         `<div class="detail-row"><span class="dk">${k}</span><span class="dv">${v}</span></div>`
       ).join('');
@@ -1208,7 +1289,10 @@
       }).join('') : '<p class="text-sm text-on-surface-variant">Belum ada pembayaran</p>';
 
       document.getElementById('panel-body').innerHTML = `
-        <div class="flex justify-end mb-2">
+        <div class="flex justify-between items-center mb-2">
+          <div class="flex items-center gap-2">
+            ${payBadge}
+          </div>
           <button class="btn btn-outline btn-sm" onclick="enterEditMode(${b.id})">
             <span class="material-symbols-outlined text-[16px]">edit</span> Edit Booking
           </button>
@@ -1216,12 +1300,19 @@
         
         <div class="bg-surface-container-lowest border border-outline-variant/30 p-4 rounded-lg">
           <div class="detail-section-title">Data Klien</div>
-          <div class="detail-row"><span class="dk">Nama</span><span class="dv">${esc(b.client_name)}</span></div>
+          <div class="detail-row"><span class="dk">Nama</span><span class="dv font-semibold">${esc(b.client_name)}</span></div>
           <div class="detail-row"><span class="dk">WhatsApp</span><span class="dv">${esc(b.client_phone)}</span></div>
           <div class="detail-row"><span class="dk">Kategori</span><span class="dv">${esc(b.category_name)}</span></div>
+          ${b.package_name ? `<div class="detail-row"><span class="dk">Paket</span><span class="dv font-medium">${esc(b.package_name)}</span></div>` : ''}
           <div class="detail-row"><span class="dk">Tanggal</span><span class="dv">${fmtDate(b.event_date)}</span></div>
           <div class="detail-row"><span class="dk">Jam</span><span class="dv">${b.event_time ? esc(b.event_time.slice(0, 5)) : '—'}</span></div>
           <div class="detail-row"><span class="dk">Lokasi</span><span class="dv">${esc(b.location)}</span></div>
+          ${b.notes ? `
+            <div class="detail-row">
+              <span class="dk">Catatan</span>
+              <span class="dv text-amber-600 dark:text-amber-400 font-medium whitespace-pre-wrap">${esc(b.notes)}</span>
+            </div>
+          ` : ''}
           ${b.sumber_informasi ? `
             <div class="detail-row">
               <span class="dk">Sumber Info</span>
@@ -1236,12 +1327,32 @@
         
         <div class="bg-surface-container-lowest border border-outline-variant/30 p-4 rounded-lg">
           <div class="detail-section-title">Harga & Pembayaran</div>
-          <div class="detail-row"><span class="dk">Harga Paket</span><span class="dv">${fmtMoney(b.package_price)}</span></div>
+          <div class="detail-row"><span class="dk">Total Harga Paket</span><span class="dv font-bold text-on-surface">${fmtMoney(b.package_price)}</span></div>
           <div class="detail-row"><span class="dk">DP Wajib</span><span class="dv">${fmtMoney(b.dp_amount)}</span></div>
+          <div class="detail-row"><span class="dk">Jumlah Dibayar</span><span class="dv font-bold text-emerald-600 dark:text-emerald-400">${fmtMoney(paidAmt)}</span></div>
+          <div class="detail-row"><span class="dk">Sisa Tagihan</span><span class="dv font-bold ${sisaAmt > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-on-surface-variant'}">${fmtMoney(sisaAmt)}</span></div>
+          <div class="detail-row"><span class="dk">Status Pembayaran</span><span class="dv">${payBadge}</span></div>
           
-          <div class="flex gap-2 mt-4">
-            <input type="number" id="price-input" placeholder="Set harga paket (Rp)" value="${b.package_price || ''}" class="flex-1 px-3 py-2 border border-outline-variant rounded-lg text-sm bg-surface-container focus:outline-none focus:border-primary">
-            <button class="btn btn-primary px-4 py-2" onclick="setPrice(${b.id})">Set Harga</button>
+          <div class="border-t border-outline-variant/30 pt-3 mt-3">
+            <div class="text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1.5 flex items-center justify-between">
+              <span>Ubah Jumlah Dibayar Langsung</span>
+              <span class="text-[10px] text-primary lowercase">(sinkron ke buku kas)</span>
+            </div>
+            <div class="flex gap-2">
+              <input type="number" id="panel-paid-input" min="0" placeholder="Rp dibayar" value="${paidAmt}" class="flex-1 px-3 py-1.5 border border-outline-variant rounded-lg text-sm bg-surface-container focus:outline-none focus:border-primary font-semibold" oninput="updatePanelSisaPreview(${pkgPrice})">
+              <button class="btn btn-primary btn-sm px-3" onclick="savePanelPaid(${b.id}, ${b.version || 1})">Simpan Dibayar</button>
+            </div>
+            <div id="panel-sisa-preview" class="text-xs text-on-surface-variant mt-1.5 flex justify-between">
+              <span>Sisa: <strong class="text-amber-600 font-bold">${fmtMoney(sisaAmt)}</strong></span>
+            </div>
+          </div>
+
+          <div class="border-t border-outline-variant/30 pt-3 mt-3">
+            <label class="text-xs font-bold text-on-surface-variant uppercase tracking-wider block mb-1.5">Ubah Total Harga Paket</label>
+            <div class="flex gap-2">
+              <input type="number" id="price-input" placeholder="Set harga paket (Rp)" value="${b.package_price || ''}" class="flex-1 px-3 py-1.5 border border-outline-variant rounded-lg text-sm bg-surface-container focus:outline-none focus:border-primary">
+              <button class="btn btn-outline btn-sm px-3" onclick="setPrice(${b.id})">Set Harga</button>
+            </div>
           </div>
         </div>
         
@@ -1311,8 +1422,50 @@
               <button class="btn btn-outline" onclick="changeStatus(${b.id})">Simpan</button>
             </div>
           </div>
+
+          <div class="border-t border-outline-variant/30 pt-4 mt-2">
+            <button class="btn btn-outline justify-center w-full text-error border-error/30 hover:bg-error/10" onclick="confirmDeleteBooking(${b.id}, '${esc(b.client_name)}')">
+              <span class="material-symbols-outlined text-[18px]">delete</span> Hapus Booking (Soft Delete)
+            </button>
+          </div>
         </div>
       `;
+    }
+
+    function updatePanelSisaPreview(totalPrice) {
+      const input = document.getElementById('panel-paid-input');
+      const val = Number(input?.value || 0);
+      const sisa = Math.max(0, Number(totalPrice || 0) - val);
+      const prevEl = document.getElementById('panel-sisa-preview');
+      if (prevEl) {
+        prevEl.innerHTML = `<span>Sisa: <strong class="text-amber-600 font-bold">${fmtMoney(sisa)}</strong></span>`;
+      }
+    }
+
+    async function savePanelPaid(id, version) {
+      const input = document.getElementById('panel-paid-input');
+      const val = parseInt(input?.value, 10);
+      if (isNaN(val) || val < 0) {
+        toast('Nominal dibayar harus bilangan bulat positif (>= 0)', 'error');
+        return;
+      }
+      try {
+        const res = await fetch(`/api/bookings/admin/${id}/paid-amount`, {
+          method: 'PATCH',
+          headers: H,
+          body: JSON.stringify({ paid_amount: val, version })
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          toast(data.error || 'Gagal menyimpan pembayaran', 'error');
+          return;
+        }
+        toast('Jumlah dibayar berhasil disimpan & disinkronkan', 'success');
+        loadBookings();
+        openPanel(id);
+      } catch (e) {
+        toast('Gagal menghubungi server.', 'error');
+      }
     }
 
     function enterEditMode(id) {
@@ -1320,11 +1473,12 @@
       if (!b || b.id !== id) { openPanel(id); return; }
       const fdEntries = Object.entries(b.form_data || {});
       const fdHtml = fdEntries.map(([k, v]) => `
-        <div class="form-group">
-          <label>${k}</label>
-          <input type="text" data-fd-key="${k}" value="${v}">
+        <div class="form-group flex flex-col gap-1">
+          <label class="text-xs font-semibold text-on-surface-variant">${k}</label>
+          <input type="text" data-fd-key="${k}" value="${esc(v)}" class="px-3 py-2 border border-outline-variant rounded-lg text-sm bg-surface-container focus:outline-none focus:border-primary w-full">
         </div>
       `).join('');
+
       let eventDateVal = '';
       if (b.event_date) {
         const dt = new Date(b.event_date);
@@ -1336,58 +1490,195 @@
         }
       }
       const eventTimeVal = b.event_time ? b.event_time.slice(0, 5) : '';
+
+      const cats = window.availableCategories || [];
+      const catOptions = cats.map(c => `
+        <option value="${c.id}" ${c.id == b.category_id ? 'selected' : ''}>${esc(c.name)}</option>
+      `).join('');
+
       document.getElementById('panel-body').innerHTML = `
-        <div class="edit-form">
-          <h4 class="font-headline-sm text-on-surface mb-2 border-b border-outline-variant/30 pb-2">✏️ Edit Booking #${b.id}</h4>
-          
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div class="form-group"><label>Nama Klien *</label><input type="text" id="edit-client-name" value="${b.client_name}"></div>
-            <div class="form-group"><label>No. WhatsApp *</label><input type="tel" id="edit-client-phone" value="${b.client_phone}"></div>
-          </div>
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div class="form-group"><label>Tanggal Acara *</label><input type="date" id="edit-event-date" value="${eventDateVal}"></div>
-            <div class="form-group"><label>Jam Mulai</label><input type="time" id="edit-event-time" value="${eventTimeVal}"></div>
+        <div class="edit-form flex flex-col gap-4">
+          <div class="flex items-center justify-between border-b border-outline-variant/30 pb-3">
+            <h4 class="font-bold text-lg text-on-surface flex items-center gap-1.5">
+              <span class="material-symbols-outlined text-primary">edit_note</span>
+              Edit Booking #${b.id}
+            </h4>
+            <span class="text-xs text-on-surface-variant font-mono">v${b.version || 1}</span>
           </div>
           
-          <div class="form-group"><label>Lokasi / Venue</label><input type="text" id="edit-location" value="${b.location || ''}"></div>
-          <div class="form-group"><label>Harga Paket (Rp)</label><input type="number" id="edit-package-price" value="${b.package_price || ''}"></div>
-          <div class="form-group"><label>Biaya DP / Booking (Rp)</label><input type="number" id="edit-dp-amount" value="${b.dp_amount || ''}" placeholder="Kosongkan jika sesuai aturan kategori"></div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div class="form-group flex flex-col gap-1">
+              <label class="text-xs font-semibold text-on-surface-variant uppercase">Nama Klien *</label>
+              <input type="text" id="edit-client-name" value="${esc(b.client_name)}" class="px-3 py-2 border border-outline-variant rounded-lg text-sm bg-surface-container focus:outline-none focus:border-primary">
+            </div>
+            <div class="form-group flex flex-col gap-1">
+              <label class="text-xs font-semibold text-on-surface-variant uppercase">No. WhatsApp *</label>
+              <input type="tel" id="edit-client-phone" value="${esc(b.client_phone)}" class="px-3 py-2 border border-outline-variant rounded-lg text-sm bg-surface-container focus:outline-none focus:border-primary">
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div class="form-group flex flex-col gap-1">
+              <label class="text-xs font-semibold text-on-surface-variant uppercase">Kategori Booking</label>
+              <select id="edit-category-id" class="px-3 py-2 border border-outline-variant rounded-lg text-sm bg-surface-container focus:outline-none focus:border-primary">
+                ${catOptions || `<option value="${b.category_id}">${esc(b.category_name)}</option>`}
+              </select>
+            </div>
+            <div class="form-group flex flex-col gap-1">
+              <label class="text-xs font-semibold text-on-surface-variant uppercase">Nama Paket</label>
+              <input type="text" id="edit-package-name" value="${esc(b.package_name || '')}" placeholder="mis. Gold / Platinum" class="px-3 py-2 border border-outline-variant rounded-lg text-sm bg-surface-container focus:outline-none focus:border-primary">
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div class="form-group flex flex-col gap-1">
+              <label class="text-xs font-semibold text-on-surface-variant uppercase">Tanggal Acara *</label>
+              <input type="date" id="edit-event-date" value="${eventDateVal}" class="px-3 py-2 border border-outline-variant rounded-lg text-sm bg-surface-container focus:outline-none focus:border-primary">
+            </div>
+            <div class="form-group flex flex-col gap-1">
+              <label class="text-xs font-semibold text-on-surface-variant uppercase">Jam Mulai</label>
+              <input type="time" id="edit-event-time" value="${eventTimeVal}" class="px-3 py-2 border border-outline-variant rounded-lg text-sm bg-surface-container focus:outline-none focus:border-primary">
+            </div>
+          </div>
           
-          ${fdHtml ? `<div class="mt-4"><div class="detail-section-title mb-2">Detail Ekstra</div><div class="flex flex-col gap-4">${fdHtml}</div></div>` : ''}
+          <div class="form-group flex flex-col gap-1">
+            <label class="text-xs font-semibold text-on-surface-variant uppercase">Lokasi / Venue</label>
+            <input type="text" id="edit-location" value="${esc(b.location || '')}" class="px-3 py-2 border border-outline-variant rounded-lg text-sm bg-surface-container focus:outline-none focus:border-primary">
+          </div>
+
+          <div class="form-group flex flex-col gap-1">
+            <label class="text-xs font-semibold text-on-surface-variant uppercase">Status Alur Booking</label>
+            <select id="edit-status" class="px-3 py-2 border border-outline-variant rounded-lg text-sm bg-surface-container focus:outline-none focus:border-primary">
+              <option value="pending_dp" ${b.status === 'pending_dp' ? 'selected' : ''}>Menunggu DP</option>
+              <option value="dp_review" ${b.status === 'dp_review' ? 'selected' : ''}>Review DP</option>
+              <option value="confirmed" ${b.status === 'confirmed' ? 'selected' : ''}>Dikonfirmasi</option>
+              <option value="menunggu_pelunasan" ${b.status === 'menunggu_pelunasan' ? 'selected' : ''}>Menunggu Pelunasan</option>
+              <option value="pelunasan_review" ${b.status === 'pelunasan_review' ? 'selected' : ''}>Review Pelunasan</option>
+              <option value="lunas" ${b.status === 'lunas' ? 'selected' : ''}>Lunas</option>
+              <option value="completed" ${b.status === 'completed' ? 'selected' : ''}>Selesai</option>
+              <option value="cancelled" ${b.status === 'cancelled' ? 'selected' : ''}>Dibatalkan</option>
+            </select>
+          </div>
+
+          <div class="form-group flex flex-col gap-1">
+            <label class="text-xs font-semibold text-on-surface-variant uppercase">Catatan Booking</label>
+            <textarea id="edit-notes" rows="2" class="px-3 py-2 border border-outline-variant rounded-lg text-sm bg-surface-container focus:outline-none focus:border-primary w-full" placeholder="Catatan internal...">${esc(b.notes || '')}</textarea>
+          </div>
+
+          <div class="border-t border-outline-variant/30 pt-3">
+            <div class="text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-2">Biaya & Pembayaran</div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div class="form-group flex flex-col gap-1">
+                <label class="text-xs font-semibold text-on-surface-variant">Total Harga Paket (Rp)</label>
+                <input type="number" id="edit-package-price" value="${b.package_price || ''}" min="0" class="px-3 py-2 border border-outline-variant rounded-lg text-sm bg-surface-container focus:outline-none focus:border-primary" oninput="recalculateEditSisa()">
+              </div>
+              <div class="form-group flex flex-col gap-1">
+                <label class="text-xs font-semibold text-on-surface-variant">Jumlah Dibayar (Rp)</label>
+                <input type="number" id="edit-paid-amount" value="${b.paid_amount || 0}" min="0" class="px-3 py-2 border border-outline-variant rounded-lg text-sm bg-surface-container focus:outline-none focus:border-primary font-bold text-emerald-600" oninput="recalculateEditSisa()">
+              </div>
+            </div>
+
+            <div class="bg-surface-container-low border border-outline-variant/30 rounded-lg p-3 my-2.5 flex justify-between items-center text-xs">
+              <div>
+                <span class="text-on-surface-variant">Sisa Tagihan:</span>
+                <div id="edit-sisa-display" class="font-bold text-sm text-amber-600">${fmtMoney(Math.max(0, Number(b.package_price || 0) - Number(b.paid_amount || 0)))}</div>
+              </div>
+              <div class="text-right">
+                <span class="text-on-surface-variant block">Status Pembayaran:</span>
+                <span id="edit-payment-status-badge">${getPaymentBadgeHtml(Number(b.paid_amount || 0), Number(b.package_price || 0))}</span>
+              </div>
+            </div>
+
+            <div class="form-group flex flex-col gap-1">
+              <label class="text-xs font-semibold text-on-surface-variant">Biaya DP Manual (Rp)</label>
+              <input type="number" id="edit-dp-amount" value="${b.dp_amount || ''}" placeholder="Kosongkan jika otomatis dari kategori" class="px-3 py-2 border border-outline-variant rounded-lg text-sm bg-surface-container focus:outline-none focus:border-primary">
+            </div>
+          </div>
           
-          <div class="edit-actions mt-6 pt-4 border-t border-outline-variant/30">
-            <button class="btn btn-outline" onclick="openPanel(${b.id})">Batal</button>
-            <button class="btn btn-primary" onclick="saveEdit(${b.id})">Simpan Perubahan</button>
+          ${fdHtml ? `<div class="mt-2"><div class="detail-section-title mb-2">Detail Ekstra</div><div class="flex flex-col gap-3">${fdHtml}</div></div>` : ''}
+          
+          <div class="edit-actions mt-4 pt-4 border-t border-outline-variant/30 flex gap-2">
+            <button class="btn btn-outline flex-1" onclick="openPanel(${b.id})">Batal</button>
+            <button class="btn btn-primary flex-1" onclick="saveEdit(${b.id})">Simpan Perubahan</button>
           </div>
         </div>
       `;
     }
 
+    function recalculateEditSisa() {
+      const priceVal = Number(document.getElementById('edit-package-price')?.value || 0);
+      const paidVal = Number(document.getElementById('edit-paid-amount')?.value || 0);
+      const sisa = Math.max(0, priceVal - paidVal);
+      const sisaEl = document.getElementById('edit-sisa-display');
+      if (sisaEl) sisaEl.textContent = fmtMoney(sisa);
+      const badgeEl = document.getElementById('edit-payment-status-badge');
+      if (badgeEl) badgeEl.innerHTML = getPaymentBadgeHtml(paidVal, priceVal);
+    }
+
     async function saveEdit(id) {
+      const b = currentBookingData;
       const client_name = document.getElementById('edit-client-name').value.trim();
       const client_phone = document.getElementById('edit-client-phone').value.trim();
       const event_date = document.getElementById('edit-event-date').value;
       const event_time = document.getElementById('edit-event-time').value || null;
       const location = document.getElementById('edit-location').value.trim() || null;
+      const category_id = document.getElementById('edit-category-id')?.value;
+      const package_name = document.getElementById('edit-package-name')?.value?.trim() || null;
+      const status = document.getElementById('edit-status')?.value;
+      const notes = document.getElementById('edit-notes')?.value?.trim() || null;
+
       const package_price_raw = document.getElementById('edit-package-price').value;
-      const package_price = package_price_raw ? parseFloat(package_price_raw) : null;
+      const package_price = package_price_raw !== '' ? parseFloat(package_price_raw) : null;
+      const paid_amount_raw = document.getElementById('edit-paid-amount')?.value;
+      const paid_amount = paid_amount_raw !== '' && paid_amount_raw !== undefined ? parseInt(paid_amount_raw, 10) : undefined;
       const dp_amount_manual = document.getElementById('edit-dp-amount').value || null;
       
-      if (!client_name || !client_phone || !event_date) { toast('Nama, no WA, dan tanggal wajib diisi', 'error'); return; }
+      if (!client_name || !client_phone || !event_date) {
+        toast('Nama, no WA, dan tanggal acara wajib diisi', 'error');
+        return;
+      }
+
+      if (paid_amount !== undefined && package_price !== null && package_price > 0 && paid_amount > package_price) {
+        toast(`Jumlah dibayar tidak boleh melebihi total harga paket (${fmtMoney(package_price)})`, 'error');
+        return;
+      }
+
       const form_data = {};
       document.querySelectorAll('[data-fd-key]').forEach(el => form_data[el.dataset.fdKey] = el.value);
+
       try {
         const res = await fetch(`/api/bookings/admin/${id}`, {
-          method: 'PUT', headers: H,
-          body: JSON.stringify({ client_name, client_phone, event_date, event_time, location, package_price, dp_amount_manual, form_data })
+          method: 'PUT',
+          headers: H,
+          body: JSON.stringify({
+            client_name,
+            client_phone,
+            event_date,
+            event_time,
+            location,
+            category_id,
+            package_name,
+            status,
+            notes,
+            package_price,
+            paid_amount,
+            dp_amount_manual,
+            form_data,
+            version: b?.version
+          })
         });
         const data = await res.json();
-        if (!res.ok) { toast(data.error || 'Gagal menyimpan', 'error'); return; }
+        if (!res.ok) {
+          toast(data.error || 'Gagal menyimpan', 'error');
+          return;
+        }
         toast('Booking berhasil diperbarui', 'success');
         loadBookings();
         if (calendar) calendar.refetchEvents();
         openPanel(id);
-      } catch (e) { toast('Gagal. Coba lagi.', 'error'); }
+      } catch (e) {
+        toast('Gagal menghubungi server. Coba lagi.', 'error');
+      }
     }
 
     function closePanel() {
@@ -1675,6 +1966,7 @@
     document.getElementById('btn-reset-filter').addEventListener('click', () => {
       document.getElementById('filter-category').value = '';
       document.getElementById('filter-status').value = '';
+      if (document.getElementById('filter-payment-status')) document.getElementById('filter-payment-status').value = '';
       document.getElementById('filter-month').value = '';
       const searchEl = document.getElementById('filter-search');
       if (searchEl) searchEl.value = '';
@@ -2020,7 +2312,251 @@
     window.closeCreateSessionModal = closeCreateSessionModal;
     window.submitCreateSession = submitCreateSession;
     window.sendSessionLinkWA = sendSessionLinkWA;
+
+    function openPaidModal(id, currentPaid, totalPrice, clientName, version) {
+      document.getElementById('mpa-booking-id').value = id;
+      document.getElementById('mpa-version').value = version;
+      document.getElementById('mpa-total-raw').value = totalPrice;
+      document.getElementById('mpa-client-name').textContent = clientName || `Booking #${id}`;
+      document.getElementById('mpa-total-display').textContent = fmtMoney(totalPrice);
+      document.getElementById('mpa-current-paid-display').textContent = fmtMoney(currentPaid);
+      const inputEl = document.getElementById('mpa-input-amount');
+      inputEl.value = currentPaid;
+      document.getElementById('mpa-warning').classList.add('hidden');
+      document.getElementById('mpa-warning').textContent = '';
+      onMpaInput();
+      document.getElementById('modal-paid-amount').classList.remove('hidden');
+      setTimeout(() => inputEl.focus(), 50);
+    }
+
+    function closePaidModal() {
+      document.getElementById('modal-paid-amount').classList.add('hidden');
+    }
+
+    function onMpaInput() {
+      const total = Number(document.getElementById('mpa-total-raw').value || 0);
+      const paid = Number(document.getElementById('mpa-input-amount').value || 0);
+      const sisa = Math.max(0, total - paid);
+      document.getElementById('mpa-sisa-display').textContent = fmtMoney(sisa);
+      document.getElementById('mpa-status-badge').innerHTML = getPaymentBadgeHtml(paid, total);
+
+      const warnEl = document.getElementById('mpa-warning');
+      const submitBtn = document.getElementById('mpa-submit-btn');
+      if (paid < 0) {
+        warnEl.textContent = 'Nominal dibayar tidak boleh negatif';
+        warnEl.classList.remove('hidden');
+        submitBtn.disabled = true;
+      } else if (total > 0 && paid > total) {
+        warnEl.textContent = `Jumlah dibayar tidak boleh melebihi total harga (${fmtMoney(total)})`;
+        warnEl.classList.remove('hidden');
+        submitBtn.disabled = true;
+      } else {
+        warnEl.classList.add('hidden');
+        warnEl.textContent = '';
+        submitBtn.disabled = false;
+      }
+    }
+
+    async function submitPaidAmount(e) {
+      e.preventDefault();
+      const id = document.getElementById('mpa-booking-id').value;
+      const version = parseInt(document.getElementById('mpa-version').value, 10);
+      const paid_amount = parseInt(document.getElementById('mpa-input-amount').value, 10);
+      const btn = document.getElementById('mpa-submit-btn');
+
+      if (isNaN(paid_amount) || paid_amount < 0) {
+        toast('Jumlah dibayar tidak boleh negatif', 'error');
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = 'Menyimpan...';
+
+      try {
+        const res = await fetch(`/api/bookings/admin/${id}/paid-amount`, {
+          method: 'PATCH',
+          headers: H,
+          body: JSON.stringify({ paid_amount, version })
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          toast(data.error || 'Gagal menyimpan pembayaran', 'error');
+          return;
+        }
+        toast('Jumlah dibayar berhasil disimpan & disinkronkan ke buku kas', 'success');
+        closePaidModal();
+        loadBookings();
+        if (currentBookingData && currentBookingData.id == id) {
+          openPanel(id);
+        }
+      } catch (err) {
+        toast('Gagal menghubungi server.', 'error');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Simpan Pembayaran';
+      }
+    }
+
+    function confirmDeleteBooking(id, clientName) {
+      document.getElementById('mdb-booking-id').value = id;
+      document.getElementById('mdb-main-msg').textContent = `Apakah Anda yakin ingin membatalkan & menghapus booking atas nama "${clientName}" (soft delete)?`;
+      const warnBox = document.getElementById('mdb-warning-box');
+      warnBox.className = 'p-3 rounded-lg text-xs mb-4 hidden';
+      warnBox.innerHTML = '';
+      const confirmBtn = document.getElementById('mdb-confirm-btn');
+      confirmBtn.disabled = false;
+      confirmBtn.className = 'btn btn-danger flex-1';
+      confirmBtn.textContent = 'Hapus Booking';
+      confirmBtn.onclick = () => executeDeleteBooking(false);
+      document.getElementById('modal-delete-booking').classList.remove('hidden');
+    }
+
+    function closeDeleteModal() {
+      document.getElementById('modal-delete-booking').classList.add('hidden');
+    }
+
+    async function executeDeleteBooking(force = false) {
+      const id = document.getElementById('mdb-booking-id').value;
+      const confirmBtn = document.getElementById('mdb-confirm-btn');
+      const warnBox = document.getElementById('mdb-warning-box');
+
+      confirmBtn.disabled = true;
+      confirmBtn.textContent = 'Memproses...';
+
+      try {
+        const res = await fetch(`/api/bookings/admin/${id}${force ? '?force=true' : ''}`, {
+          method: 'DELETE',
+          headers: H
+        });
+        const data = await res.json();
+
+        if (res.ok) {
+          toast('Booking berhasil dihapus (soft delete)', 'success');
+          closeDeleteModal();
+          closePanel();
+          loadBookings();
+          if (calendar) calendar.refetchEvents();
+          return;
+        }
+
+        // Tangani penolakan atau peringatan
+        if (data.active_session) {
+          warnBox.className = 'p-3 rounded-lg text-xs mb-4 bg-error/10 text-error border border-error/30 flex items-start gap-1.5';
+          warnBox.innerHTML = `<span class="material-symbols-outlined text-[16px] shrink-0">block</span><span>${esc(data.error)}</span>`;
+          confirmBtn.disabled = true;
+          confirmBtn.textContent = 'Tidak Dapat Dihapus';
+          return;
+        }
+
+        if (data.has_active_transactions) {
+          warnBox.className = 'p-3 rounded-lg text-xs mb-4 bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/30 flex flex-col gap-1';
+          warnBox.innerHTML = `
+            <div class="font-bold flex items-center gap-1">
+              <span class="material-symbols-outlined text-[16px]">warning</span> Peringatan Transaksi Aktif
+            </div>
+            <div>${esc(data.error)}</div>
+            <div class="text-[11px] text-on-surface-variant mt-1">Jika memilih hapus paksa, seluruh transaksi keuangan aktif pada booking ini akan dibatalkan otomatis.</div>
+          `;
+          confirmBtn.disabled = false;
+          confirmBtn.className = 'btn btn-danger flex-1 font-bold';
+          confirmBtn.textContent = 'Ya, Hapus Paksa (Force Delete)';
+          confirmBtn.onclick = () => executeDeleteBooking(true);
+          return;
+        }
+
+        toast(data.error || 'Gagal menghapus booking', 'error');
+        confirmBtn.disabled = false;
+        confirmBtn.textContent = 'Hapus Booking';
+      } catch (e) {
+        toast('Gagal menghubungi server.', 'error');
+        confirmBtn.disabled = false;
+        confirmBtn.textContent = 'Hapus Booking';
+      }
+    }
+
+    window.openPaidModal = openPaidModal;
+    window.closePaidModal = closePaidModal;
+    window.onMpaInput = onMpaInput;
+    window.submitPaidAmount = submitPaidAmount;
+    window.confirmDeleteBooking = confirmDeleteBooking;
+    window.closeDeleteModal = closeDeleteModal;
+    window.executeDeleteBooking = executeDeleteBooking;
+    window.recalculateEditSisa = recalculateEditSisa;
   </script>
+
+  <!-- Modal: Edit Jumlah Dibayar -->
+  <div id="modal-paid-amount" class="fixed inset-0 z-[200] flex items-center justify-center hidden" role="dialog" aria-modal="true" aria-labelledby="mpa-title">
+    <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" onclick="closePaidModal()"></div>
+    <div class="relative bg-surface rounded-2xl shadow-2xl w-full max-w-md mx-4 p-6 z-10 border border-outline-variant/30">
+      <div class="flex items-center justify-between mb-4">
+        <h2 id="mpa-title" class="font-bold text-lg text-on-surface flex items-center gap-2">
+          <span class="material-symbols-outlined text-primary">payments</span>
+          Edit Jumlah Dibayar
+        </h2>
+        <button class="btn btn-icon text-on-surface-variant" onclick="closePaidModal()" aria-label="Tutup">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+      <div class="bg-surface-container rounded-lg p-3 text-xs mb-4 space-y-1.5">
+        <div class="flex justify-between"><span class="text-on-surface-variant">Klien:</span> <span id="mpa-client-name" class="font-bold text-on-surface">-</span></div>
+        <div class="flex justify-between"><span class="text-on-surface-variant">Total Harga Paket:</span> <span id="mpa-total-display" class="font-semibold text-on-surface">Rp 0</span></div>
+        <div class="flex justify-between"><span class="text-on-surface-variant">Saat Ini Dibayar:</span> <span id="mpa-current-paid-display" class="font-semibold text-emerald-600 dark:text-emerald-400">Rp 0</span></div>
+      </div>
+      <form id="form-paid-amount" onsubmit="submitPaidAmount(event)" autocomplete="off">
+        <input type="hidden" id="mpa-booking-id" value="">
+        <input type="hidden" id="mpa-version" value="">
+        <input type="hidden" id="mpa-total-raw" value="0">
+        <div class="flex flex-col gap-3">
+          <label class="flex flex-col gap-1">
+            <span class="text-xs font-semibold text-on-surface-variant uppercase">Jumlah Dibayar (Rp) *</span>
+            <input id="mpa-input-amount" type="number" min="0" required class="px-3 py-2 border border-outline-variant rounded-lg text-base font-bold text-emerald-600 bg-surface-container focus:outline-none focus:border-primary" placeholder="0" oninput="onMpaInput()">
+          </label>
+          <div class="bg-surface-container-low border border-outline-variant/30 rounded-lg p-3 flex justify-between items-center text-xs">
+            <div>
+              <div class="text-on-surface-variant">Sisa Tagihan:</div>
+              <div id="mpa-sisa-display" class="font-bold text-base text-amber-600">Rp 0</div>
+            </div>
+            <div>
+              <div class="text-on-surface-variant text-right mb-0.5">Status Pembayaran:</div>
+              <div id="mpa-status-badge" class="text-right"></div>
+            </div>
+          </div>
+          <div id="mpa-warning" class="text-xs text-error font-medium hidden"></div>
+          <div class="text-[11px] text-on-surface-variant bg-surface-container-low p-2.5 rounded-lg flex items-start gap-1.5">
+            <span class="material-symbols-outlined text-[16px] text-primary shrink-0">info</span>
+            <span>Perubahan "Jumlah Dibayar" akan otomatis dicatat sebagai transaksi penyesuaian di buku kas keuangan (finance).</span>
+          </div>
+        </div>
+        <div class="flex gap-2 mt-5">
+          <button type="button" class="btn btn-outline flex-1" onclick="closePaidModal()">Batal</button>
+          <button id="mpa-submit-btn" type="submit" class="btn btn-primary flex-1">Simpan Pembayaran</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Konfirmasi Hapus Booking (Soft Delete) -->
+  <div id="modal-delete-booking" class="fixed inset-0 z-[200] flex items-center justify-center hidden" role="dialog" aria-modal="true" aria-labelledby="mdb-title">
+    <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" onclick="closeDeleteModal()"></div>
+    <div class="relative bg-surface rounded-2xl shadow-2xl w-full max-w-md mx-4 p-6 z-10 border border-outline-variant/30">
+      <div class="flex items-center justify-between mb-3">
+        <h2 id="mdb-title" class="font-bold text-lg text-error flex items-center gap-2">
+          <span class="material-symbols-outlined text-error">warning</span>
+          Hapus Booking
+        </h2>
+        <button class="btn btn-icon text-on-surface-variant" onclick="closeDeleteModal()" aria-label="Tutup">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+      <input type="hidden" id="mdb-booking-id" value="">
+      <p id="mdb-main-msg" class="text-sm text-on-surface mb-3"></p>
+      <div id="mdb-warning-box" class="p-3 rounded-lg text-xs mb-4 hidden"></div>
+      <div class="flex gap-2 mt-4">
+        <button type="button" class="btn btn-outline flex-1" onclick="closeDeleteModal()">Batal</button>
+        <button id="mdb-confirm-btn" type="button" class="btn btn-danger flex-1" onclick="executeDeleteBooking(false)">Hapus Booking</button>
+      </div>
+    </div>
+  </div>
 </body>
 
 </html>

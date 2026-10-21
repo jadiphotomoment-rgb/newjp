@@ -402,7 +402,7 @@ router.post('/:id/upload-dp', async (req, res) => {
 
 // Helper function for admin booking list
 async function handleAdminList(req, res) {
-  const { category, status, month, search, sumber_informasi, include_deleted } = req.query;
+  const { category, status, month, search, sumber_informasi, include_deleted, payment_status } = req.query;
   const params = [];
   const conditions = [];
 
@@ -420,11 +420,20 @@ async function handleAdminList(req, res) {
   }
   if (search && search.trim()) {
     params.push(`%${search.trim()}%`);
-    conditions.push(`(b.client_name ILIKE $${params.length} OR b.client_phone ILIKE $${params.length})`);
+    conditions.push(`(b.client_name ILIKE $${params.length} OR b.client_phone ILIKE $${params.length} OR b.notes ILIKE $${params.length})`);
   }
   if (sumber_informasi) {
     params.push(sumber_informasi);
     conditions.push(`b.sumber_informasi = $${params.length}`);
+  }
+  if (payment_status) {
+    if (payment_status === 'belum_bayar') {
+      conditions.push('(b.paid_amount IS NULL OR b.paid_amount <= 0)');
+    } else if (payment_status === 'lunas') {
+      conditions.push('(b.package_price IS NOT NULL AND b.package_price > 0 AND b.paid_amount >= b.package_price)');
+    } else if (payment_status === 'sebagian') {
+      conditions.push('(b.paid_amount > 0 AND (b.package_price IS NULL OR b.paid_amount < b.package_price))');
+    }
   }
 
   const where = conditions.length > 0 ? 'WHERE ' + conditions.join(' AND ') : '';
@@ -435,6 +444,14 @@ async function handleAdminList(req, res) {
               b.location, b.form_data, b.package_price, b.dp_amount, b.status,
               b.created_at, b.session_id, b.sumber_informasi, b.sumber_informasi_detail,
               b.deleted_at, b.google_event_id, b.calendar_sync_status,
+              b.package_name, b.category_id, b.notes, b.version,
+              COALESCE(b.paid_amount, 0) AS paid_amount,
+              GREATEST(0, COALESCE(b.package_price, 0) - COALESCE(b.paid_amount, 0)) AS sisa_tagihan,
+              CASE
+                WHEN COALESCE(b.paid_amount, 0) <= 0 THEN 'belum_bayar'
+                WHEN b.package_price IS NOT NULL AND b.package_price > 0 AND COALESCE(b.paid_amount, 0) >= b.package_price THEN 'lunas'
+                ELSE 'sebagian'
+              END AS payment_status,
               bc.name AS category_name, bc.slug AS category_slug, bc.color,
               (SELECT COUNT(*) FROM payments WHERE booking_id = b.id AND status = 'pending') AS pending_payments,
               (SELECT COUNT(*) FROM pelunasan WHERE booking_id = b.id AND status = 'menunggu_verifikasi') AS pending_pelunasan
@@ -548,10 +565,32 @@ router.patch('/admin/:id/set-price', auth, auth.requireRole('owner'), auth.requi
 
 // PUT /api/admin/bookings/:id — edit full booking data
 async function handleEditBooking(req, res) {
-  const { client_name, client_phone, event_date, event_time, location, package_price, dp_amount_manual, form_data } = req.body;
+  const {
+    client_name,
+    client_phone,
+    event_date,
+    event_time,
+    location,
+    package_price,
+    dp_amount_manual,
+    paid_amount,
+    status,
+    category_id,
+    package_name,
+    notes,
+    catatan,
+    form_data
+  } = req.body;
 
   if (!client_name || !client_phone || !event_date) {
     return res.status(400).json({ error: 'Nama klien, nomor WA, dan tanggal acara wajib diisi' });
+  }
+
+  const VALID_STATUSES = ['pending_dp', 'dp_review', 'confirmed', 'menunggu_pelunasan', 'pelunasan_review', 'lunas', 'completed', 'cancelled'];
+  if (status !== undefined && status !== null && status !== '') {
+    if (!VALID_STATUSES.includes(status)) {
+      return res.status(400).json({ error: `Status booking tidak valid. Pilihan: ${VALID_STATUSES.join(', ')}` });
+    }
   }
 
   let dbClient;
@@ -567,17 +606,56 @@ async function handleEditBooking(req, res) {
     if (!bookRes.rows[0]) return res.status(404).json({ error: 'Booking tidak ditemukan' });
     const booking = bookRes.rows[0];
 
+    // Cek hak akses role untuk field sensitif (paid_amount dan package_price)
+    if (req.user.role !== 'owner') {
+      if (paid_amount !== undefined && parseInt(paid_amount, 10) !== (parseInt(booking.paid_amount, 10) || 0)) {
+        return res.status(403).json({ error: 'Hanya Owner yang berhak mengubah Jumlah Dibayar booking' });
+      }
+      if (package_price !== undefined && package_price !== '' && parseFloat(package_price) !== parseFloat(booking.package_price)) {
+        return res.status(403).json({ error: 'Hanya Owner yang berhak mengubah harga paket booking' });
+      }
+    }
+
+    // Category check jika category_id diubah
+    let newCategoryId = booking.category_id;
+    let newDpType = booking.dp_type;
+    let newDpValue = booking.dp_value;
+    if (category_id !== undefined && category_id !== null && category_id !== '' && parseInt(category_id, 10) !== booking.category_id) {
+      const catRes = await db.query('SELECT id, dp_type, dp_value FROM booking_categories WHERE id = $1', [category_id]);
+      if (!catRes.rows[0]) return res.status(404).json({ error: 'Kategori tidak ditemukan' });
+      newCategoryId = catRes.rows[0].id;
+      newDpType = catRes.rows[0].dp_type;
+      newDpValue = catRes.rows[0].dp_value;
+    }
+
     // Recalculate dp_amount if package_price changed or dp_amount_manual is provided
     let dpAmount = booking.dp_amount;
-    const price = package_price != null ? parseFloat(package_price) : null;
-    
+    const price = package_price != null && package_price !== '' ? parseFloat(package_price) : (booking.package_price != null ? parseFloat(booking.package_price) : null);
+    if (price != null && (isNaN(price) || price < 0)) {
+      return res.status(400).json({ error: 'Harga paket tidak boleh bernilai negatif' });
+    }
+
     if (dp_amount_manual != null && dp_amount_manual !== '') {
       dpAmount = parseFloat(dp_amount_manual);
     } else if (price != null && !isNaN(price) && price > 0) {
-      if (booking.dp_type === 'percent') {
-        dpAmount = (price * parseFloat(booking.dp_value)) / 100;
+      if (newDpType === 'percent') {
+        dpAmount = (price * parseFloat(newDpValue)) / 100;
       } else {
-        dpAmount = parseFloat(booking.dp_value);
+        dpAmount = parseFloat(newDpValue);
+      }
+    }
+
+    // Validasi paid_amount
+    let newPaid = undefined;
+    if (paid_amount !== undefined && paid_amount !== null && paid_amount !== '') {
+      newPaid = parseInt(paid_amount, 10);
+      if (isNaN(newPaid) || newPaid < 0) {
+        return res.status(400).json({ error: 'Jumlah dibayar tidak boleh negatif dan harus berupa bilangan bulat' });
+      }
+      if (price != null && price > 0 && newPaid > price) {
+        return res.status(400).json({
+          error: `Jumlah dibayar (Rp ${newPaid.toLocaleString('id-ID')}) tidak boleh melebihi total harga paket (Rp ${price.toLocaleString('id-ID')})`
+        });
       }
     }
 
@@ -604,6 +682,66 @@ async function handleEditBooking(req, res) {
     dbClient = await db.getClient();
     await dbClient.query('BEGIN');
 
+    // Penyesuaian transaksi keuangan (financial_entries) jika paid_amount berubah
+    let currentPaid = Math.max(0, parseInt(booking.paid_amount, 10) || 0);
+    let diff = 0;
+    if (newPaid !== undefined && newPaid !== currentPaid) {
+      diff = newPaid - currentPaid;
+      const adjId = Date.now() + Math.floor(Math.random() * 1000);
+      if (diff > 0) {
+        const isLunas = price != null && price > 0 && newPaid >= price;
+        await dbClient.query(
+          `INSERT INTO financial_entries (
+             tanggal, tipe, kategori, nominal, source, booking_id,
+             sumber_tipe, sumber_id, status, catatan, created_by, created_at
+           ) VALUES (
+             CURRENT_DATE, 'masuk', $1, $2, 'booking', $3,
+             'booking_adjustment', $4, 'aktif', $5, $6, now()
+           )`,
+          [
+            isLunas ? 'Pelunasan' : 'Pembayaran Booking',
+            diff,
+            booking.id,
+            adjId,
+            `Penyesuaian penambahan pembayaran booking #${booking.id} (${client_name.trim()})`,
+            req.user.id
+          ]
+        );
+      } else if (diff < 0) {
+        await dbClient.query(
+          `INSERT INTO financial_entries (
+             tanggal, tipe, kategori, nominal, source, booking_id,
+             sumber_tipe, sumber_id, status, catatan, created_by, created_at
+           ) VALUES (
+             CURRENT_DATE, 'keluar', 'Koreksi Pembayaran', $1, 'booking', $2,
+             'booking_adjustment', $3, 'aktif', $4, $5, now()
+           )`,
+          [
+            Math.abs(diff),
+            booking.id,
+            adjId,
+            `Koreksi pengurangan pembayaran booking #${booking.id} (${client_name.trim()})`,
+            req.user.id
+          ]
+        );
+      }
+    }
+
+    // Tentukan status booking
+    let finalStatus = booking.status;
+    if (status !== undefined && status !== null && status !== '') {
+      finalStatus = status;
+    } else if (newPaid !== undefined) {
+      if (price != null && price > 0 && newPaid >= price && ['pending_dp', 'dp_review', 'confirmed', 'menunggu_pelunasan'].includes(booking.status)) {
+        finalStatus = 'lunas';
+      } else if (newPaid === 0 && booking.status === 'lunas') {
+        finalStatus = 'pending_dp';
+      }
+    }
+
+    const noteVal = notes !== undefined ? (notes ? notes.trim() : null) : (catatan !== undefined ? (catatan ? catatan.trim() : null) : booking.notes);
+    const pkgNameVal = package_name !== undefined ? (package_name ? package_name.trim() : null) : booking.package_name;
+
     // Update booking dengan atomic compare-and-swap (Optimistic Concurrency Control)
     const updateResult = await dbClient.query(
       `UPDATE bookings SET
@@ -614,18 +752,28 @@ async function handleEditBooking(req, res) {
          location      = $5,
          package_price = COALESCE($6, package_price),
          dp_amount     = $7,
-         form_data     = COALESCE($8, form_data),
-         updated_by    = $9,
+         paid_amount   = COALESCE($8, paid_amount),
+         status        = $9,
+         category_id   = $10,
+         package_name  = $11,
+         notes         = $12,
+         form_data     = COALESCE($13, form_data),
+         updated_by    = $14,
          version       = version + 1
-       WHERE id = $10 AND ($11::int IS NULL OR version = $11)`,
+       WHERE id = $15 AND ($16::int IS NULL OR version = $16)`,
       [
         client_name.trim(),
         client_phone.trim(),
         event_date,
         event_time || null,
         location || null,
-        price || null,
+        price,
         dpAmount,
+        newPaid !== undefined ? newPaid : null,
+        finalStatus,
+        newCategoryId,
+        pkgNameVal,
+        noteVal,
         form_data ? JSON.stringify(form_data) : null,
         req.user.id,
         booking.id,
@@ -658,7 +806,10 @@ async function handleEditBooking(req, res) {
         event_date: booking.event_date,
         event_time: booking.event_time,
         package_price: booking.package_price,
-        dp_amount: booking.dp_amount
+        dp_amount: booking.dp_amount,
+        paid_amount: booking.paid_amount,
+        status: booking.status,
+        notes: booking.notes
       },
       data_setelah: {
         client_name: client_name.trim(),
@@ -666,16 +817,25 @@ async function handleEditBooking(req, res) {
         event_date,
         event_time: event_time || null,
         package_price: price || booking.package_price,
-        dp_amount: dpAmount
+        dp_amount: dpAmount,
+        paid_amount: newPaid !== undefined ? newPaid : booking.paid_amount,
+        status: finalStatus,
+        notes: noteVal
       }
     });
 
     await dbClient.query('COMMIT');
 
-    // Return updated booking
+    // Return updated booking with calculated sisa and payment status
     const updRes = await db.query(
       `SELECT b.*, bc.name AS category_name, bc.color, bc.slug AS category_slug,
-              bc.dp_type, bc.dp_value, bc.fields AS category_fields
+              bc.dp_type, bc.dp_value, bc.fields AS category_fields,
+              GREATEST(0, COALESCE(b.package_price, 0) - COALESCE(b.paid_amount, 0)) AS sisa_tagihan,
+              CASE
+                WHEN COALESCE(b.paid_amount, 0) <= 0 THEN 'belum_bayar'
+                WHEN b.package_price IS NOT NULL AND b.package_price > 0 AND COALESCE(b.paid_amount, 0) >= b.package_price THEN 'lunas'
+                ELSE 'sebagian'
+              END AS payment_status
        FROM bookings b JOIN booking_categories bc ON b.category_id = bc.id
        WHERE b.id = $1`,
       [booking.id]
@@ -690,8 +850,148 @@ async function handleEditBooking(req, res) {
   }
 }
 
+// PATCH /api/admin/bookings/:id/paid-amount — ubah Jumlah Dibayar booking (Owner only, sinkronisasi buku kas atomik)
+async function handlePatchPaidAmount(req, res) {
+  const { id } = req.params;
+  const { paid_amount, version } = req.body;
+
+  if (paid_amount === undefined || paid_amount === null || paid_amount === '') {
+    return res.status(400).json({ error: 'Jumlah dibayar wajib diisi' });
+  }
+
+  const newPaid = parseInt(paid_amount, 10);
+  if (isNaN(newPaid) || newPaid < 0) {
+    return res.status(400).json({ error: 'Jumlah dibayar tidak boleh negatif dan harus berupa bilangan bulat' });
+  }
+
+  const expectedVersion = version !== undefined ? parseInt(version, 10) : null;
+
+  let client;
+  try {
+    client = await db.getClient();
+    await client.query('BEGIN');
+
+    const bookRes = await client.query('SELECT * FROM bookings WHERE id = $1 FOR UPDATE', [id]);
+    if (!bookRes.rows[0]) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Booking tidak ditemukan' });
+    }
+    const booking = bookRes.rows[0];
+
+    if (expectedVersion !== null && !isNaN(expectedVersion) && booking.version !== expectedVersion) {
+      await client.query('ROLLBACK');
+      return res.status(409).json({ error: 'Data telah diubah oleh pengguna lain. Silakan refresh.' });
+    }
+
+    const price = booking.package_price != null ? parseInt(booking.package_price, 10) : null;
+    if (price != null && price > 0 && newPaid > price) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({
+        error: `Jumlah dibayar (Rp ${newPaid.toLocaleString('id-ID')}) tidak boleh melebihi total harga paket (Rp ${price.toLocaleString('id-ID')})`
+      });
+    }
+
+    const currentPaid = Math.max(0, parseInt(booking.paid_amount, 10) || 0);
+    const diff = newPaid - currentPaid;
+    const adjId = Date.now() + Math.floor(Math.random() * 1000);
+
+    if (diff > 0) {
+      const isLunas = price != null && price > 0 && newPaid >= price;
+      await client.query(
+        `INSERT INTO financial_entries (
+           tanggal, tipe, kategori, nominal, source, booking_id,
+           sumber_tipe, sumber_id, status, catatan, created_by, created_at
+         ) VALUES (
+           CURRENT_DATE, 'masuk', $1, $2, 'booking', $3,
+           'booking_adjustment', $4, 'aktif', $5, $6, now()
+         )`,
+        [
+          isLunas ? 'Pelunasan' : 'Pembayaran Booking',
+          diff,
+          booking.id,
+          adjId,
+          `Penyesuaian penambahan pembayaran booking #${booking.id} (${booking.client_name})`,
+          req.user.id
+        ]
+      );
+    } else if (diff < 0) {
+      await client.query(
+        `INSERT INTO financial_entries (
+           tanggal, tipe, kategori, nominal, source, booking_id,
+           sumber_tipe, sumber_id, status, catatan, created_by, created_at
+         ) VALUES (
+           CURRENT_DATE, 'keluar', 'Koreksi Pembayaran', $1, 'booking', $2,
+           'booking_adjustment', $3, 'aktif', $4, $5, now()
+         )`,
+        [
+          Math.abs(diff),
+          booking.id,
+          adjId,
+          `Koreksi pengurangan pembayaran booking #${booking.id} (${booking.client_name})`,
+          req.user.id
+        ]
+      );
+    }
+
+    // Status otomatis jika tidak ditentukan
+    let newStatus = booking.status;
+    if (price != null && price > 0 && newPaid >= price && ['pending_dp', 'dp_review', 'confirmed', 'menunggu_pelunasan'].includes(booking.status)) {
+      newStatus = 'lunas';
+    } else if (newPaid === 0 && booking.status === 'lunas') {
+      newStatus = 'pending_dp';
+    }
+
+    const updRes = await client.query(
+      `UPDATE bookings SET
+         paid_amount = $1,
+         status      = $2,
+         updated_by  = $3,
+         version     = version + 1
+       WHERE id = $4
+       RETURNING *`,
+      [newPaid, newStatus, req.user.id, booking.id]
+    );
+
+    await audit.record(client, {
+      req,
+      aksi: 'booking.paid_amount_update',
+      entitas: 'booking',
+      entitas_id: booking.id,
+      data_sebelum: { paid_amount: currentPaid, status: booking.status },
+      data_setelah: { paid_amount: newPaid, status: newStatus, diff }
+    });
+
+    await client.query('COMMIT');
+
+    const updatedBooking = updRes.rows[0];
+    const sisaTagihan = Math.max(0, (parseInt(updatedBooking.package_price, 10) || 0) - (parseInt(updatedBooking.paid_amount, 10) || 0));
+    const paymentStatus = (parseInt(updatedBooking.paid_amount, 10) || 0) <= 0
+      ? 'belum_bayar'
+      : ((updatedBooking.package_price && (parseInt(updatedBooking.paid_amount, 10) || 0) >= parseInt(updatedBooking.package_price, 10))
+          ? 'lunas'
+          : 'sebagian');
+
+    res.json({
+      message: 'Jumlah dibayar berhasil diperbarui & disinkronkan ke buku kas keuangan',
+      booking: {
+        ...updatedBooking,
+        sisa_tagihan: sisaTagihan,
+        payment_status: paymentStatus
+      }
+    });
+  } catch (err) {
+    if (client) await client.query('ROLLBACK');
+    console.error('[bookings] patch paid-amount error:', err);
+    res.status(500).json({ error: 'Database error' });
+  } finally {
+    if (client) client.release();
+  }
+}
+
 router.put('/admin/:id', auth, auth.requirePermission('booking.update'), handleEditBooking);
 router.put('/:id', auth, auth.requirePermission('booking.update'), handleEditBooking);
+router.patch('/admin/:id/paid-amount', auth, auth.requireRole('owner'), auth.requirePermission('booking.update'), handlePatchPaidAmount);
+router.patch('/:id/paid-amount', auth, auth.requireRole('owner'), auth.requirePermission('booking.update'), handlePatchPaidAmount);
 
 // ── POST /api/bookings/:id/approve — Approve DP langsung oleh Staff/Owner ────────
 router.post('/:id/approve', auth, auth.requirePermission('booking.approve'), async (req, res) => {
@@ -1176,7 +1476,43 @@ async function handleSoftDelete(req, res) {
     }
     const current = check.rows[0];
 
-    // Cek approval rule untuk booking.delete
+    // 1. Cek sesi sortir aktif
+    const sessRes = await db.query(
+      `SELECT s.id, s.uuid, s.status, s.client_name
+       FROM sessions s
+       WHERE s.id = (SELECT session_id FROM bookings WHERE id = $1)
+         AND s.status = 'active'`,
+      [id]
+    );
+    if (sessRes.rows.length > 0) {
+      return res.status(400).json({
+        error: 'Tidak dapat menghapus booking: booking ini terhubung dengan sesi sortir yang masih aktif. Selesaikan atau batalkan sesi sortir terlebih dahulu.',
+        active_session: true,
+        session_id: sessRes.rows[0].id
+      });
+    }
+
+    // 2. Cek transaksi keuangan aktif (financial_entries atau approved payments)
+    const txRes = await db.query(
+      `SELECT id, tipe, nominal, catatan, tanggal
+       FROM financial_entries
+       WHERE booking_id = $1 AND deleted_at IS NULL AND status = 'aktif'`,
+      [id]
+    );
+    const payRes = await db.query(
+      `SELECT id, amount, status FROM payments WHERE booking_id = $1 AND status = 'approved'`,
+      [id]
+    );
+    const totalTxCount = txRes.rows.length + payRes.rows.length;
+    if (totalTxCount > 0 && req.query.force !== 'true') {
+      return res.status(400).json({
+        error: `Peringatan: Booking memiliki ${totalTxCount} transaksi keuangan aktif. Hapus transaksi terlebih dahulu atau konfirmasi penghapusan paksa (?force=true).`,
+        has_active_transactions: true,
+        transaction_count: totalTxCount
+      });
+    }
+
+    // 3. Cek approval rule untuk booking.delete
     const mode = await approvalSvc.resolveAksi('booking.delete', req.user.role);
     if (mode === 'approval') {
       const appReq = await approvalSvc.ajukan({
@@ -1185,7 +1521,7 @@ async function handleSoftDelete(req, res) {
         entitasTipe: 'booking',
         entitasId: id,
         baseVersion: current.version || 1,
-        payload: { id },
+        payload: { id, force: req.query.force === 'true' },
         req
       });
       return res.status(202).json({
@@ -1197,6 +1533,16 @@ async function handleSoftDelete(req, res) {
 
     client = await db.getClient();
     await client.query('BEGIN');
+
+    // Jika force delete, batalkan semua transaksi financial_entries terkait
+    if (txRes.rows.length > 0) {
+      await client.query(
+        `UPDATE financial_entries
+         SET deleted_at = now(), status = 'batal', updated_by = $1, updated_at = now()
+         WHERE booking_id = $2 AND deleted_at IS NULL AND status = 'aktif'`,
+        [req.user.id, id]
+      );
+    }
 
     const { rows } = await client.query(
       `UPDATE bookings
@@ -1211,7 +1557,7 @@ async function handleSoftDelete(req, res) {
       aksi: 'booking.delete',
       entitas: 'booking',
       entitas_id: id,
-      data_sebelum: { status: current.status, deleted_at: null },
+      data_sebelum: { status: current.status, deleted_at: null, paid_amount: current.paid_amount },
       data_setelah: { status: 'cancelled', deleted_at: rows[0]?.deleted_at }
     });
 
@@ -1231,7 +1577,23 @@ router.delete('/:id', auth, auth.requirePermission('booking.delete'), handleSoft
 
 // POST /api/admin/bookings/create — admin manual booking input
 async function handleAdminCreateBooking(req, res) {
-  const { category_id, client_name, client_phone, event_date, event_time, location, package_price, dp_amount, form_data, status, sumber_informasi, sumber_informasi_detail } = req.body;
+  const {
+    category_id,
+    client_name,
+    client_phone,
+    event_date,
+    event_time,
+    location,
+    package_price,
+    dp_amount,
+    paid_amount,
+    form_data,
+    status,
+    notes,
+    catatan,
+    sumber_informasi,
+    sumber_informasi_detail
+  } = req.body;
 
   if (!category_id || !client_name || !client_phone || !event_date) {
     return res.status(400).json({ error: 'Kategori, nama klien, no HP/WA, dan tanggal acara wajib diisi' });
@@ -1244,6 +1606,8 @@ async function handleAdminCreateBooking(req, res) {
 
     const price = package_price ? parseFloat(package_price) : null;
     const dp = dp_amount ? parseFloat(dp_amount) : null;
+    const initialPaid = paid_amount ? parseInt(paid_amount, 10) : 0;
+    const noteText = notes !== undefined ? (notes ? notes.trim() : null) : (catatan !== undefined ? (catatan ? catatan.trim() : null) : null);
 
     client = await db.getClient();
     await client.query('BEGIN');
@@ -1251,8 +1615,11 @@ async function handleAdminCreateBooking(req, res) {
     const pkgName = req.body.package_name || (form_data && (form_data.package_name || form_data._package_name)) || catRes.rows[0]?.name || null;
 
     const { rows } = await client.query(
-      `INSERT INTO bookings (category_id, client_name, client_phone, event_date, event_time, location, package_price, dp_amount, form_data, status, sumber_informasi, sumber_informasi_detail, package_name, created_by, updated_by)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $14)
+      `INSERT INTO bookings (
+         category_id, client_name, client_phone, event_date, event_time,
+         location, package_price, dp_amount, paid_amount, notes, form_data, status,
+         sumber_informasi, sumber_informasi_detail, package_name, created_by, updated_by
+       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $16)
        RETURNING *`,
       [
         category_id,
@@ -1263,6 +1630,8 @@ async function handleAdminCreateBooking(req, res) {
         location ? location.trim() : null,
         price,
         dp,
+        initialPaid,
+        noteText,
         form_data ? JSON.stringify(form_data) : '{}',
         status || 'confirmed',
         sumber_informasi || null,
@@ -1274,6 +1643,29 @@ async function handleAdminCreateBooking(req, res) {
 
     const newBooking = rows[0];
 
+    // Jika paid_amount > 0, catat otomatis di financial_entries
+    if (initialPaid > 0) {
+      const isLunas = price != null && price > 0 && initialPaid >= price;
+      const adjId = Date.now() + Math.floor(Math.random() * 1000);
+      await client.query(
+        `INSERT INTO financial_entries (
+           tanggal, tipe, kategori, nominal, source, booking_id,
+           sumber_tipe, sumber_id, status, catatan, created_by, created_at
+         ) VALUES (
+           CURRENT_DATE, 'masuk', $1, $2, 'booking', $3,
+           'booking_adjustment', $4, 'aktif', $5, $6, now()
+         )`,
+        [
+          isLunas ? 'Pelunasan' : 'Pembayaran Booking',
+          initialPaid,
+          newBooking.id,
+          adjId,
+          `Pembayaran awal booking #${newBooking.id} (${newBooking.client_name})`,
+          req.user.id
+        ]
+      );
+    }
+
     await audit.record(client, {
       req,
       aksi: 'booking.create',
@@ -1284,7 +1676,9 @@ async function handleAdminCreateBooking(req, res) {
         client_name: newBooking.client_name,
         client_phone: newBooking.client_phone,
         event_date: newBooking.event_date,
-        package_price: newBooking.package_price
+        package_price: newBooking.package_price,
+        paid_amount: initialPaid,
+        notes: noteText
       }
     });
 

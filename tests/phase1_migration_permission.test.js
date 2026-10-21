@@ -140,6 +140,20 @@ async function runTests() {
     await client.query('COMMIT');
     console.log('   ✅ Migrasi UP berulang terbukti idempotent tanpa error.');
 
+    // Reapply migrasi 004 dan 005 agar skema database tetap sinkron untuk test berikutnya
+    const m004 = path.join(__dirname, '../migrations/004_financial_entries_crud.sql');
+    const m005 = path.join(__dirname, '../migrations/005_booking_crud.sql');
+    if (fs.existsSync(m004)) {
+      await client.query('BEGIN');
+      await runSqlFile(client, m004);
+      await client.query('COMMIT');
+    }
+    if (fs.existsSync(m005)) {
+      await client.query('BEGIN');
+      await runSqlFile(client, m005);
+      await client.query('COMMIT');
+    }
+
     // ── 6. Verifikasi Integritas Data (GATE) ──────────────────────
     console.log('6. Verifikasi integritas data lama (Jumlah baris & total nominal)...');
     const afterBookings = await client.query(
