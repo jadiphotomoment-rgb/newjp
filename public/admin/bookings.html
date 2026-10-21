@@ -1218,10 +1218,6 @@
       document.getElementById('bookings-cards').classList.remove('hidden');
     }
 
-      document.getElementById('bookings-table-wrap').classList.remove('hidden');
-      document.getElementById('bookings-cards').classList.remove('hidden');
-    }
-
     let currentBookingData = null;
 
     async function openPanel(id) {
@@ -1614,6 +1610,7 @@
       const badgeEl = document.getElementById('edit-payment-status-badge');
       if (badgeEl) badgeEl.innerHTML = getPaymentBadgeHtml(paidVal, priceVal);
     }
+    window.recalculateEditSisa = recalculateEditSisa;
 
     async function saveEdit(id) {
       const b = currentBookingData;
@@ -2481,7 +2478,6 @@
     window.confirmDeleteBooking = confirmDeleteBooking;
     window.closeDeleteModal = closeDeleteModal;
     window.executeDeleteBooking = executeDeleteBooking;
-    window.recalculateEditSisa = recalculateEditSisa;
   </script>
 
   <!-- Modal: Edit Jumlah Dibayar -->
