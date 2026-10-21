@@ -46,8 +46,8 @@ CREATE INDEX IF NOT EXISTS ix_financial_entries_booking
   ON financial_entries (booking_id)
   WHERE deleted_at IS NULL;
 
--- Perbarui unique index ux_financial_entries_sumber_aktif agar hanya berlaku untuk booking (mencegah duplikat DP/pelunasan, namun membebaskan entri manual)
+-- Index unik idempoten pada sumber_tipe + sumber_id untuk entri aktif (booking_dp, booking_pelunasan)
 DROP INDEX IF EXISTS ux_financial_entries_sumber_aktif;
 CREATE UNIQUE INDEX IF NOT EXISTS ux_financial_entries_sumber_aktif
   ON financial_entries (sumber_tipe, sumber_id)
-  WHERE status = 'aktif' AND sumber_tipe LIKE 'booking%';
+  WHERE status = 'aktif';
