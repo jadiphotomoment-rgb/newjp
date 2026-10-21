@@ -6,7 +6,20 @@
 - [x] Fitur C: CRUD User via Admin (/admin/users.html) - Selesai
 - [x] Fitur A: CRUD Transaksi Keuangan (/admin/finance.html) - Selesai
 - [x] Fitur B: CRUD Booking & Edit "Jumlah Dibayar" (/admin/bookings.html) - Selesai
-- [ ] Final: Checklist Akhir & Verifikasi
+- [x] Final: Checklist Akhir & Verifikasi - Selesai
+
+## Catatan Final — Checklist Akhir & Verifikasi
+| Item | Status |
+|------|--------|
+| Syntax `routes/bookings.js`, `finance.js`, `users.js` | ✅ PASS (`node -c`) |
+| Test Fitur D (Role Guard) | ✅ 10/10 PASS |
+| Test Fitur C (CRUD User) | ✅ 17/17 PASS |
+| Test Fitur A (CRUD Transaksi) | ✅ 19/19 PASS |
+| Test Fitur B (CRUD Booking) | ✅ 27/27 PASS |
+| Regresi penuh `npm test` (Phase 1–7, pelunasan WA) | ✅ 100% PASS |
+| Migrasi idempoten `node scripts/migrate.js up` | ✅ Berhasil |
+| Git branch `feat/admin-owner-crud` | ✅ 4 commit terpisah per fitur |
+| Rollback tersedia | ✅ `migrations/005_booking_crud_down.sql` |
 
 ## Catatan Fitur B — CRUD Booking & Edit "Jumlah Dibayar"
 - **Migrasi Database (005_booking_crud.sql)**:
