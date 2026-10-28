@@ -111,13 +111,12 @@ router.get('/files', async (req, res) => {
       });
     }
 
-    // Gunakan endpoint /api/drive/thumbnail/:id sebagai proxy — menghindari masalah referrer & autentikasi
-    const origin = `${req.protocol}://${req.get('host')}`;
+    // Gunakan endpoint /api/drive/thumbnail/:id sebagai proxy (relative path aman dari Mixed Content)
     const files  = parsed.files.map(f => ({
       id:           f.id,
       name:         f.name,
-      thumbnailUrl: `${origin}/api/drive/thumbnail/${f.id}?sz=s400`,
-      fullUrl:      `${origin}/api/drive/thumbnail/${f.id}?sz=s1200`,
+      thumbnailUrl: `/api/drive/thumbnail/${f.id}?sz=s400`,
+      fullUrl:      `/api/drive/thumbnail/${f.id}?sz=s1200`,
     }));
 
     const result = { files, total: files.length };

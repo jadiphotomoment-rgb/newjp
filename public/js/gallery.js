@@ -64,19 +64,30 @@ const toastContainer = document.getElementById('toast-container');
 
 // ── Show/hide states ─────────────────────────────────────────────
 function showState(name) {
-  stateLoading.style.display  = 'none';
-  stateError.style.display    = 'none';
-  stateExpired.style.display  = 'none';
-  stateSuccess.style.display  = 'none';
-  galleryPage.style.display   = 'none';
-  if (stateTracker) stateTracker.style.display = 'none';
+  const allStates = [stateLoading, stateError, stateExpired, stateSuccess, galleryPage];
+  if (stateTracker) allStates.push(stateTracker);
 
-  if (name === 'loading') stateLoading.style.display  = '';
-  if (name === 'error')   stateError.style.display    = '';
-  if (name === 'expired') stateExpired.style.display  = '';
-  if (name === 'success') stateSuccess.style.display  = '';
-  if (name === 'tracker') { if (stateTracker) stateTracker.style.display = ''; }
-  if (name === 'gallery') galleryPage.style.display   = '';
+  allStates.forEach(el => {
+    if (el) {
+      el.style.display = 'none';
+      el.classList.add('hidden');
+    }
+  });
+
+  const stateMap = {
+    loading: stateLoading,
+    error:   stateError,
+    expired: stateExpired,
+    success: stateSuccess,
+    tracker: stateTracker,
+    gallery: galleryPage
+  };
+
+  const target = stateMap[name];
+  if (target) {
+    target.style.display = '';
+    target.classList.remove('hidden');
+  }
 }
 
 // ── Toast ─────────────────────────────────────────────────────────
@@ -98,8 +109,10 @@ function showError(msg, hints = []) {
   if (hints.length) {
     hintsEl.innerHTML = hints.map(h => `<li>${h}</li>`).join('');
     hintsEl.style.display = '';
+    hintsEl.classList.remove('hidden');
   } else {
     hintsEl.style.display = 'none';
+    hintsEl.classList.add('hidden');
   }
 }
 
