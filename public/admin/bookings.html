@@ -616,6 +616,11 @@
         <span class="material-symbols-outlined">chat</span>
         <span class="font-label-md">Template WA</span>
       </a>
+      <a href="/admin/terms.html" data-role="owner"
+        class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all">
+        <span class="material-symbols-outlined">gavel</span>
+        <span class="font-label-md">Term & Condition</span>
+      </a>
 
       <a href="/admin/shortlinks.html"
         class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all">
@@ -975,6 +980,7 @@
     }
 
     function fmtDate(d) { return d ? new Date(d).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'; }
+    function fmtDateTime(d) { return d ? new Date(d).toLocaleString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'; }
     function fmtMoney(n) { return n ? 'Rp ' + Number(n).toLocaleString('id-ID') : '—'; }
     function esc(s) { if (s == null) return '—'; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
     const STATUS_LABELS = {
@@ -1359,6 +1365,55 @@
 
         <!-- Integrasi Tagihan & Pelunasan -->
         ${window.AdminPelunasan ? window.AdminPelunasan.renderSection(b) : ''}
+
+        <!-- Persetujuan T&C -->
+        <div class="bg-surface-container-lowest border border-outline-variant/30 p-4 rounded-lg mt-4">
+          <div class="detail-section-title flex items-center justify-between">
+            <span>Persetujuan Syarat & Ketentuan</span>
+            ${b.terms_acceptance ? `
+              <span class="text-xs px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-600 font-semibold border border-emerald-500/20">
+                Disetujui
+              </span>
+            ` : `
+              <span class="text-xs px-2 py-0.5 rounded bg-surface-container text-on-surface-variant font-medium">
+                Belum Ada
+              </span>
+            `}
+          </div>
+          ${b.terms_acceptance ? `
+            <div class="detail-row">
+              <span class="dk">Versi Dokumen</span>
+              <span class="dv font-semibold">v${esc(b.terms_acceptance.version_number || '1')} — ${esc(b.terms_acceptance.version_title || 'T&C Umum')}</span>
+            </div>
+            <div class="detail-row">
+              <span class="dk">Waktu Persetujuan</span>
+              <span class="dv">${fmtDateTime(b.terms_acceptance.accepted_at)}</span>
+            </div>
+            ${b.terms_acceptance.ip_address ? `
+              <div class="detail-row">
+                <span class="dk">IP Klien</span>
+                <span class="dv font-mono text-xs text-on-surface-variant">${esc(b.terms_acceptance.ip_address)}</span>
+              </div>
+            ` : ''}
+            <div class="mt-3 pt-2.5 border-t border-outline-variant/20 flex flex-wrap gap-2">
+              <button type="button" class="btn btn-outline btn-sm text-xs flex items-center gap-1.5" onclick="viewTermsSnapshot(${b.id})">
+                <span class="material-symbols-outlined text-sm">visibility</span>
+                Lihat Isi Persetujuan
+              </button>
+              ${b.terms_acceptance.verification_token ? `
+                <a href="/api/terms/verify/${b.terms_acceptance.verification_token}" target="_blank" class="btn btn-outline btn-sm text-xs flex items-center gap-1.5 text-primary">
+                  <span class="material-symbols-outlined text-sm">verified</span>
+                  Verifikasi Publik
+                  <span class="material-symbols-outlined text-xs">open_in_new</span>
+                </a>
+              ` : ''}
+            </div>
+          ` : `
+            <div class="text-xs text-on-surface-variant italic py-1">
+              Belum ada catatan T&C (booking dibuat sebelum sistem T&C aktif)
+            </div>
+          `}
+        </div>
 
         <!-- Riwayat Perubahan & Audit -->
         <div class="bg-surface-container-lowest border border-outline-variant/30 p-4 rounded-lg mt-4">
@@ -2471,6 +2526,28 @@
       }
     }
 
+    window.viewTermsSnapshot = async function(bookingId) {
+      try {
+        const res = await fetch(`/api/admin/bookings/${bookingId}/terms`, { headers: H });
+        const data = await res.json();
+        if (!res.ok || !data.accepted) {
+          toast(data.message || 'Catatan persetujuan T&C tidak ditemukan', 'error');
+          return;
+        }
+        const item = data.data;
+        document.getElementById('modal-snapshot-title').textContent = `Bukti Persetujuan T&C — Booking #${item.booking_id} (${esc(item.client_name)})`;
+        document.getElementById('modal-snapshot-meta').textContent = `Disetujui: ${fmtDateTime(item.accepted_at)} • Versi: v${item.version_number || 1} • IP: ${item.ip_address || '—'}`;
+        document.getElementById('modal-snapshot-text').textContent = item.snapshot_text || '—';
+        document.getElementById('modal-terms-snapshot').classList.remove('hidden');
+      } catch (err) {
+        toast('Gagal memuat catatan persetujuan T&C', 'error');
+      }
+    };
+
+    window.closeTermsSnapshotModal = function() {
+      document.getElementById('modal-terms-snapshot').classList.add('hidden');
+    };
+
     window.openPaidModal = openPaidModal;
     window.closePaidModal = closePaidModal;
     window.onMpaInput = onMpaInput;
@@ -2479,6 +2556,30 @@
     window.closeDeleteModal = closeDeleteModal;
     window.executeDeleteBooking = executeDeleteBooking;
   </script>
+
+  <!-- Modal: Bukti Persetujuan T&C (Snapshot) -->
+  <div id="modal-terms-snapshot" class="fixed inset-0 z-[200] flex items-center justify-center hidden" role="dialog" aria-modal="true" aria-labelledby="modal-snapshot-title">
+    <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" onclick="closeTermsSnapshotModal()"></div>
+    <div class="relative bg-surface rounded-2xl shadow-2xl w-full max-w-lg mx-4 p-6 z-10 border border-outline-variant/30 flex flex-col max-h-[85vh]">
+      <div class="flex items-center justify-between mb-3 border-b border-outline-variant/30 pb-3">
+        <h2 id="modal-snapshot-title" class="font-bold text-base text-on-surface flex items-center gap-2">
+          <span class="material-symbols-outlined text-primary">verified</span>
+          Bukti Persetujuan T&C
+        </h2>
+        <button class="btn btn-icon text-on-surface-variant hover:text-on-surface" onclick="closeTermsSnapshotModal()" aria-label="Tutup">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+      <div id="modal-snapshot-meta" class="text-xs text-on-surface-variant mb-3 font-mono bg-surface-container-low p-2 rounded-lg border border-outline-variant/20"></div>
+      <div class="overflow-y-auto flex-1 pr-1">
+        <div class="text-xs font-semibold uppercase text-on-surface-variant tracking-wider mb-1.5">Isi T&C yang Disetujui Klien:</div>
+        <pre id="modal-snapshot-text" class="text-xs text-on-surface leading-relaxed whitespace-pre-wrap font-sans bg-surface-container p-3 rounded-lg border border-outline-variant/20 max-h-72 overflow-y-auto"></pre>
+      </div>
+      <div class="flex justify-end gap-2 mt-4 pt-3 border-t border-outline-variant/30">
+        <button type="button" class="btn btn-outline text-xs px-4 py-2" onclick="closeTermsSnapshotModal()">Tutup</button>
+      </div>
+    </div>
+  </div>
 
   <!-- Modal: Edit Jumlah Dibayar -->
   <div id="modal-paid-amount" class="fixed inset-0 z-[200] flex items-center justify-center hidden" role="dialog" aria-modal="true" aria-labelledby="mpa-title">

@@ -600,7 +600,27 @@
           </div>
         </div>
 
-        <button type="submit" class="btn btn-primary" style="width: 100%; padding: 14px;" id="btn-submit">
+        <!-- Syarat & Ketentuan (T&C) Container -->
+        <div class="tnc-card" id="tnc-container" style="background:var(--bg-elevated); border:1px solid var(--border-color); border-radius:12px; padding:16px; margin-bottom:var(--sp-4);">
+          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
+            <span style="font-weight:600; font-size:0.88rem; color:var(--text-1); display:flex; align-items:center; gap:6px;">
+              📋 Syarat & Ketentuan Studio
+            </span>
+            <button type="button" id="btn-view-full-terms" style="background:none; border:none; color:var(--accent); font-size:0.78rem; font-weight:600; cursor:pointer; text-decoration:underline;">
+              Baca selengkapnya
+            </button>
+          </div>
+          <div id="tnc-points-box" style="max-height:140px; overflow-y:auto; font-size:0.8rem; color:var(--text-2); line-height:1.5; padding:8px 10px; background:var(--bg-base); border-radius:8px; border:1px solid var(--border-subtle); margin-bottom:12px;">
+            <div id="tnc-loading" style="text-align:center; padding:12px; color:var(--text-3);">Memuat Syarat & Ketentuan...</div>
+            <ol id="tnc-points-list" style="margin:0; padding-left:18px; display:none;" class="space-y-1.5"></ol>
+          </div>
+          <label style="display:flex; align-items:flex-start; gap:10px; font-size:0.82rem; color:var(--text-1); cursor:pointer; user-select:none;">
+            <input type="checkbox" id="terms-checkbox" name="terms_accepted" style="margin-top:2px; accent-color:var(--accent); width:16px; height:16px; flex-shrink:0;">
+            <span id="terms-checkbox-label">Saya telah membaca, memahami, dan menyetujui seluruh Syarat & Ketentuan yang berlaku.</span>
+          </label>
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="width: 100%; padding: 14px;" id="btn-submit" disabled>
           <span id="btn-submit-text">Lanjut ke Upload Bukti DP →</span>
           <div id="btn-submit-spinner" class="spinner hidden" aria-hidden="true"></div>
         </button>
@@ -1238,6 +1258,23 @@
         return;
       }
 
+      // Validasi Persetujuan Syarat & Ketentuan
+      const termsCheckbox = document.getElementById('terms-checkbox');
+      if (!termsCheckbox || !termsCheckbox.checked) {
+        alertEl.textContent = 'Anda wajib mencentang persetujuan Syarat & Ketentuan sebelum melanjutkan.';
+        alertEl.classList.remove('hidden');
+        return;
+      }
+
+      if (!currentTerms || !currentTerms.id) {
+        alertEl.textContent = 'Versi Syarat & Ketentuan belum dimuat atau tidak valid. Silakan muat ulang halaman.';
+        alertEl.classList.remove('hidden');
+        return;
+      }
+
+      payload.terms_version_id = currentTerms.id;
+      payload.terms_accepted = true;
+
       const btn = document.getElementById('btn-submit');
       const spinner = document.getElementById('btn-submit-spinner');
       const btnText = document.getElementById('btn-submit-text');
@@ -1289,8 +1326,102 @@
       });
     }
 
+    /* ── Syarat & Ketentuan (T&C) Handling ── */
+    let currentTerms = null;
+
+    function esc(str) {
+      if (str === null || str === undefined) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    async function loadActiveTerms() {
+      try {
+        const res = await fetch('/api/terms/active');
+        if (!res.ok) {
+          document.getElementById('tnc-loading').textContent = 'Syarat & Ketentuan umum studio berlaku.';
+          return;
+        }
+        currentTerms = await res.json();
+        const listEl = document.getElementById('tnc-points-list');
+        const pts = Array.isArray(currentTerms.points) ? currentTerms.points : [];
+        if (pts.length > 0) {
+          listEl.innerHTML = pts.map(p => `<li>${esc(p)}</li>`).join('');
+          document.getElementById('tnc-loading').style.display = 'none';
+          listEl.style.display = 'block';
+
+          // Modal full terms list
+          const modalList = document.getElementById('modal-terms-list');
+          if (modalList) {
+            modalList.innerHTML = pts.map(p => `<li style="margin-bottom:8px;">${esc(p)}</li>`).join('');
+          }
+          if (document.getElementById('modal-terms-title')) {
+            document.getElementById('modal-terms-title').textContent = currentTerms.title || 'Syarat & Ketentuan Studio';
+          }
+        } else {
+          document.getElementById('tnc-loading').textContent = 'Syarat & Ketentuan umum studio berlaku.';
+        }
+      } catch (e) {
+        document.getElementById('tnc-loading').textContent = 'Syarat & Ketentuan umum studio berlaku.';
+      }
+    }
+
+    const termsCheckboxEl = document.getElementById('terms-checkbox');
+    const submitButtonEl = document.getElementById('btn-submit');
+    if (termsCheckboxEl && submitButtonEl) {
+      termsCheckboxEl.addEventListener('change', () => {
+        submitButtonEl.disabled = !termsCheckboxEl.checked;
+      });
+    }
+
+    const modalTermsFull = document.getElementById('modal-terms-full');
+    const btnViewFullTerms = document.getElementById('btn-view-full-terms');
+    const btnCloseTermsModal = document.getElementById('btn-close-terms-modal');
+    const btnAgreeTermsModal = document.getElementById('btn-agree-terms-modal');
+
+    if (btnViewFullTerms && modalTermsFull) {
+      btnViewFullTerms.addEventListener('click', () => {
+        modalTermsFull.classList.remove('hidden');
+      });
+    }
+    if (btnCloseTermsModal && modalTermsFull) {
+      btnCloseTermsModal.addEventListener('click', () => {
+        modalTermsFull.classList.add('hidden');
+      });
+    }
+    if (btnAgreeTermsModal && modalTermsFull) {
+      btnAgreeTermsModal.addEventListener('click', () => {
+        if (termsCheckboxEl) {
+          termsCheckboxEl.checked = true;
+          if (submitButtonEl) submitButtonEl.disabled = false;
+        }
+        modalTermsFull.classList.add('hidden');
+      });
+    }
+
     /* ── Init ── */
     loadCategories();
+    loadActiveTerms();
   </script>
+
+  <!-- Modal T&C Selengkapnya -->
+  <div id="modal-terms-full" class="hidden" role="dialog" aria-modal="true" style="position:fixed; inset:0; background:rgba(0,0,0,0.7); backdrop-filter:blur(4px); z-index:1000; display:flex; align-items:center; justify-content:center; padding:16px;">
+    <div style="background:var(--bg-surface); border:1px solid var(--border-color); border-radius:16px; max-width:540px; width:100%; max-height:85vh; display:flex; flex-direction:column; padding:20px; box-shadow:0 20px 40px rgba(0,0,0,0.5);">
+      <div style="display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid var(--border-subtle); padding-bottom:12px; margin-bottom:14px;">
+        <h3 style="margin:0; font-size:1.05rem; font-weight:700; color:var(--text-1);" id="modal-terms-title">Syarat & Ketentuan Layanan Studio</h3>
+        <button type="button" id="btn-close-terms-modal" style="background:none; border:none; color:var(--text-2); font-size:1.2rem; cursor:pointer; padding:4px;">✕</button>
+      </div>
+      <div id="modal-terms-content" style="overflow-y:auto; flex:1; font-size:0.85rem; color:var(--text-2); line-height:1.6; padding-right:6px;">
+        <ol id="modal-terms-list" style="margin:0; padding-left:20px;" class="space-y-3"></ol>
+      </div>
+      <div style="border-top:1px solid var(--border-subtle); padding-top:14px; margin-top:14px; display:flex; justify-content:flex-end;">
+        <button type="button" class="btn btn-primary" id="btn-agree-terms-modal" style="padding:8px 18px; font-size:0.85rem;">Saya Mengerti & Setuju</button>
+      </div>
+    </div>
+  </div>
 </body>
 </html>

@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kelola Term & Condition (T&C) — Jadiphoto.Moment Admin</title>
+  <meta name="description" content="Kelola draf, publikasikan versi baru, dan pantau riwayat versi Syarat & Ketentuan studio">
+  <meta name="robots" content="noindex, nofollow">
+
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/style.css?v=3">
+  <link rel="stylesheet" href="/css/admin-theme.css?v=1">
+  <script src="/js/theme.js?v=3"></script>
+
+  <style>
+    html, body { margin: 0; padding: 0; }
+    body { overscroll-behavior: none; }
+    ::-webkit-scrollbar { display: none; }
+    .hidden { display: none !important; }
+
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+      padding: 8px 16px; border-radius: 9px; font-size: 14px; font-weight: 600;
+      transition: all .15s; cursor: pointer; border: none;
+    }
+    .btn-sm { padding: 5px 10px; font-size: 12px; }
+    .btn-primary { background: #6366f1; color: #fff; }
+    .btn-primary:hover { background: #4f46e5; }
+    .btn-success { background: #22c55e; color: #fff; }
+    .btn-success:hover { background: #16a34a; }
+    .btn-outline {
+      background: transparent; border: 1px solid var(--color-outline-variant, rgba(255,255,255,.15));
+      color: var(--color-on-surface, #e0e0e0);
+    }
+    .btn-outline:hover { background: rgba(255,255,255,.05); }
+
+    .point-card {
+      background: var(--color-surface-container-low, #1e2538);
+      border: 1px solid var(--color-outline-variant, rgba(255, 255, 255, 0.08));
+      border-radius: 10px;
+      padding: 14px;
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      transition: border-color .15s;
+    }
+    html.light .point-card {
+      background: #ffffff;
+      border-color: #e2e8f0;
+    }
+    .point-number {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: rgba(99, 102, 241, 0.15);
+      color: #818cf8;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 12px;
+      flex-shrink: 0;
+    }
+
+    /* Modal Backdrop */
+    .modal-backdrop {
+      position: fixed; inset: 0; background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(4px); z-index: 100;
+      display: flex; align-items: center; justify-content: center; padding: 16px;
+    }
+  </style>
+</head>
+
+<body class="bg-surface text-on-surface flex flex-col md:flex-row min-h-screen">
+
+  <!-- Role Guard Check (Owner Only) -->
+  <script>
+    (function() {
+      const token = localStorage.getItem('sf_token');
+      const adminStr = localStorage.getItem('sf_admin');
+      if (!token) {
+        window.location.replace('/admin/login.html');
+        return;
+      }
+      try {
+        const admin = JSON.parse(adminStr || '{}');
+        const isOwner = admin.role === 'owner' || admin.role === 'admin';
+        if (!isOwner) {
+          window.location.replace('/403.html');
+        }
+      } catch (_) {
+        window.location.replace('/admin/login.html');
+      }
+    })();
+  </script>
+
+  <!-- SIDEBAR NAVIGATION -->
+  <aside class="w-full md:w-64 bg-surface-container-lowest border-r border-outline-variant/30 flex-shrink-0 flex flex-col">
+    <div class="p-6 border-b border-outline-variant/30 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <span class="material-symbols-outlined text-primary text-[28px]">photo_camera</span>
+        <span class="font-title-lg font-bold">Jadiphoto Admin</span>
+      </div>
+    </div>
+    
+    <nav class="flex-1 p-4 space-y-1">
+      <a href="/admin/dashboard.html" class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all">
+        <span class="material-symbols-outlined">dashboard</span>
+        <span class="font-label-md">Dashboard</span>
+      </a>
+      <a href="/admin/bookings.html" class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all">
+        <span class="material-symbols-outlined">event_note</span>
+        <span class="font-label-md">Booking</span>
+      </a>
+      <a href="/admin/approvals.html" class="flex items-center justify-between px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all">
+        <div class="flex items-center gap-3">
+          <span class="material-symbols-outlined">verified</span>
+          <span class="font-label-md">Persetujuan</span>
+        </div>
+        <span id="approval-badge-count" class="hidden px-2 py-0.5 rounded-full text-[11px] font-bold bg-amber-500 text-black">0</span>
+      </a>
+      <a href="/admin/sessions.html" class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all">
+        <span class="material-symbols-outlined">add_a_photo</span>
+        <span class="font-label-md">Sesi Sortir</span>
+      </a>
+      <a href="/admin/finance.html" data-role="owner" class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all">
+        <span class="material-symbols-outlined">payments</span>
+        <span class="font-label-md">Keuangan</span>
+      </a>
+      <a href="/admin/users.html" data-role="owner" class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all">
+        <span class="material-symbols-outlined">group</span>
+        <span class="font-label-md">Manajemen Staff</span>
+      </a>
+      <a href="/admin/monitoring.html" data-role="owner" class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all">
+        <span class="material-symbols-outlined">monitoring</span>
+        <span class="font-label-md">Monitoring Staff</span>
+      </a>
+      <a href="/admin/activity.html" data-role="owner" class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all">
+        <span class="material-symbols-outlined">history</span>
+        <span class="font-label-md">Audit Log</span>
+      </a>
+      <a href="/admin/categories.html" class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all">
+        <span class="material-symbols-outlined">category</span>
+        <span class="font-label-md">Kategori</span>
+      </a>
+      <a href="/admin/wa-templates.html" class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all">
+        <span class="material-symbols-outlined">chat</span>
+        <span class="font-label-md">Template WA</span>
+      </a>
+      <a href="/admin/terms.html" data-role="owner" class="flex items-center gap-3 px-4 py-3 rounded-lg bg-surface-container text-primary font-semibold transition-all">
+        <span class="material-symbols-outlined">gavel</span>
+        <span class="font-label-md">Term & Condition</span>
+      </a>
+      <a href="/admin/shortlinks.html" class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all">
+        <span class="material-symbols-outlined">link</span>
+        <span class="font-label-md">Shortlink</span>
+      </a>
+    </nav>
+
+    <div class="p-4 border-t border-outline-variant/30 flex items-center justify-between">
+      <div id="user-profile-badge"></div>
+      <button id="btn-logout" class="p-2 text-on-surface-variant hover:text-error transition-colors" title="Logout">
+        <span class="material-symbols-outlined">logout</span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <main class="flex-1 overflow-y-auto p-4 md:p-8 max-w-5xl mx-auto w-full">
+    
+    <!-- Top Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+      <div>
+        <h1 class="text-2xl md:text-3xl font-bold flex items-center gap-2">
+          <span class="material-symbols-outlined text-primary text-3xl">gavel</span>
+          Kelola Syarat & Ketentuan (T&C)
+        </h1>
+        <p class="text-on-surface-variant text-sm mt-1">
+          Atur poin persetujuan layanan studio, simpan draf, dan publikasikan versi baru secara transaksional.
+        </p>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <button type="button" class="btn btn-outline" id="btn-preview-modal">
+          <span class="material-symbols-outlined text-sm">visibility</span>
+          Pratinjau
+        </button>
+        <button type="button" class="btn btn-outline" id="btn-save-draft">
+          <span class="material-symbols-outlined text-sm">save</span>
+          Simpan Draf
+        </button>
+        <button type="button" class="btn btn-primary" id="btn-publish-terms">
+          <span class="material-symbols-outlined text-sm">publish</span>
+          Publish Versi Baru
+        </button>
+      </div>
+    </div>
+
+    <!-- Active Version Banner -->
+    <div id="active-banner" class="mb-6 p-4 rounded-xl border border-primary/30 bg-primary/10 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <span class="material-symbols-outlined text-primary text-2xl">check_circle</span>
+        <div>
+          <div class="font-semibold text-sm flex items-center gap-2">
+            <span>Versi Aktif Saat Ini:</span>
+            <span id="active-version-badge" class="px-2 py-0.5 rounded text-xs font-bold bg-primary text-white">Memuat...</span>
+          </div>
+          <div id="active-version-info" class="text-xs text-on-surface-variant mt-0.5">Mengecek database...</div>
+        </div>
+      </div>
+      <a href="/booking.html" target="_blank" class="text-xs font-semibold text-primary underline flex items-center gap-1">
+        Buka Form Booking
+        <span class="material-symbols-outlined text-xs">open_in_new</span>
+      </a>
+    </div>
+
+    <!-- Alert Banner -->
+    <div id="status-alert" class="hidden mb-6 p-4 rounded-xl text-sm font-medium"></div>
+
+    <!-- Editor Card -->
+    <div class="bg-surface-container-lowest border border-outline-variant/30 rounded-2xl p-6 shadow-sm mb-8">
+      <div class="mb-5">
+        <label for="terms-title-input" class="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-2">
+          Judul Dokumen T&C
+        </label>
+        <input type="text" id="terms-title-input" class="w-full bg-surface-container-low border border-outline-variant rounded-xl px-4 py-2.5 text-sm font-medium focus:outline-none focus:border-primary" value="Syarat & Ketentuan Umum Layanan Studio" placeholder="Contoh: Syarat & Ketentuan Umum Layanan Studio">
+      </div>
+
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="text-base font-bold flex items-center gap-2">
+          <span>Daftar Poin Aturan Studio</span>
+          <span id="points-count-badge" class="text-xs px-2 py-0.5 rounded-full bg-surface-container text-on-surface-variant">0 poin</span>
+        </h2>
+        <button type="button" class="btn btn-outline btn-sm text-xs" id="btn-add-point">
+          <span class="material-symbols-outlined text-sm">add</span>
+          Tambah Poin
+        </button>
+      </div>
+
+      <!-- Container Poin -->
+      <div id="points-container" class="space-y-3">
+        <div class="text-center py-8 text-on-surface-variant text-sm" id="loading-points">
+          Memuat data butir T&C...
+        </div>
+      </div>
+
+      <div class="mt-4 pt-4 border-t border-outline-variant/20 flex justify-between items-center">
+        <button type="button" class="btn btn-outline btn-sm text-xs" id="btn-add-point-bottom">
+          <span class="material-symbols-outlined text-sm">add</span>
+          Tambah Poin Baru
+        </button>
+        <span class="text-xs text-on-surface-variant">Gunakan tombol panah untuk mengubah urutan poin.</span>
+      </div>
+    </div>
+
+    <!-- Riwayat Versi Card -->
+    <div class="bg-surface-container-lowest border border-outline-variant/30 rounded-2xl p-6 shadow-sm">
+      <h2 class="text-base font-bold mb-4 flex items-center gap-2">
+        <span class="material-symbols-outlined text-primary text-xl">history</span>
+        Riwayat Versi T&C
+      </h2>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-sm">
+          <thead>
+            <tr class="border-b border-outline-variant/20 text-xs font-bold uppercase text-on-surface-variant">
+              <th class="pb-3 pr-4">Versi</th>
+              <th class="pb-3 pr-4">Judul</th>
+              <th class="pb-3 pr-4">Poin</th>
+              <th class="pb-3 pr-4">Status</th>
+              <th class="pb-3 pr-4">Tanggal Rilis</th>
+              <th class="pb-3 pr-4">Diterbitkan Oleh</th>
+              <th class="pb-3 text-right">Aksi</th>
+            </tr>
+          </thead>
+          <tbody id="versions-table-body" class="divide-y divide-outline-variant/10">
+            <tr>
+              <td colspan="7" class="py-6 text-center text-on-surface-variant text-sm">Memuat riwayat...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+
+  <!-- MODAL PRATINJAU -->
+  <div id="preview-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true">
+    <div class="bg-surface-container-lowest border border-outline-variant/30 rounded-2xl w-full max-w-lg p-6 shadow-2xl relative text-on-surface max-h-[90vh] flex flex-col">
+      <div class="flex items-center justify-between pb-3 border-b border-outline-variant/30 mb-4">
+        <h3 class="text-lg font-bold flex items-center gap-2">
+          <span class="material-symbols-outlined text-primary">visibility</span>
+          Pratinjau Tampilan di Form Booking
+        </h3>
+        <button type="button" class="text-on-surface-variant hover:text-on-surface" id="btn-close-preview">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+      
+      <div class="overflow-y-auto flex-1 pr-2 space-y-3">
+        <div class="border border-outline-variant/40 rounded-xl p-4 bg-surface-container-low">
+          <div class="font-bold text-sm mb-2" id="preview-title">Syarat & Ketentuan Studio</div>
+          <div class="text-xs text-on-surface-variant leading-relaxed max-h-48 overflow-y-auto border border-outline-variant/20 rounded-lg p-3 bg-surface-container-lowest" id="preview-points-list">
+            <!-- Poin pratinjau -->
+          </div>
+          <div class="mt-3 flex items-start gap-2 text-xs">
+            <input type="checkbox" checked disabled class="mt-0.5">
+            <span class="font-medium">Saya telah membaca, memahami, dan menyetujui seluruh Syarat & Ketentuan yang berlaku.</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="pt-4 border-t border-outline-variant/30 mt-4 flex justify-end">
+        <button type="button" class="btn btn-outline" id="btn-close-preview-footer">Tutup Pratinjau</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL DETAIL VERSI RIWAYAT -->
+  <div id="detail-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true">
+    <div class="bg-surface-container-lowest border border-outline-variant/30 rounded-2xl w-full max-w-lg p-6 shadow-2xl relative text-on-surface max-h-[90vh] flex flex-col">
+      <div class="flex items-center justify-between pb-3 border-b border-outline-variant/30 mb-4">
+        <h3 class="text-lg font-bold" id="detail-modal-title">Detail Versi T&C</h3>
+        <button type="button" class="text-on-surface-variant hover:text-on-surface" id="btn-close-detail">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+      
+      <div class="overflow-y-auto flex-1 pr-2">
+        <div id="detail-modal-meta" class="text-xs text-on-surface-variant mb-3"></div>
+        <ol id="detail-modal-points" class="list-decimal pl-5 space-y-2 text-sm text-on-surface"></ol>
+      </div>
+
+      <div class="pt-4 border-t border-outline-variant/30 mt-4 flex justify-between items-center">
+        <button type="button" class="btn btn-outline btn-sm" id="btn-load-to-editor">Muat ke Editor</button>
+        <button type="button" class="btn btn-outline btn-sm" id="btn-close-detail-footer">Tutup</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCRIPT LOGIKA TERMS & CONDITIONS -->
+  <script>
+    'use strict';
+
+    const token = localStorage.getItem('sf_token');
+    const H = {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + token
+    };
+
+    function esc(s) {
+      if (s === null || s === undefined) return '';
+      return String(s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function showAlert(msg, isSuccess = true) {
+      const el = document.getElementById('status-alert');
+      el.className = isSuccess
+        ? 'mb-6 p-4 rounded-xl text-sm font-medium bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
+        : 'mb-6 p-4 rounded-xl text-sm font-medium bg-rose-500/15 text-rose-400 border border-rose-500/30';
+      el.textContent = msg;
+      el.classList.remove('hidden');
+      setTimeout(() => el.classList.add('hidden'), 5000);
+    }
+
+    let pointsState = [];
+    let allVersions = [];
+    let selectedVersionForDetail = null;
+
+    // Render daftar poin ke editor
+    function renderPoints() {
+      const container = document.getElementById('points-container');
+      document.getElementById('points-count-badge').textContent = `${pointsState.length} poin`;
+
+      if (pointsState.length === 0) {
+        container.innerHTML = `
+          <div class="text-center py-8 text-on-surface-variant text-sm border border-dashed border-outline-variant/30 rounded-xl">
+            Belum ada butir poin. Klik <strong>+ Tambah Poin</strong> untuk membuat aturan baru.
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = pointsState.map((pt, idx) => `
+        <div class="point-card" data-index="${idx}">
+          <div class="point-number">${idx + 1}</div>
+          <div class="flex-1">
+            <textarea
+              class="w-full bg-surface-container border border-outline-variant/30 rounded-lg p-2.5 text-sm focus:outline-none focus:border-primary point-textarea"
+              rows="2"
+              placeholder="Tuliskan butir syarat & ketentuan..."
+              oninput="updatePointText(${idx}, this.value)"
+            >${esc(pt)}</textarea>
+          </div>
+          <div class="flex items-center gap-1">
+            <button type="button" class="p-1 rounded text-on-surface-variant hover:text-on-surface hover:bg-surface-container" onclick="movePoint(${idx}, -1)" ${idx === 0 ? 'disabled style="opacity:0.3;cursor:not-allowed;"' : ''} title="Pindah ke atas">
+              <span class="material-symbols-outlined text-base">arrow_upward</span>
+            </button>
+            <button type="button" class="p-1 rounded text-on-surface-variant hover:text-on-surface hover:bg-surface-container" onclick="movePoint(${idx}, 1)" ${idx === pointsState.length - 1 ? 'disabled style="opacity:0.3;cursor:not-allowed;"' : ''} title="Pindah ke bawah">
+              <span class="material-symbols-outlined text-base">arrow_downward</span>
+            </button>
+            <button type="button" class="p-1 rounded text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 ml-1" onclick="deletePoint(${idx})" title="Hapus poin">
+              <span class="material-symbols-outlined text-base">delete</span>
+            </button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    window.updatePointText = function(idx, val) {
+      if (pointsState[idx] !== undefined) {
+        pointsState[idx] = val;
+      }
+    };
+
+    window.movePoint = function(idx, dir) {
+      const targetIdx = idx + dir;
+      if (targetIdx < 0 || targetIdx >= pointsState.length) return;
+      const temp = pointsState[idx];
+      pointsState[idx] = pointsState[targetIdx];
+      pointsState[targetIdx] = temp;
+      renderPoints();
+    };
+
+    window.deletePoint = function(idx) {
+      if (confirm(`Hapus poin nomor ${idx + 1}?`)) {
+        pointsState.splice(idx, 1);
+        renderPoints();
+      }
+    };
+
+    function addPoint() {
+      pointsState.push('');
+      renderPoints();
+      const textareas = document.querySelectorAll('.point-textarea');
+      if (textareas.length > 0) {
+        textareas[textareas.length - 1].focus();
+      }
+    }
+
+    document.getElementById('btn-add-point').addEventListener('click', addPoint);
+    document.getElementById('btn-add-point-bottom').addEventListener('click', addPoint);
+
+    // Ambil daftar versi dari backend
+    async function loadTerms() {
+      try {
+        const res = await fetch('/api/admin/terms', { headers: H });
+        if (!res.ok) {
+          if (res.status === 403) {
+            window.location.replace('/403.html');
+            return;
+          }
+          throw new Error('Gagal memuat data T&C');
+        }
+        const data = await res.json();
+        allVersions = data.data || [];
+
+        // Cari versi aktif & draft
+        const activeVer = allVersions.find(v => v.status === 'active');
+        const draftVer = allVersions.find(v => v.status === 'draft');
+
+        if (activeVer) {
+          document.getElementById('active-version-badge').textContent = `Versi ${activeVer.version_number}`;
+          const dateStr = activeVer.published_at ? new Date(activeVer.published_at).toLocaleString('id-ID') : '—';
+          document.getElementById('active-version-info').textContent = `Dirilis pada ${dateStr} • ${Array.isArray(activeVer.content_points) ? activeVer.content_points.length : 0} butir aturan`;
+        } else {
+          document.getElementById('active-version-badge').textContent = 'Belum Ada';
+          document.getElementById('active-version-info').textContent = 'Belum ada versi yang dipublikasikan.';
+        }
+
+        // Tentukan apa yang diisi ke editor (draft lebih diprioritaskan jika ada, jika tidak versi aktif)
+        const currentTarget = draftVer || activeVer;
+        if (currentTarget) {
+          document.getElementById('terms-title-input').value = currentTarget.title || 'Syarat & Ketentuan Umum Layanan Studio';
+          if (Array.isArray(currentTarget.content_points)) {
+            pointsState = [...currentTarget.content_points];
+          } else if (typeof currentTarget.content_points === 'string') {
+            try {
+              pointsState = JSON.parse(currentTarget.content_points);
+            } catch (_) {
+              pointsState = [];
+            }
+          }
+        }
+        renderPoints();
+        renderVersionsTable();
+      } catch (err) {
+        console.error(err);
+        showAlert(err.message || 'Gagal memuat data', false);
+      }
+    }
+
+    // Render tabel riwayat versi
+    function renderVersionsTable() {
+      const tbody = document.getElementById('versions-table-body');
+      if (allVersions.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" class="py-6 text-center text-on-surface-variant">Belum ada riwayat versi.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = allVersions.map(v => {
+        let statusBadge = '';
+        if (v.status === 'active') {
+          statusBadge = '<span class="px-2 py-0.5 rounded text-xs font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">Aktif</span>';
+        } else if (v.status === 'draft') {
+          statusBadge = '<span class="px-2 py-0.5 rounded text-xs font-bold bg-amber-500/15 text-amber-400 border border-amber-500/30">Draf</span>';
+        } else {
+          statusBadge = '<span class="px-2 py-0.5 rounded text-xs font-semibold bg-surface-container text-on-surface-variant">Arsip</span>';
+        }
+
+        const ptsCount = Array.isArray(v.content_points) ? v.content_points.length : (JSON.parse(v.content_points || '[]').length);
+        const dateStr = v.published_at ? new Date(v.published_at).toLocaleDateString('id-ID', { day:'numeric', month:'short', year:'numeric' }) : (v.created_at ? new Date(v.created_at).toLocaleDateString('id-ID') : '—');
+
+        return `
+          <tr class="hover:bg-surface-container/30 transition-colors">
+            <td class="py-3 pr-4 font-bold text-on-surface">v${esc(v.version_number)}</td>
+            <td class="py-3 pr-4 font-medium">${esc(v.title)}</td>
+            <td class="py-3 pr-4">${ptsCount} poin</td>
+            <td class="py-3 pr-4">${statusBadge}</td>
+            <td class="py-3 pr-4 text-xs text-on-surface-variant">${dateStr}</td>
+            <td class="py-3 pr-4 text-xs">${esc(v.creator_name || 'Sistem')}</td>
+            <td class="py-3 text-right">
+              <button type="button" class="btn btn-outline btn-sm text-xs" onclick="openDetailModal(${v.id})">
+                Lihat Isi
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    // Simpan Draf
+    document.getElementById('btn-save-draft').addEventListener('click', async () => {
+      const title = document.getElementById('terms-title-input').value.trim();
+      const points = pointsState.map(p => p.trim()).filter(Boolean);
+
+      try {
+        const btn = document.getElementById('btn-save-draft');
+        btn.disabled = true;
+        btn.textContent = 'Menyimpan...';
+
+        const res = await fetch('/api/admin/terms/draft', {
+          method: 'PUT',
+          headers: H,
+          body: JSON.stringify({ title, points })
+        });
+        const data = await res.json();
+        btn.disabled = false;
+        btn.innerHTML = '<span class="material-symbols-outlined text-sm">save</span> Simpan Draf';
+
+        if (!res.ok) {
+          showAlert(data.error || 'Gagal menyimpan draf', false);
+          return;
+        }
+
+        showAlert('Draf Syarat & Ketentuan berhasil disimpan!');
+        loadTerms();
+      } catch (err) {
+        showAlert('Terjadi kesalahan jaringan.', false);
+      }
+    });
+
+    // Publish Versi Baru
+    document.getElementById('btn-publish-terms').addEventListener('click', async () => {
+      const title = document.getElementById('terms-title-input').value.trim();
+      const points = pointsState.map(p => p.trim()).filter(Boolean);
+
+      if (points.length === 0) {
+        showAlert('Poin Syarat & Ketentuan tidak boleh kosong.', false);
+        return;
+      }
+
+      const confirmed = confirm('Apakah Anda yakin ingin mempublikasikan versi baru ini? Versi aktif saat ini akan diarsipkan.');
+      if (!confirmed) return;
+
+      try {
+        const btn = document.getElementById('btn-publish-terms');
+        btn.disabled = true;
+        btn.textContent = 'Menerbitkan...';
+
+        const res = await fetch('/api/admin/terms/publish', {
+          method: 'POST',
+          headers: H,
+          body: JSON.stringify({ title, points })
+        });
+        const data = await res.json();
+        btn.disabled = false;
+        btn.innerHTML = '<span class="material-symbols-outlined text-sm">publish</span> Publish Versi Baru';
+
+        if (!res.ok) {
+          showAlert(data.error || 'Gagal mempublikasikan versi baru', false);
+          return;
+        }
+
+        showAlert('Versi baru Syarat & Ketentuan berhasil dipublikasikan!');
+        loadTerms();
+      } catch (err) {
+        showAlert('Terjadi kesalahan jaringan.', false);
+      }
+    });
+
+    // Pratinjau Modal
+    const previewModal = document.getElementById('preview-modal');
+    document.getElementById('btn-preview-modal').addEventListener('click', () => {
+      const title = document.getElementById('terms-title-input').value.trim() || 'Syarat & Ketentuan Studio';
+      const points = pointsState.map(p => p.trim()).filter(Boolean);
+
+      document.getElementById('preview-title').textContent = title;
+      const listEl = document.getElementById('preview-points-list');
+
+      if (points.length === 0) {
+        listEl.innerHTML = '<p class="italic text-on-surface-variant">Belum ada poin aturan.</p>';
+      } else {
+        listEl.innerHTML = `<ol class="list-decimal pl-4 space-y-2">${points.map(p => `<li>${esc(p)}</li>`).join('')}</ol>`;
+      }
+
+      previewModal.classList.remove('hidden');
+    });
+
+    const closePreview = () => previewModal.classList.add('hidden');
+    document.getElementById('btn-close-preview').addEventListener('click', closePreview);
+    document.getElementById('btn-close-preview-footer').addEventListener('click', closePreview);
+
+    // Detail Versi Modal
+    const detailModal = document.getElementById('detail-modal');
+    window.openDetailModal = function(id) {
+      const ver = allVersions.find(v => v.id === id);
+      if (!ver) return;
+      selectedVersionForDetail = ver;
+
+      document.getElementById('detail-modal-title').textContent = `Versi ${ver.version_number} — ${ver.title}`;
+      const pts = Array.isArray(ver.content_points) ? ver.content_points : JSON.parse(ver.content_points || '[]');
+      const dateStr = ver.published_at ? new Date(ver.published_at).toLocaleString('id-ID') : 'Belum dirilis';
+      
+      document.getElementById('detail-modal-meta').textContent = `Status: ${ver.status.toUpperCase()} • Rilis: ${dateStr} • Dibuat oleh: ${ver.creator_name || 'Sistem'}`;
+      document.getElementById('detail-modal-points').innerHTML = pts.map(p => `<li>${esc(p)}</li>`).join('');
+
+      detailModal.classList.remove('hidden');
+    };
+
+    const closeDetail = () => detailModal.classList.add('hidden');
+    document.getElementById('btn-close-detail').addEventListener('click', closeDetail);
+    document.getElementById('btn-close-detail-footer').addEventListener('click', closeDetail);
+
+    document.getElementById('btn-load-to-editor').addEventListener('click', () => {
+      if (!selectedVersionForDetail) return;
+      if (confirm('Muat isi versi ini ke editor? Perubahan yang belum disimpan di editor saat ini akan tertimpa.')) {
+        document.getElementById('terms-title-input').value = selectedVersionForDetail.title;
+        const pts = Array.isArray(selectedVersionForDetail.content_points) ? selectedVersionForDetail.content_points : JSON.parse(selectedVersionForDetail.content_points || '[]');
+        pointsState = [...pts];
+        renderPoints();
+        closeDetail();
+        showAlert(`Isi versi ${selectedVersionForDetail.version_number} berhasil dimuat ke editor.`);
+      }
+    });
+
+    loadTerms();
+  </script>
+  <script src="/js/admin-nav.js?v=5"></script>
+</body>
+
+</html>
