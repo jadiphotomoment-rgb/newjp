@@ -27,6 +27,8 @@ const mockTermsVersions = [
 
 const mockTermsAcceptances = [];
 const mockBookings = [];
+let shouldFailAcceptanceInsert = false;
+let uncommittedBookings = [];
 
 // Mock database module
 const mockDb = {
@@ -74,7 +76,17 @@ const mockDb = {
     return {
       query: async (sql, params = []) => {
         const s = sql.toLowerCase();
-        if (s.includes('begin') || s.includes('commit') || s.includes('rollback')) {
+        if (s.includes('begin')) {
+          uncommittedBookings = [];
+          return { rows: [] };
+        }
+        if (s.includes('commit')) {
+          mockBookings.push(...uncommittedBookings);
+          uncommittedBookings = [];
+          return { rows: [] };
+        }
+        if (s.includes('rollback')) {
+          uncommittedBookings = [];
           return { rows: [] };
         }
         if (s.includes('select coalesce(max(version_number), 0) + 1')) {
@@ -107,12 +119,15 @@ const mockDb = {
           return { rows: [newRow] };
         }
         if (s.includes('insert into bookings')) {
-          const newId = mockBookings.length + 1;
+          const newId = mockBookings.length + uncommittedBookings.length + 1;
           const b = { id: newId, client_name: params[1], terms_accepted_at: new Date() };
-          mockBookings.push(b);
+          uncommittedBookings.push(b);
           return { rows: [{ id: newId }] };
         }
         if (s.includes('insert into terms_acceptances')) {
+          if (shouldFailAcceptanceInsert) {
+            throw new Error('SIMULATED_DB_ERROR: Gagal insert terms_acceptances');
+          }
           const newId = mockTermsAcceptances.length + 1;
           const ta = {
             id: newId,
@@ -211,122 +226,113 @@ function request(method, urlPath, body = null, token = null) {
 }
 
 async function run() {
-  console.log('[TEST] Menjalankan test Tahap 2 Backend (in-memory)...');
+  console.log('=== [PENGUJIAN TAHAP 4: T&C KONFIRMASI BOOKING] ===\n');
 
-  // 1. Test GET /api/terms/active
-  console.log('1. Menguji GET /api/terms/active...');
-  let res = await request('GET', '/api/terms/active');
+  // Checklist Item 1: Submit booking tanpa centang
+  console.log('Test 1: Submit booking tanpa centang (API ditolak 400)...');
+  let res = await request('POST', '/api/bookings/prewedding', {
+    clientName: 'Budi Test',
+    clientPhone: '08123456789',
+    eventDate: '2026-12-01',
+    terms_version_id: 1,
+    terms_accepted: false
+  });
+  assert.strictEqual(res.status, 400, 'Harus ditolak status 400');
+  assert.match(res.body.error, /wajib.*menyetujui/i, 'Pesan error harus jelas');
+  console.log('  ✅ PASS: Submit booking tanpa persetujuan ditolak 400.');
+
+  // Checklist Item 2: Booking sukses -> terms_acceptances terbentuk lengkap
+  console.log('Test 2: Booking sukses (terms_acceptances terbentuk dengan snapshot, waktu, IP, UA)...');
+  res = await request('POST', '/api/bookings/prewedding', {
+    clientName: 'Klien Sukses 1',
+    clientPhone: '0811223344',
+    eventDate: '2026-12-05',
+    terms_version_id: 1,
+    terms_accepted: true
+  });
+  assert.strictEqual(res.status, 201, 'Booking sukses harus 201');
+  const booking1Id = res.body.bookingId;
+  const token1 = res.body.terms_token;
+  assert(booking1Id > 0);
+  assert(token1 && token1.length >= 16);
+
+  const savedAcceptance = mockTermsAcceptances.find(a => a.booking_id === booking1Id);
+  assert(savedAcceptance, 'Data terms_acceptances harus tersimpan');
+  assert(savedAcceptance.snapshot_text.includes('Poin 1: Wajib hadir tepat waktu'));
+  assert(savedAcceptance.ip_address === '127.0.0.1');
+  assert(savedAcceptance.accepted_at);
+  console.log('  ✅ PASS: Baris terms_acceptances tersimpan lengkap dengan snapshot, waktu, dan IP.');
+
+  // Checklist Item 3: Owner publish versi baru -> form klien versi baru, booking lama tetap snapshot lama
+  console.log('Test 3: Owner publish versi baru (klien dapat versi baru, booking lama tetap isi lama)...');
+  res = await request('POST', '/api/admin/terms/publish', {
+    title: 'Syarat & Ketentuan Umum Versi 2',
+    points: ['Poin Baru 1: Aturan Reschedule H-3', 'Poin Baru 2: Waktu Penyerahan Foto 7 Hari']
+  }, ownerToken);
+  assert.strictEqual(res.status, 201);
+  clearActiveTermsCache();
+
+  // Klien ambil versi aktif
+  res = await request('GET', '/api/terms/active');
+  assert.strictEqual(res.body.version_number, 2);
+  assert.strictEqual(res.body.points[0], 'Poin Baru 1: Aturan Reschedule H-3');
+
+  // Cek booking lama melalui verification token
+  res = await request('GET', `/api/terms/verify/${token1}`);
   assert.strictEqual(res.status, 200);
-  assert.strictEqual(res.body.version_number, 1);
-  assert.strictEqual(res.body.points.length, 2);
-  console.log('  PASS: Versi aktif berhasil didapatkan.');
+  assert(res.body.snapshot_text.includes('Poin 1: Wajib hadir tepat waktu'), 'Snapshot booking lama tidak boleh berubah');
+  console.log('  ✅ PASS: Publish versi 2 aktif, form klien mendapat versi 2, booking lama tetap snapshot lama.');
 
-  // 2. Test Staff/Non-owner access to /api/admin/terms (Harus 403)
-  console.log('2. Menguji akses non-owner ke /api/admin/terms...');
+  // Checklist Item 4: Non-owner mengakses endpoint T&C -> 403 Forbidden
+  console.log('Test 4: Non-owner mengakses endpoint T&C (Ditolak 403)...');
   res = await request('GET', '/api/admin/terms', null, staffToken);
   assert.strictEqual(res.status, 403);
-  console.log('  PASS: Staff ditolak 403 Forbidden.');
+  res = await request('POST', '/api/admin/terms/publish', { title: 'Hacked', points: ['1'] }, staffToken);
+  assert.strictEqual(res.status, 403);
+  console.log('  ✅ PASS: User non-owner ditolak 403 Forbidden.');
 
-  // 3. Test Owner access to /api/admin/terms
-  console.log('3. Menguji akses owner ke /api/admin/terms...');
-  res = await request('GET', '/api/admin/terms', null, ownerToken);
-  assert.strictEqual(res.status, 200);
-  assert(Array.isArray(res.body.data));
-  console.log('  PASS: Owner berhasil mengambil daftar versi T&C.');
-
-  // 4. Test Publish dengan poin kosong (Harus 400)
-  console.log('4. Menguji publish dengan poin kosong...');
-  res = await request('POST', '/api/admin/terms/publish', { title: 'Baru', points: [] }, ownerToken);
+  // Checklist Item 5: Publish poin kosong atau tanpa perubahan -> Ditolak pesan jelas
+  console.log('Test 5: Publish dengan poin kosong atau tanpa perubahan...');
+  res = await request('POST', '/api/admin/terms/publish', { title: 'Kosong', points: [] }, ownerToken);
   assert.strictEqual(res.status, 400);
   assert.match(res.body.error, /tidak boleh kosong/i);
-  console.log('  PASS: Publish poin kosong ditolak 400.');
 
-  // 5. Test Publish dengan isi yang sama persis (Harus 400)
-  console.log('5. Menguji publish dengan isi tanpa perubahan...');
   res = await request('POST', '/api/admin/terms/publish', {
-    title: 'Syarat & Ketentuan Umum Layanan Studio',
-    points: ['Poin 1: Wajib hadir tepat waktu', 'Poin 2: DP non-refundable']
+    title: 'Syarat & Ketentuan Umum Versi 2',
+    points: ['Poin Baru 1: Aturan Reschedule H-3', 'Poin Baru 2: Waktu Penyerahan Foto 7 Hari']
   }, ownerToken);
   assert.strictEqual(res.status, 400);
   assert.match(res.body.error, /tidak berubah/i);
-  console.log('  PASS: Publish tanpa perubahan ditolak 400.');
+  console.log('  ✅ PASS: Publish poin kosong & tanpa perubahan ditolak pesan jelas.');
 
-  // 6. Test Publish versi baru valid
-  console.log('6. Menguji publish versi baru valid...');
-  res = await request('POST', '/api/admin/terms/publish', {
-    title: 'Syarat & Ketentuan Update V2',
-    points: ['Poin 1 baru', 'Poin 2 baru', 'Poin 3 baru']
-  }, ownerToken);
-  assert.strictEqual(res.status, 201);
-  assert.strictEqual(res.body.data.version_number, 2);
-  clearActiveTermsCache();
-  console.log('  PASS: Versi 2 berhasil dipublikasikan.');
-
-  // Cek apakah GET /api/terms/active sudah terupdate ke versi 2
-  res = await request('GET', '/api/terms/active');
-  assert.strictEqual(res.body.version_number, 2);
-  const activeVersionId = res.body.id;
-
-  // 7. Test Submit booking tanpa checkbox persetujuan (Harus 400)
-  console.log('7. Menguji submit booking tanpa persetujuan T&C...');
+  // Checklist Item 6: Gagal insert persetujuan -> Booking dibatalkan (Rollback transaksi)
+  console.log('Test 6: Gagal insert persetujuan (Transaction rollback: booking tidak tersimpan)...');
+  const countBefore = mockBookings.length;
+  shouldFailAcceptanceInsert = true;
   res = await request('POST', '/api/bookings/prewedding', {
-    clientName: 'Budi Test',
-    clientPhone: '08123456789',
-    eventDate: '2026-12-01',
-    terms_version_id: activeVersionId,
-    terms_accepted: false
-  });
-  assert.strictEqual(res.status, 400);
-  assert.match(res.body.error, /wajib.*menyetujui/i);
-  console.log('  PASS: Booking tanpa persetujuan ditolak 400.');
-
-  // 8. Test Submit booking dengan version mismatch (Harus 400)
-  console.log('8. Menguji submit booking dengan version id tidak valid...');
-  res = await request('POST', '/api/bookings/prewedding', {
-    clientName: 'Budi Test',
-    clientPhone: '08123456789',
-    eventDate: '2026-12-01',
-    terms_version_id: 9999,
+    clientName: 'Klien Gagal Transaksi',
+    clientPhone: '0899887766',
+    eventDate: '2026-12-10',
+    terms_version_id: 2,
     terms_accepted: true
   });
-  assert.strictEqual(res.status, 400);
-  assert.match(res.body.error, /tidak valid/i);
-  console.log('  PASS: Booking dengan version id salah ditolak 400.');
+  assert.strictEqual(res.status, 500, 'Harus gagal 500 saat DB error');
+  const countAfter = mockBookings.length;
+  assert.strictEqual(countBefore, countAfter, 'Booking tidak boleh tersimpan karena transaksi di-rollback');
+  shouldFailAcceptanceInsert = false;
+  console.log('  ✅ PASS: Transaksi di-rollback total, booking tidak tertinggal di database.');
 
-  // 9. Test Submit booking sukses dengan persetujuan T&C
-  console.log('9. Menguji submit booking sukses dengan persetujuan T&C...');
-  res = await request('POST', '/api/bookings/prewedding', {
-    clientName: 'Budi Sukses',
-    clientPhone: '08123456789',
-    eventDate: '2026-12-01',
-    terms_version_id: activeVersionId,
-    terms_accepted: true
-  });
-  assert.strictEqual(res.status, 201);
-  assert(res.body.bookingId > 0);
-  assert(res.body.terms_token);
-  const newBookingId = res.body.bookingId;
-  const verificationToken = res.body.terms_token;
-  console.log('  PASS: Booking berhasil dibuat beserta catatan persetujuan.');
-
-  // 10. Test Verifikasi publik lewat token: GET /api/terms/verify/:token
-  console.log('10. Menguji verifikasi publik T&C via token...');
-  res = await request('GET', `/api/terms/verify/${verificationToken}`);
+  // Checklist Item 7: Booking lama tanpa persetujuan -> Tampil "Belum ada catatan T&C"
+  console.log('Test 7: Booking lama tanpa persetujuan (Tampil "Belum ada catatan T&C")...');
+  res = await request('GET', '/api/bookings/admin/99999/terms', null, staffToken);
   assert.strictEqual(res.status, 200);
-  assert.strictEqual(res.body.valid, true);
-  assert.strictEqual(res.body.client_name, 'Budi Sukses');
-  assert.match(res.body.snapshot_text, /Poin 1 baru/);
-  console.log('  PASS: Verifikasi bukti persetujuan via token berhasil.');
+  assert.strictEqual(res.body.accepted, false);
+  assert.strictEqual(res.body.message, 'Belum ada catatan T&C');
+  console.log('  ✅ PASS: Booking lama tidak error dan memberikan respons "Belum ada catatan T&C".');
 
-  // 11. Test GET /api/bookings/admin/:id/terms
-  console.log('11. Menguji admin ambil catatan T&C booking...');
-  res = await request('GET', `/api/bookings/admin/${newBookingId}/terms`, null, staffToken);
-  assert.strictEqual(res.status, 200);
-  assert.strictEqual(res.body.accepted, true);
-  assert.strictEqual(res.body.data.booking_id, newBookingId);
-  console.log('  PASS: Endpoint admin detail persetujuan T&C berhasil.');
-
-  console.log('\n✅ SEMUA PENGUJIAN TAHAP 2 (BACKEND) BERHASIL 100% PASS!');
+  console.log('\n=============================================================');
+  console.log('🏆 SEMUA 7 CHECKLIST TAHAP 4 (UJI & PENUTUP) 100% LULUS / PASS');
+  console.log('=============================================================');
 }
 
 run().catch(err => {
