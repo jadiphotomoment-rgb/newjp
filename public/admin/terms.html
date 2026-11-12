@@ -74,22 +74,11 @@
 
 <body class="bg-surface text-on-surface flex flex-col md:flex-row min-h-screen">
 
-  <!-- Role Guard Check (Owner Only) -->
+  <!-- Auth Guard Check (Terbuka untuk semua role: staf, admin, owner) -->
   <script>
     (function() {
       const token = localStorage.getItem('sf_token');
-      const adminStr = localStorage.getItem('sf_admin');
       if (!token) {
-        window.location.replace('/admin/login.html');
-        return;
-      }
-      try {
-        const admin = JSON.parse(adminStr || '{}');
-        const isOwner = admin.role === 'owner' || admin.role === 'admin';
-        if (!isOwner) {
-          window.location.replace('/403.html');
-        }
-      } catch (_) {
         window.location.replace('/admin/login.html');
       }
     })();
@@ -148,7 +137,7 @@
         <span class="material-symbols-outlined">chat</span>
         <span class="font-label-md">Template WA</span>
       </a>
-      <a href="/admin/terms.html" data-role="owner" class="flex items-center gap-3 px-4 py-3 rounded-lg bg-surface-container text-primary font-semibold transition-all">
+      <a href="/admin/terms.html" class="flex items-center gap-3 px-4 py-3 rounded-lg bg-surface-container text-primary font-semibold transition-all">
         <span class="material-symbols-outlined">gavel</span>
         <span class="font-label-md">Term & Condition</span>
       </a>

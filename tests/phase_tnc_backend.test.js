@@ -283,13 +283,17 @@ async function run() {
   assert(res.body.snapshot_text.includes('Poin 1: Wajib hadir tepat waktu'), 'Snapshot booking lama tidak boleh berubah');
   console.log('  ✅ PASS: Publish versi 2 aktif, form klien mendapat versi 2, booking lama tetap snapshot lama.');
 
-  // Checklist Item 4: Non-owner mengakses endpoint T&C -> 403 Forbidden
-  console.log('Test 4: Non-owner mengakses endpoint T&C (Ditolak 403)...');
+  // Checklist Item 4: Akses endpoint T&C terbuka untuk semua role terautentikasi (staff, admin, owner); unauthenticated ditolak 401
+  console.log('Test 4: Akses T&C terbuka untuk Staf/Admin/Owner, unauthenticated ditolak 401...');
   res = await request('GET', '/api/admin/terms', null, staffToken);
-  assert.strictEqual(res.status, 403);
-  res = await request('POST', '/api/admin/terms/publish', { title: 'Hacked', points: ['1'] }, staffToken);
-  assert.strictEqual(res.status, 403);
-  console.log('  ✅ PASS: User non-owner ditolak 403 Forbidden.');
+  assert.strictEqual(res.status, 200, 'Staff harus bisa melihat daftar T&C');
+
+  res = await request('PUT', '/api/admin/terms/draft', { title: 'Draf oleh Staff', points: ['Poin Staff 1'] }, staffToken);
+  assert.strictEqual(res.status, 200, 'Staff harus bisa menyimpan draf T&C');
+
+  res = await request('GET', '/api/admin/terms', null, null);
+  assert.strictEqual(res.status, 401, 'User tanpa autentikasi harus ditolak 401');
+  console.log('  ✅ PASS: Role Staff dapat mengakses & mengedit T&C, unauthenticated ditolak 401.');
 
   // Checklist Item 5: Publish poin kosong atau tanpa perubahan -> Ditolak pesan jelas
   console.log('Test 5: Publish dengan poin kosong atau tanpa perubahan...');

@@ -193,10 +193,10 @@ publicRouter.get('/verify/:token', async (req, res) => {
   }
 });
 
-// ── Endpoint Owner (JWT + Role Owner) ───────────────────────────────────────
+// ── Endpoint Admin (Terbuka untuk Staf, Admin, dan Owner yang login) ────────
 
 // GET /api/admin/terms: Riwayat seluruh versi T&C
-adminRouter.get('/', auth, auth.requireRole('owner'), async (req, res) => {
+adminRouter.get('/', auth, async (req, res) => {
   try {
     await ensureTermsTables();
     let rows;
@@ -233,7 +233,7 @@ adminRouter.get('/', auth, auth.requireRole('owner'), async (req, res) => {
 });
 
 // GET /api/admin/terms/:id: Detail satu versi T&C
-adminRouter.get('/:id', auth, auth.requireRole('owner'), async (req, res) => {
+adminRouter.get('/:id', auth, async (req, res) => {
   try {
     const id = parseInt(req.params.id, 10);
     if (isNaN(id)) return res.status(400).json({ error: 'ID tidak valid' });
@@ -271,7 +271,7 @@ adminRouter.get('/:id', auth, auth.requireRole('owner'), async (req, res) => {
 });
 
 // PUT /api/admin/terms/draft: Simpan / perbarui draf T&C
-adminRouter.put('/draft', auth, auth.requireRole('owner'), async (req, res) => {
+adminRouter.put('/draft', auth, async (req, res) => {
   try {
     await ensureTermsTables();
     const title = (req.body.title || 'Syarat & Ketentuan Umum Layanan Studio').trim();
@@ -327,7 +327,7 @@ adminRouter.put('/draft', auth, auth.requireRole('owner'), async (req, res) => {
 });
 
 // POST /api/admin/terms/publish: Menerbitkan versi baru T&C (atomik 1 DB transaction)
-adminRouter.post('/publish', auth, auth.requireRole('owner'), async (req, res) => {
+adminRouter.post('/publish', auth, async (req, res) => {
   let client;
   try {
     await ensureTermsTables();
