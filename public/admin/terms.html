@@ -454,7 +454,12 @@
             window.location.replace('/403.html');
             return;
           }
-          throw new Error('Gagal memuat data T&C');
+          let errText = 'Gagal memuat data T&C';
+          try {
+            const errData = await res.json();
+            if (errData && errData.error) errText = errData.error;
+          } catch (_) {}
+          throw new Error(errText);
         }
         const data = await res.json();
         allVersions = data.data || [];

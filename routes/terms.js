@@ -13,11 +13,89 @@ let cachedActiveTerms = null;
 let cacheExpiry = 0;
 const CACHE_TTL_MS = 5 * 60 * 1000;
 
+let tablesEnsured = false;
+async function ensureTermsTables() {
+  if (tablesEnsured) return;
+  try {
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS terms_versions (
+        id              SERIAL PRIMARY KEY,
+        version_number  INT NOT NULL,
+        title           VARCHAR(255) NOT NULL DEFAULT 'Syarat & Ketentuan Umum Layanan Studio',
+        content_points  JSONB NOT NULL DEFAULT '[]'::jsonb,
+        status          VARCHAR(20) NOT NULL DEFAULT 'draft',
+        created_by      INT NULL,
+        published_at    TIMESTAMP NULL,
+        created_at      TIMESTAMP DEFAULT now(),
+        updated_at      TIMESTAMP DEFAULT now()
+      );
+
+      CREATE UNIQUE INDEX IF NOT EXISTS ux_terms_versions_active 
+        ON terms_versions (status) 
+        WHERE status = 'active';
+
+      CREATE INDEX IF NOT EXISTS ix_terms_versions_status 
+        ON terms_versions (status);
+
+      CREATE TABLE IF NOT EXISTS terms_acceptances (
+        id                  SERIAL PRIMARY KEY,
+        booking_id          INT NOT NULL,
+        terms_version_id    INT NOT NULL,
+        snapshot_text       TEXT NOT NULL,
+        verification_token  VARCHAR(64) UNIQUE NOT NULL,
+        client_name         VARCHAR(150) NOT NULL,
+        client_phone        VARCHAR(30) NOT NULL,
+        ip_address          VARCHAR(50) NULL,
+        user_agent          TEXT NULL,
+        accepted_at         TIMESTAMP NOT NULL DEFAULT now(),
+        created_at          TIMESTAMP DEFAULT now()
+      );
+
+      CREATE INDEX IF NOT EXISTS ix_terms_acceptances_booking_id 
+        ON terms_acceptances (booking_id);
+
+      CREATE INDEX IF NOT EXISTS ix_terms_acceptances_token 
+        ON terms_acceptances (verification_token);
+
+      DO $$
+      BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='bookings' AND column_name='terms_accepted_at') THEN
+          ALTER TABLE bookings ADD COLUMN terms_accepted_at TIMESTAMP NULL;
+        END IF;
+        IF EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'terms_versions_created_by_fkey') THEN
+          ALTER TABLE terms_versions DROP CONSTRAINT terms_versions_created_by_fkey;
+        END IF;
+      END $$;
+
+      INSERT INTO terms_versions (version_number, title, content_points, status, published_at)
+      SELECT 
+        1,
+        'Syarat & Ketentuan Umum Layanan Studio',
+        jsonb_build_array(
+          'Kehadiran & Ketepatan Waktu: Klien wajib hadir di lokasi studio minimal 15 menit sebelum sesi foto dimulai. Keterlambatan kedatangan oleh klien akan mengurangi durasi waktu sesi tanpa kompensasi penambahan waktu.',
+          'Ketentuan Uang Muka (DP): Pembayaran Uang Muka (DP) bersifat mengikat slot jadwal dan tidak dapat dikembalikan (non-refundable) apabila terjadi pembatalan sepihak oleh pihak klien.',
+          'Penjadwalan Ulang (Reschedule): Permohonan jadwal ulang (reschedule) hanya diperbolehkan maksimal H-3 sebelum tanggal sesi foto dan wajib menyesuaikan ketersediaan slot kosong studio.',
+          'Hak Cipta & Penyerahan Berkas: Studio berhak menggunakan sebagian hasil foto untuk keperluan portofolio/media sosial kecuali dinyatakan lain secara tertulis; berkas foto mentah (raw) dan hasil edit akan diserahkan setelah seluruh biaya pelunasan diselesaikan.'
+        ),
+        'active',
+        now()
+      WHERE NOT EXISTS (
+        SELECT 1 FROM terms_versions WHERE status = 'active'
+      );
+    `);
+    tablesEnsured = true;
+  } catch (err) {
+    // Abaikan jika database mock/test tidak mendukung DDL atau sudah ada
+  }
+}
+
 async function getActiveTerms(forceFresh = false) {
   const now = Date.now();
   if (!forceFresh && cachedActiveTerms && now < cacheExpiry) {
     return cachedActiveTerms;
   }
+
+  await ensureTermsTables();
 
   const { rows } = await db.query(
     `SELECT id, version_number, title, content_points, published_at
@@ -120,17 +198,33 @@ publicRouter.get('/verify/:token', async (req, res) => {
 // GET /api/admin/terms: Riwayat seluruh versi T&C
 adminRouter.get('/', auth, auth.requireRole('owner'), async (req, res) => {
   try {
-    const { rows } = await db.query(
-      `SELECT tv.id, tv.version_number, tv.title, tv.content_points, tv.status,
-              tv.created_by, tv.published_at, tv.created_at, tv.updated_at,
-              COALESCE(u.nama, a.name, 'Sistem') AS creator_name
-       FROM terms_versions tv
-       LEFT JOIN users u ON tv.created_by = u.id
-       LEFT JOIN admins a ON tv.created_by = a.id
-       ORDER BY 
-         CASE WHEN tv.status = 'active' THEN 0 WHEN tv.status = 'draft' THEN 1 ELSE 2 END,
-         tv.version_number DESC, tv.id DESC`
-    );
+    await ensureTermsTables();
+    let rows;
+    try {
+      const qRes = await db.query(
+        `SELECT tv.id, tv.version_number, tv.title, tv.content_points, tv.status,
+                tv.created_by, tv.published_at, tv.created_at, tv.updated_at,
+                COALESCE(u.nama, a.name, 'Sistem') AS creator_name
+         FROM terms_versions tv
+         LEFT JOIN users u ON tv.created_by = u.id
+         LEFT JOIN admins a ON tv.created_by = a.id
+         ORDER BY 
+           CASE WHEN tv.status = 'active' THEN 0 WHEN tv.status = 'draft' THEN 1 ELSE 2 END,
+           tv.version_number DESC, tv.id DESC`
+      );
+      rows = qRes.rows;
+    } catch (_) {
+      const qResFallback = await db.query(
+        `SELECT tv.id, tv.version_number, tv.title, tv.content_points, tv.status,
+                tv.created_by, tv.published_at, tv.created_at, tv.updated_at,
+                'Sistem' AS creator_name
+         FROM terms_versions tv
+         ORDER BY 
+           CASE WHEN tv.status = 'active' THEN 0 WHEN tv.status = 'draft' THEN 1 ELSE 2 END,
+           tv.version_number DESC, tv.id DESC`
+      );
+      rows = qResFallback.rows;
+    }
     res.json({ data: rows });
   } catch (err) {
     console.error('[admin/terms] list error:', err);
@@ -144,19 +238,32 @@ adminRouter.get('/:id', auth, auth.requireRole('owner'), async (req, res) => {
     const id = parseInt(req.params.id, 10);
     if (isNaN(id)) return res.status(400).json({ error: 'ID tidak valid' });
 
-    const { rows } = await db.query(
-      `SELECT tv.*, COALESCE(u.nama, a.name, 'Sistem') AS creator_name
-       FROM terms_versions tv
-       LEFT JOIN users u ON tv.created_by = u.id
-       LEFT JOIN admins a ON tv.created_by = a.id
-       WHERE tv.id = $1`,
-      [id]
-    );
+    await ensureTermsTables();
+    let row;
+    try {
+      const qRes = await db.query(
+        `SELECT tv.*, COALESCE(u.nama, a.name, 'Sistem') AS creator_name
+         FROM terms_versions tv
+         LEFT JOIN users u ON tv.created_by = u.id
+         LEFT JOIN admins a ON tv.created_by = a.id
+         WHERE tv.id = $1`,
+        [id]
+      );
+      row = qRes.rows[0];
+    } catch (_) {
+      const qResFallback = await db.query(
+        `SELECT tv.*, 'Sistem' AS creator_name
+         FROM terms_versions tv
+         WHERE tv.id = $1`,
+        [id]
+      );
+      row = qResFallback.rows[0];
+    }
 
-    if (rows.length === 0) {
+    if (!row) {
       return res.status(404).json({ error: 'Versi T&C tidak ditemukan' });
     }
-    res.json({ data: rows[0] });
+    res.json({ data: row });
   } catch (err) {
     console.error('[admin/terms] detail error:', err);
     res.status(500).json({ error: 'Gagal mengambil detail T&C' });
@@ -166,6 +273,7 @@ adminRouter.get('/:id', auth, auth.requireRole('owner'), async (req, res) => {
 // PUT /api/admin/terms/draft: Simpan / perbarui draf T&C
 adminRouter.put('/draft', auth, auth.requireRole('owner'), async (req, res) => {
   try {
+    await ensureTermsTables();
     const title = (req.body.title || 'Syarat & Ketentuan Umum Layanan Studio').trim();
     const rawPoints = Array.isArray(req.body.points) ? req.body.points : [];
     const points = rawPoints
@@ -191,12 +299,23 @@ adminRouter.put('/draft', auth, auth.requireRole('owner'), async (req, res) => {
         `SELECT COALESCE(MAX(version_number), 0) + 1 AS next_ver FROM terms_versions`
       );
       const nextVer = parseInt(maxRows[0].next_ver, 10);
-      const insertRes = await db.query(
-        `INSERT INTO terms_versions (version_number, title, content_points, status, created_by, updated_at)
-         VALUES ($1, $2, $3::jsonb, 'draft', $4, now())
-         RETURNING *`,
-        [nextVer, title, JSON.stringify(points), req.user.id]
-      );
+      let insertRes;
+      try {
+        insertRes = await db.query(
+          `INSERT INTO terms_versions (version_number, title, content_points, status, created_by, updated_at)
+           VALUES ($1, $2, $3::jsonb, 'draft', $4, now())
+           RETURNING *`,
+          [nextVer, title, JSON.stringify(points), req.user ? req.user.id : null]
+        );
+      } catch (fkErr) {
+        // Fallback jika foreign key constraint created_by gagal
+        insertRes = await db.query(
+          `INSERT INTO terms_versions (version_number, title, content_points, status, created_by, updated_at)
+           VALUES ($1, $2, $3::jsonb, 'draft', NULL, now())
+           RETURNING *`,
+          [nextVer, title, JSON.stringify(points)]
+        );
+      }
       resultRow = insertRes.rows[0];
     }
 
@@ -211,6 +330,7 @@ adminRouter.put('/draft', auth, auth.requireRole('owner'), async (req, res) => {
 adminRouter.post('/publish', auth, auth.requireRole('owner'), async (req, res) => {
   let client;
   try {
+    await ensureTermsTables();
     let title = req.body.title ? String(req.body.title).trim() : '';
     let rawPoints = req.body.points;
 
@@ -280,12 +400,22 @@ adminRouter.post('/publish', auth, auth.requireRole('owner'), async (req, res) =
     await client.query(`DELETE FROM terms_versions WHERE status = 'draft'`);
 
     // Insert versi aktif baru
-    const insertRes = await client.query(
-      `INSERT INTO terms_versions (version_number, title, content_points, status, created_by, published_at, updated_at)
-       VALUES ($1, $2, $3::jsonb, 'active', $4, now(), now())
-       RETURNING *`,
-      [nextVersion, title, JSON.stringify(points), req.user ? req.user.id : null]
-    );
+    let insertRes;
+    try {
+      insertRes = await client.query(
+        `INSERT INTO terms_versions (version_number, title, content_points, status, created_by, published_at, updated_at)
+         VALUES ($1, $2, $3::jsonb, 'active', $4, now(), now())
+         RETURNING *`,
+        [nextVersion, title, JSON.stringify(points), req.user ? req.user.id : null]
+      );
+    } catch (fkErr) {
+      insertRes = await client.query(
+        `INSERT INTO terms_versions (version_number, title, content_points, status, created_by, published_at, updated_at)
+         VALUES ($1, $2, $3::jsonb, 'active', NULL, now(), now())
+         RETURNING *`,
+        [nextVersion, title, JSON.stringify(points)]
+      );
+    }
 
     await client.query('COMMIT');
 

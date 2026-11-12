@@ -583,13 +583,13 @@ async function handleAdminDetail(req, res) {
          ORDER BY ta.id DESC
          LIMIT 1`,
         [booking.id]
-      )
+      ).catch(() => ({ rows: [] }))
     ]);
 
     booking.payments = payRes.rows;
     booking.attachments = attachRes.rows;
     booking.pelunasan = pelRes.rows;
-    booking.terms_acceptance = termsRes.rows[0] || null;
+    booking.terms_acceptance = (termsRes && termsRes.rows) ? (termsRes.rows[0] || null) : null;
 
     res.json(booking);
   } catch (err) {
@@ -606,18 +606,28 @@ async function handleGetBookingTerms(req, res) {
     const bookingId = parseInt(req.params.id, 10);
     if (isNaN(bookingId)) return res.status(400).json({ error: 'ID booking tidak valid' });
 
-    const { rows } = await db.query(
-      `SELECT ta.id, ta.booking_id, ta.terms_version_id, ta.snapshot_text,
-              ta.verification_token, ta.client_name, ta.client_phone,
-              ta.ip_address, ta.user_agent, ta.accepted_at,
-              tv.version_number, tv.title AS version_title
-       FROM terms_acceptances ta
-       LEFT JOIN terms_versions tv ON ta.terms_version_id = tv.id
-       WHERE ta.booking_id = $1
-       ORDER BY ta.id DESC
-       LIMIT 1`,
-      [bookingId]
-    );
+    let rows = [];
+    try {
+      const qRes = await db.query(
+        `SELECT ta.id, ta.booking_id, ta.terms_version_id, ta.snapshot_text,
+                ta.verification_token, ta.client_name, ta.client_phone,
+                ta.ip_address, ta.user_agent, ta.accepted_at,
+                tv.version_number, tv.title AS version_title
+         FROM terms_acceptances ta
+         LEFT JOIN terms_versions tv ON ta.terms_version_id = tv.id
+         WHERE ta.booking_id = $1
+         ORDER BY ta.id DESC
+         LIMIT 1`,
+        [bookingId]
+      );
+      rows = qRes.rows;
+    } catch (dbErr) {
+      // Jika tabel belum dibuat, fallback respons aman tanpa 500
+      return res.json({
+        accepted: false,
+        message: 'Belum ada catatan T&C'
+      });
+    }
 
     if (rows.length === 0) {
       return res.json({

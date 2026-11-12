@@ -8,11 +8,18 @@ CREATE TABLE IF NOT EXISTS terms_versions (
   title           VARCHAR(255) NOT NULL DEFAULT 'Syarat & Ketentuan Umum Layanan Studio',
   content_points  JSONB NOT NULL DEFAULT '[]'::jsonb,
   status          VARCHAR(20) NOT NULL DEFAULT 'draft',
-  created_by      INT REFERENCES admins(id) ON DELETE SET NULL,
+  created_by      INT NULL,
   published_at    TIMESTAMP NULL,
   created_at      TIMESTAMP DEFAULT now(),
   updated_at      TIMESTAMP DEFAULT now()
 );
+
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'terms_versions_created_by_fkey') THEN
+    ALTER TABLE terms_versions DROP CONSTRAINT terms_versions_created_by_fkey;
+  END IF;
+END $$;
 
 -- Indeks unik parsial: hanya boleh ada 1 versi aktif sekaligus
 CREATE UNIQUE INDEX IF NOT EXISTS ux_terms_versions_active 
