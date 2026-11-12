@@ -11,7 +11,8 @@ const { getPermissionsForRole } = require('../constants/permissions');
 const { invalidateUserState } = require('../utils/tokenVersionCache');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret_change_me';
-const ACCESS_TOKEN_TTL = '15m';
+const ACCESS_TOKEN_TTL = '24h'; // Sesi aktif tepat 24 jam sejak login
+const SESSION_EXPIRES_IN_SEC = 86400; // 24 jam dalam detik (24 * 3600)
 const REFRESH_TOKEN_DAYS = 7;
 
 // In-memory IP rate limiter sederhana untuk pencegahan brute force
@@ -139,7 +140,7 @@ router.post('/login', async (req, res) => {
       accessToken,
       token: accessToken, // backward compatibility
       refreshToken: rawRefreshToken, // untuk client non-browser/test
-      expiresIn: 900,
+      expiresIn: SESSION_EXPIRES_IN_SEC,
       must_change_password: user.must_change_password,
       user: {
         id: user.id,
@@ -274,7 +275,7 @@ router.post('/refresh', async (req, res) => {
       accessToken,
       token: accessToken,
       refreshToken: newRawRefreshToken,
-      expiresIn: 900,
+      expiresIn: SESSION_EXPIRES_IN_SEC,
       must_change_password: user.must_change_password,
       user: {
         id: user.id,

@@ -202,18 +202,58 @@
 
     .dropzone {
       border: 2px dashed var(--border); border-radius: var(--r-lg);
-      padding: var(--sp-8); text-align: center; cursor: pointer;
+      padding: var(--sp-6) var(--sp-4); text-align: center; cursor: pointer;
       transition: all 0.25s ease; position: relative;
+      background: var(--bg-card); min-height: 140px;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      width: 100%; box-sizing: border-box;
     }
     .dropzone:hover, .dropzone.drag-over {
       border-color: var(--purple); background: rgba(124,109,250,0.06);
     }
+    .dropzone * {
+      pointer-events: none;
+    }
     .dropzone input[type=file] {
       position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+      z-index: 20; pointer-events: auto !important; display: block;
     }
     .dropzone-icon { font-size: 2.2rem; margin-bottom: var(--sp-2); }
     .dropzone-text { font-weight: 600; color: var(--text-1); margin-bottom: var(--sp-1); font-size: 0.9rem; }
-    .dropzone-hint { font-size: 0.76rem; color: var(--text-3); }
+    .dropzone-hint { font-size: 0.75rem; color: var(--text-3); }
+    .dropzone-btn-pill {
+      display: inline-flex; align-items: center; gap: 6px;
+      margin-top: 8px; padding: 6px 14px;
+      font-size: 0.78rem; font-weight: 600;
+      border-radius: 999px;
+      background: rgba(124,109,250,0.12);
+      color: var(--purple);
+      border: 1px solid rgba(124,109,250,0.3);
+    }
+
+    /* Mobile First & Responsive Breakpoints */
+    @media (max-width: 480px) {
+      .main-wrap {
+        padding: 0 10px 32px !important;
+        width: 100% !important;
+        max-width: 100% !important;
+      }
+      .card, .upload-card {
+        padding: 16px 12px !important;
+        border-radius: 14px !important;
+      }
+      .dropzone {
+        padding: 16px 10px !important;
+        min-height: 125px !important;
+      }
+      .dropzone-icon {
+        font-size: 1.8rem !important;
+        margin-bottom: 4px !important;
+      }
+      .dropzone-text {
+        font-size: 0.84rem !important;
+      }
+    }
 
     .file-preview {
       display: none; align-items: center; gap: var(--sp-4);
@@ -466,11 +506,12 @@
 
         <div id="upload-alert" class="alert alert-error hidden" role="alert"></div>
 
-        <div class="dropzone" id="dropzone" role="button" aria-label="Area upload bukti transfer">
+        <div class="dropzone" id="dropzone" role="button" tabindex="0" aria-label="Area upload bukti transfer">
           <input type="file" id="proof-file" accept="image/jpeg,image/png,image/webp,application/pdf" aria-label="Pilih file bukti transfer">
           <div class="dropzone-icon">📎</div>
           <div class="dropzone-text">Klik atau seret & lepas file di sini</div>
           <div class="dropzone-hint">JPG, PNG, WebP, PDF — Maks 5MB</div>
+          <div class="dropzone-btn-pill">📁 Pilih File dari Galeri/Kamera</div>
         </div>
 
         <div class="file-preview" id="file-preview">

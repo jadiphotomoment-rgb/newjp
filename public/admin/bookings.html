@@ -1532,12 +1532,16 @@
 
       let eventDateVal = '';
       if (b.event_date) {
-        const dt = new Date(b.event_date);
-        if (!isNaN(dt)) {
-          const yyyy = dt.getFullYear();
-          const mm = String(dt.getMonth() + 1).padStart(2, '0');
-          const dd = String(dt.getDate()).padStart(2, '0');
-          eventDateVal = `${yyyy}-${mm}-${dd}`;
+        if (typeof b.event_date === 'string') {
+          eventDateVal = b.event_date.split('T')[0].slice(0, 10);
+        } else {
+          const dt = new Date(b.event_date);
+          if (!isNaN(dt)) {
+            const yyyy = dt.getFullYear();
+            const mm = String(dt.getMonth() + 1).padStart(2, '0');
+            const dd = String(dt.getDate()).padStart(2, '0');
+            eventDateVal = `${yyyy}-${mm}-${dd}`;
+          }
         }
       }
       const eventTimeVal = b.event_time ? b.event_time.slice(0, 5) : '';
@@ -1556,15 +1560,17 @@
             </h4>
             <span class="text-xs text-on-surface-variant font-mono">v${b.version || 1}</span>
           </div>
+
+          <div id="edit-booking-alert" class="hidden p-3 rounded-lg text-xs font-semibold bg-rose-500/15 text-rose-400 border border-rose-500/30" role="alert"></div>
           
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div class="form-group flex flex-col gap-1">
               <label class="text-xs font-semibold text-on-surface-variant uppercase">Nama Klien *</label>
-              <input type="text" id="edit-client-name" value="${esc(b.client_name)}" class="px-3 py-2 border border-outline-variant rounded-lg text-sm bg-surface-container focus:outline-none focus:border-primary">
+              <input type="text" id="edit-client-name" value="${esc(b.client_name || '')}" required class="px-3 py-2 border border-outline-variant rounded-lg text-sm bg-surface-container focus:outline-none focus:border-primary">
             </div>
             <div class="form-group flex flex-col gap-1">
               <label class="text-xs font-semibold text-on-surface-variant uppercase">No. WhatsApp *</label>
-              <input type="tel" id="edit-client-phone" value="${esc(b.client_phone)}" class="px-3 py-2 border border-outline-variant rounded-lg text-sm bg-surface-container focus:outline-none focus:border-primary">
+              <input type="tel" id="edit-client-phone" value="${esc(b.client_phone || '')}" required placeholder="08xxxxxxxxxx" class="px-3 py-2 border border-outline-variant rounded-lg text-sm bg-surface-container focus:outline-none focus:border-primary">
             </div>
           </div>
 
@@ -1584,7 +1590,7 @@
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div class="form-group flex flex-col gap-1">
               <label class="text-xs font-semibold text-on-surface-variant uppercase">Tanggal Acara *</label>
-              <input type="date" id="edit-event-date" value="${eventDateVal}" class="px-3 py-2 border border-outline-variant rounded-lg text-sm bg-surface-container focus:outline-none focus:border-primary">
+              <input type="date" id="edit-event-date" value="${eventDateVal}" required class="px-3 py-2 border border-outline-variant rounded-lg text-sm bg-surface-container focus:outline-none focus:border-primary">
             </div>
             <div class="form-group flex flex-col gap-1">
               <label class="text-xs font-semibold text-on-surface-variant uppercase">Jam Mulai</label>
@@ -1594,7 +1600,7 @@
           
           <div class="form-group flex flex-col gap-1">
             <label class="text-xs font-semibold text-on-surface-variant uppercase">Lokasi / Venue</label>
-            <input type="text" id="edit-location" value="${esc(b.location || '')}" class="px-3 py-2 border border-outline-variant rounded-lg text-sm bg-surface-container focus:outline-none focus:border-primary">
+            <input type="text" id="edit-location" value="${esc(b.location || '')}" placeholder="Nama gedung / alamat" class="px-3 py-2 border border-outline-variant rounded-lg text-sm bg-surface-container focus:outline-none focus:border-primary">
           </div>
 
           <div class="form-group flex flex-col gap-1">
@@ -1621,11 +1627,11 @@
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div class="form-group flex flex-col gap-1">
                 <label class="text-xs font-semibold text-on-surface-variant">Total Harga Paket (Rp)</label>
-                <input type="number" id="edit-package-price" value="${b.package_price || ''}" min="0" class="px-3 py-2 border border-outline-variant rounded-lg text-sm bg-surface-container focus:outline-none focus:border-primary" oninput="recalculateEditSisa()">
+                <input type="number" id="edit-package-price" value="${b.package_price || ''}" min="0" step="1000" placeholder="0" class="px-3 py-2 border border-outline-variant rounded-lg text-sm bg-surface-container focus:outline-none focus:border-primary" oninput="recalculateEditSisa()">
               </div>
               <div class="form-group flex flex-col gap-1">
                 <label class="text-xs font-semibold text-on-surface-variant">Jumlah Dibayar (Rp)</label>
-                <input type="number" id="edit-paid-amount" value="${b.paid_amount || 0}" min="0" class="px-3 py-2 border border-outline-variant rounded-lg text-sm bg-surface-container focus:outline-none focus:border-primary font-bold text-emerald-600" oninput="recalculateEditSisa()">
+                <input type="number" id="edit-paid-amount" value="${b.paid_amount || 0}" min="0" step="1000" class="px-3 py-2 border border-outline-variant rounded-lg text-sm bg-surface-container focus:outline-none focus:border-primary font-bold text-emerald-600" oninput="recalculateEditSisa()">
               </div>
             </div>
 
@@ -1642,15 +1648,17 @@
 
             <div class="form-group flex flex-col gap-1">
               <label class="text-xs font-semibold text-on-surface-variant">Biaya DP Manual (Rp)</label>
-              <input type="number" id="edit-dp-amount" value="${b.dp_amount || ''}" placeholder="Kosongkan jika otomatis dari kategori" class="px-3 py-2 border border-outline-variant rounded-lg text-sm bg-surface-container focus:outline-none focus:border-primary">
+              <input type="number" id="edit-dp-amount" value="${b.dp_amount || ''}" min="0" step="1000" placeholder="Kosongkan jika otomatis dari kategori" class="px-3 py-2 border border-outline-variant rounded-lg text-sm bg-surface-container focus:outline-none focus:border-primary">
             </div>
           </div>
           
           ${fdHtml ? `<div class="mt-2"><div class="detail-section-title mb-2">Detail Ekstra</div><div class="flex flex-col gap-3">${fdHtml}</div></div>` : ''}
           
           <div class="edit-actions mt-4 pt-4 border-t border-outline-variant/30 flex gap-2">
-            <button class="btn btn-outline flex-1" onclick="openPanel(${b.id})">Batal</button>
-            <button class="btn btn-primary flex-1" onclick="saveEdit(${b.id})">Simpan Perubahan</button>
+            <button type="button" class="btn btn-outline flex-1" onclick="openPanel(${b.id})">Batal</button>
+            <button type="button" id="btn-save-edit" class="btn btn-primary flex-1 flex items-center justify-center gap-2" onclick="saveEdit(${b.id})">
+              <span>Simpan Perubahan</span>
+            </button>
           </div>
         </div>
       `;
@@ -1669,67 +1677,141 @@
 
     async function saveEdit(id) {
       const b = currentBookingData;
-      const client_name = document.getElementById('edit-client-name').value.trim();
-      const client_phone = document.getElementById('edit-client-phone').value.trim();
-      const event_date = document.getElementById('edit-event-date').value;
-      const event_time = document.getElementById('edit-event-time').value || null;
-      const location = document.getElementById('edit-location').value.trim() || null;
-      const category_id = document.getElementById('edit-category-id')?.value;
-      const package_name = document.getElementById('edit-package-name')?.value?.trim() || null;
-      const status = document.getElementById('edit-status')?.value;
-      const notes = document.getElementById('edit-notes')?.value?.trim() || null;
+      const alertEl = document.getElementById('edit-booking-alert');
+      const btnSave = document.getElementById('btn-save-edit');
 
-      const package_price_raw = document.getElementById('edit-package-price').value;
-      const package_price = package_price_raw !== '' ? parseFloat(package_price_raw) : null;
-      const paid_amount_raw = document.getElementById('edit-paid-amount')?.value;
-      const paid_amount = paid_amount_raw !== '' && paid_amount_raw !== undefined ? parseInt(paid_amount_raw, 10) : undefined;
-      const dp_amount_manual = document.getElementById('edit-dp-amount').value || null;
-      
-      if (!client_name || !client_phone || !event_date) {
-        toast('Nama, no WA, dan tanggal acara wajib diisi', 'error');
-        return;
+      if (alertEl) {
+        alertEl.textContent = '';
+        alertEl.classList.add('hidden');
       }
 
-      if (paid_amount !== undefined && package_price !== null && package_price > 0 && paid_amount > package_price) {
-        toast(`Jumlah dibayar tidak boleh melebihi total harga paket (${fmtMoney(package_price)})`, 'error');
-        return;
+      const clientNameInput = document.getElementById('edit-client-name');
+      const clientPhoneInput = document.getElementById('edit-client-phone');
+      const eventDateInput = document.getElementById('edit-event-date');
+      const packagePriceInput = document.getElementById('edit-package-price');
+      const paidAmountInput = document.getElementById('edit-paid-amount');
+      const dpAmountInput = document.getElementById('edit-dp-amount');
+
+      const client_name = (clientNameInput?.value || '').trim();
+      const client_phone = (clientPhoneInput?.value || '').trim();
+      const event_date = eventDateInput?.value || '';
+      const event_time = document.getElementById('edit-event-time')?.value || null;
+      const location = (document.getElementById('edit-location')?.value || '').trim() || null;
+      const category_id = document.getElementById('edit-category-id')?.value;
+      const package_name = (document.getElementById('edit-package-name')?.value || '').trim() || null;
+      const status = document.getElementById('edit-status')?.value;
+      const notes = (document.getElementById('edit-notes')?.value || '').trim() || null;
+
+      const package_price_raw = packagePriceInput?.value;
+      const package_price = (package_price_raw !== '' && package_price_raw !== undefined && !isNaN(Number(package_price_raw))) ? parseFloat(package_price_raw) : null;
+
+      const paid_amount_raw = paidAmountInput?.value;
+      const paid_amount = (paid_amount_raw !== '' && paid_amount_raw !== undefined && !isNaN(Number(paid_amount_raw))) ? parseInt(paid_amount_raw, 10) : 0;
+
+      const dp_amount_raw = dpAmountInput?.value;
+      const dp_amount_manual = (dp_amount_raw !== '' && dp_amount_raw !== undefined && !isNaN(Number(dp_amount_raw))) ? parseFloat(dp_amount_raw) : null;
+
+      // 1. Validasi Input Required & Format
+      function showFormError(msg, focusEl) {
+        if (alertEl) {
+          alertEl.textContent = msg;
+          alertEl.classList.remove('hidden');
+        }
+        toast(msg, 'error');
+        if (focusEl) {
+          focusEl.focus();
+          focusEl.classList.add('border-rose-500');
+          setTimeout(() => focusEl.classList.remove('border-rose-500'), 3000);
+        }
+      }
+
+      if (!client_name || client_name.length < 2) {
+        return showFormError('Nama Klien wajib diisi (minimal 2 karakter)', clientNameInput);
+      }
+
+      if (!client_phone || client_phone.length < 8 || !/^[0-9+\-\s]+$/.test(client_phone)) {
+        return showFormError('Nomor WhatsApp wajib diisi angka valid (minimal 8 digit)', clientPhoneInput);
+      }
+
+      if (!event_date) {
+        return showFormError('Tanggal Acara wajib diisi', eventDateInput);
+      }
+
+      if (package_price !== null && (isNaN(package_price) || package_price < 0)) {
+        return showFormError('Harga Paket tidak boleh bernilai negatif', packagePriceInput);
+      }
+
+      if (paid_amount < 0) {
+        return showFormError('Jumlah Dibayar tidak boleh bernilai negatif', paidAmountInput);
+      }
+
+      if (package_price !== null && package_price > 0 && paid_amount > package_price) {
+        return showFormError(`Jumlah Dibayar (${fmtMoney(paid_amount)}) tidak boleh melebihi Total Harga Paket (${fmtMoney(package_price)})`, paidAmountInput);
+      }
+
+      if (dp_amount_manual !== null && dp_amount_manual < 0) {
+        return showFormError('Nominal DP Manual tidak boleh bernilai negatif', dpAmountInput);
       }
 
       const form_data = {};
       document.querySelectorAll('[data-fd-key]').forEach(el => form_data[el.dataset.fdKey] = el.value);
 
+      // 2. Cegah Double Submit: Disable Tombol & Tampilkan Loading
+      if (btnSave) {
+        btnSave.disabled = true;
+        btnSave.innerHTML = '<span class="material-symbols-outlined text-sm animate-spin">progress_activity</span><span>Menyimpan...</span>';
+      }
+
       try {
+        const payload = {
+          client_name,
+          client_phone,
+          event_date,
+          event_time,
+          location,
+          category_id,
+          package_name,
+          status,
+          notes,
+          package_price,
+          paid_amount,
+          dp_amount_manual,
+          form_data,
+          version: b?.version
+        };
+
         const res = await fetch(`/api/bookings/admin/${id}`, {
           method: 'PUT',
           headers: H,
-          body: JSON.stringify({
-            client_name,
-            client_phone,
-            event_date,
-            event_time,
-            location,
-            category_id,
-            package_name,
-            status,
-            notes,
-            package_price,
-            paid_amount,
-            dp_amount_manual,
-            form_data,
-            version: b?.version
-          })
+          body: JSON.stringify(payload)
         });
         const data = await res.json();
+        
         if (!res.ok) {
-          toast(data.error || 'Gagal menyimpan', 'error');
+          showFormError(data.error || 'Gagal menyimpan perubahan');
           return;
         }
-        toast('Booking berhasil diperbarui', 'success');
+
+        toast(`Booking #${id} berhasil diperbarui!`, 'success');
+
+        // 3. Update State & UI tanpa full reload
+        const updatedBooking = Object.assign({}, currentBookingData, payload, data.booking || {});
+        currentBookingData = updatedBooking;
+
+        // Render ulang detail panel dengan data terbaru
+        renderPanel(updatedBooking);
+
+        // Perbarui tabel / list booking di latar belakang tanpa reload halaman
         loadBookings();
         if (calendar) calendar.refetchEvents();
-        openPanel(id);
+
       } catch (e) {
-        toast('Gagal menghubungi server. Coba lagi.', 'error');
+        showFormError('Terjadi kesalahan jaringan atau server tidak merespon.');
+      } finally {
+        if (btnSave) {
+          btnSave.disabled = false;
+          btnSave.innerHTML = '<span>Simpan Perubahan</span>';
+        }
       }
     }
 

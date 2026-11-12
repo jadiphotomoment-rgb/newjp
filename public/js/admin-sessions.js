@@ -566,8 +566,21 @@ document.getElementById('form-new-session').addEventListener('submit', async (e)
 
   alertEl.classList.add('hidden');
 
-  if (!clientName || !folderUrl || !photoLimit) {
-    alertEl.textContent = 'Nama Klien, Folder URL, dan Limit wajib diisi';
+  if (!clientName) {
+    alertEl.textContent = 'Nama Klien wajib diisi (minimal 2 karakter)';
+    alertEl.classList.remove('hidden');
+    return;
+  }
+
+  if (!folderUrl || (!folderUrl.startsWith('http://') && !folderUrl.startsWith('https://'))) {
+    alertEl.textContent = 'Folder URL Google Drive harus berupa link URL yang valid (diawali https://)';
+    alertEl.classList.remove('hidden');
+    return;
+  }
+
+  const limitNum = parseInt(photoLimit, 10);
+  if (isNaN(limitNum) || limitNum < 1) {
+    alertEl.textContent = 'Batas Foto (Limit) harus berupa angka minimal 1';
     alertEl.classList.remove('hidden');
     return;
   }
@@ -639,8 +652,21 @@ document.getElementById('form-edit-session').addEventListener('submit', async (e
 
   alertEl.classList.add('hidden');
 
-  if (!clientName || !folderUrl || !photoLimit) {
-    alertEl.textContent = 'Nama Klien, Folder URL, dan Limit wajib diisi';
+  if (!clientName) {
+    alertEl.textContent = 'Nama Klien wajib diisi (minimal 2 karakter)';
+    alertEl.classList.remove('hidden');
+    return;
+  }
+
+  if (!folderUrl || (!folderUrl.startsWith('http://') && !folderUrl.startsWith('https://'))) {
+    alertEl.textContent = 'Folder URL Google Drive harus berupa link URL yang valid (diawali https://)';
+    alertEl.classList.remove('hidden');
+    return;
+  }
+
+  const limitNum = parseInt(photoLimit, 10);
+  if (isNaN(limitNum) || limitNum < 1) {
+    alertEl.textContent = 'Batas Foto (Limit) harus berupa angka minimal 1';
     alertEl.classList.remove('hidden');
     return;
   }

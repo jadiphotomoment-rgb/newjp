@@ -7,11 +7,58 @@
   const token = localStorage.getItem('sf_token');
   const adminStr = localStorage.getItem('sf_admin');
 
-  // 1. Guard Autentikasi
+  // Helper parsing payload JWT tanpa library luar
+  function parseJwtPayload(jwtToken) {
+    if (!jwtToken) return null;
+    try {
+      const parts = jwtToken.split('.');
+      if (parts.length !== 3) return null;
+      const base64Url = parts[1];
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const jsonPayload = decodeURIComponent(atob(base64).split('').map(c => {
+        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+      }).join(''));
+      return JSON.parse(jsonPayload);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  // Helper pembersihan sesi dan redirect ke login dengan pesan jelas
+  function handleSessionExpired(reason = 'expired') {
+    localStorage.removeItem('sf_token');
+    localStorage.removeItem('sf_admin');
+    localStorage.removeItem('sf_login_time');
+    localStorage.removeItem('sf_token_expires_at');
+    const redirectUrl = reason === 'expired' ? '/admin/login.html?expired=1' : '/admin/login.html';
+    window.location.replace(redirectUrl);
+  }
+
+  // 1. Guard Autentikasi & Validasi Sesi 24 Jam
   const currentPath = window.location.pathname;
-  if (!token && !currentPath.includes('login.html')) {
-    window.location.replace('/admin/login.html');
-    return;
+  if (!currentPath.includes('login.html')) {
+    if (!token) {
+      window.location.replace('/admin/login.html');
+      return;
+    }
+
+    const payload = parseJwtPayload(token);
+    if (payload && payload.exp) {
+      const expiresAtMs = payload.exp * 1000;
+      const now = Date.now();
+      if (now >= expiresAtMs) {
+        handleSessionExpired('expired');
+        return;
+      }
+
+      // Jadwalkan auto-logout tepat saat batas 24 jam tercapai
+      const msRemaining = expiresAtMs - now;
+      if (msRemaining > 0 && msRemaining < 2147483647) {
+        setTimeout(() => {
+          handleSessionExpired('expired');
+        }, msRemaining);
+      }
+    }
   }
 
   let admin = {};
@@ -37,6 +84,10 @@
       const res = await fetch('/api/auth/me', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
+      if (res.status === 401) {
+        handleSessionExpired('expired');
+        return;
+      }
       if (res.ok) {
         const data = await res.json();
         if (data.user) {
@@ -159,6 +210,8 @@
 
     localStorage.removeItem('sf_token');
     localStorage.removeItem('sf_admin');
+    localStorage.removeItem('sf_login_time');
+    localStorage.removeItem('sf_token_expires_at');
     window.location.replace('/admin/login.html');
   }
 

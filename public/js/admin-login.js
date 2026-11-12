@@ -14,6 +14,21 @@ if (savedToken) {
   }).catch(() => {});
 }
 
+// ── Show "session expired" banner if redirected with ?expired=1 ─
+(function checkExpiredParam() {
+  const urlParams = new URLSearchParams(location.search);
+  if (urlParams.get('expired') === '1') {
+    // alertBox not yet defined here, use DOM directly after DOMContentLoaded
+    document.addEventListener('DOMContentLoaded', () => {
+      const box = document.getElementById('login-alert');
+      if (box) {
+        box.textContent = 'Sesi Anda telah berakhir (24 jam). Silakan login kembali.';
+        box.classList.remove('hidden');
+      }
+    });
+  }
+})();
+
 // ── DOM refs ────────────────────────────────────────────────────
 const form          = document.getElementById('login-form');
 const usernameInput = document.getElementById('username');
@@ -82,6 +97,9 @@ form.addEventListener('submit', async (e) => {
 
     localStorage.setItem('sf_token', data.token);
     localStorage.setItem('sf_admin', JSON.stringify(data.admin || data.user));
+    // Track session lifetime (fixed 24h from login)
+    localStorage.setItem('sf_login_time', Date.now().toString());
+    localStorage.setItem('sf_token_expires_at', (Date.now() + 86400 * 1000).toString());
 
     // Jika akun baru / wajib ganti password saat login pertama
     if (data.must_change_password) {
