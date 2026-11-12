@@ -69,10 +69,33 @@
       backdrop-filter: blur(4px); z-index: 100;
       display: flex; align-items: center; justify-content: center; padding: 16px;
     }
+
+    /* Scrollbar tipis rapi untuk navigasi sidebar */
+    .custom-nav-scrollbar {
+      scrollbar-width: thin;
+      scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+    }
+    html.light .custom-nav-scrollbar {
+      scrollbar-color: rgba(0, 0, 0, 0.15) transparent;
+    }
+    .custom-nav-scrollbar::-webkit-scrollbar {
+      width: 4px;
+      display: block;
+    }
+    .custom-nav-scrollbar::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .custom-nav-scrollbar::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 4px;
+    }
+    html.light .custom-nav-scrollbar::-webkit-scrollbar-thumb {
+      background: rgba(0, 0, 0, 0.15);
+    }
   </style>
 </head>
 
-<body class="bg-surface text-on-surface flex flex-col md:flex-row min-h-screen">
+<body class="bg-surface text-on-surface flex h-screen w-screen overflow-hidden">
 
   <!-- Auth Guard Check (Terbuka untuk semua role: staf, admin, owner) -->
   <script>
@@ -84,16 +107,25 @@
     })();
   </script>
 
+  <!-- Mobile Drawer Backdrop -->
+  <div id="sidebar-backdrop" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 hidden md:hidden transition-opacity" onclick="toggleSidebar(false)"></div>
+
   <!-- SIDEBAR NAVIGATION -->
-  <aside class="w-full md:w-64 bg-surface-container-lowest border-r border-outline-variant/30 flex-shrink-0 flex flex-col">
-    <div class="p-6 border-b border-outline-variant/30 flex items-center justify-between">
+  <aside id="sidebar" class="fixed md:static inset-y-0 left-0 z-50 w-64 md:w-64 h-screen bg-surface-container-lowest border-r border-outline-variant/30 flex flex-col flex-shrink-0 transition-transform duration-300 ease-in-out -translate-x-full md:translate-x-0">
+    <!-- Brand Header (Statis) -->
+    <div class="p-5 md:p-6 border-b border-outline-variant/30 flex items-center justify-between flex-shrink-0">
       <div class="flex items-center gap-3">
         <span class="material-symbols-outlined text-primary text-[28px]">photo_camera</span>
         <span class="font-title-lg font-bold">Jadiphoto Admin</span>
       </div>
+      <!-- Tombol Tutup Sidebar di Layar Mobile -->
+      <button type="button" class="md:hidden p-1.5 text-on-surface-variant hover:text-on-surface rounded-lg hover:bg-surface-container transition-colors" onclick="toggleSidebar(false)" aria-label="Tutup menu">
+        <span class="material-symbols-outlined text-xl">close</span>
+      </button>
     </div>
     
-    <nav class="flex-1 p-4 space-y-1">
+    <!-- Menu Navigasi (Scroll Independen) -->
+    <nav class="flex-1 overflow-y-auto p-4 space-y-1 custom-nav-scrollbar">
       <a href="/admin/dashboard.html" class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all">
         <span class="material-symbols-outlined">dashboard</span>
         <span class="font-label-md">Dashboard</span>
@@ -147,7 +179,8 @@
       </a>
     </nav>
 
-    <div class="p-4 border-t border-outline-variant/30 flex items-center justify-between">
+    <!-- Footer Profil & Logout (Statis) -->
+    <div class="p-4 border-t border-outline-variant/30 flex items-center justify-between flex-shrink-0 bg-surface-container-lowest">
       <div id="user-profile-badge"></div>
       <button id="btn-logout" class="p-2 text-on-surface-variant hover:text-error transition-colors" title="Logout">
         <span class="material-symbols-outlined">logout</span>
@@ -155,8 +188,25 @@
     </div>
   </aside>
 
-  <!-- MAIN CONTENT -->
-  <main class="flex-1 overflow-y-auto p-4 md:p-8 max-w-5xl mx-auto w-full">
+  <!-- MAIN WRAPPER (Flex-1, min-w-0 agar tidak terpotong / overflow keluar layar) -->
+  <div class="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
+    <!-- Header Topbar Mobile (Hanya tampil di mobile < md) -->
+    <header class="md:hidden flex-shrink-0 flex items-center justify-between px-4 py-3 bg-surface-container-lowest border-b border-outline-variant/30 z-30">
+      <div class="flex items-center gap-3">
+        <button type="button" class="p-1.5 text-on-surface-variant hover:text-on-surface rounded-lg hover:bg-surface-container transition-colors" onclick="toggleSidebar(true)" aria-label="Buka Menu">
+          <span class="material-symbols-outlined text-2xl">menu</span>
+        </button>
+        <div class="flex items-center gap-2">
+          <span class="material-symbols-outlined text-primary text-xl">gavel</span>
+          <span class="font-bold text-sm">Kelola T&C</span>
+        </div>
+      </div>
+      <span class="text-[11px] font-semibold px-2 py-0.5 rounded bg-primary/15 text-primary">T&C</span>
+    </header>
+
+    <!-- MAIN CONTENT (Scrollable Independen) -->
+    <main class="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
+      <div class="max-w-5xl mx-auto w-full">
     
     <!-- Top Header -->
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
@@ -270,7 +320,9 @@
         </table>
       </div>
     </div>
+    </div>
   </main>
+  </div>
 
   <!-- MODAL PRATINJAU -->
   <div id="preview-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true">
@@ -651,6 +703,21 @@
         showAlert(`Isi versi ${selectedVersionForDetail.version_number} berhasil dimuat ke editor.`);
       }
     });
+
+    // Toggle Drawer Sidebar Mobile
+    window.toggleSidebar = function(open) {
+      const sidebar = document.getElementById('sidebar');
+      const backdrop = document.getElementById('sidebar-backdrop');
+      if (!sidebar) return;
+      const willOpen = open !== undefined ? open : sidebar.classList.contains('-translate-x-full');
+      if (willOpen) {
+        sidebar.classList.remove('-translate-x-full');
+        if (backdrop) backdrop.classList.remove('hidden');
+      } else {
+        sidebar.classList.add('-translate-x-full');
+        if (backdrop) backdrop.classList.add('hidden');
+      }
+    };
 
     loadTerms();
   </script>
