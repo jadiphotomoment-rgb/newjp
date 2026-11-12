@@ -13,6 +13,8 @@ const { getWaTemplate } = require('../utils/template');
 const { buildPublicUrl } = require('../utils/url');
 const { google }           = require('googleapis');
 const { getAuthenticatedClient } = require('../utils/googleAuth');
+const crypto               = require('crypto');
+const { getActiveTerms }   = require('./terms');
 
 // ── Helper to safely extract YYYY-MM-DD from node-postgres DATE ──
 function getLocalDateString(d) {
@@ -136,18 +138,37 @@ router.get('/categories/:slug/slots', async (req, res) => {
   }
 });
 
-// POST /api/bookings/:categorySlug — submit booking baru
-router.post('/:categorySlug', async (req, res) => {
-  const { categorySlug } = req.params;
-  const { clientName, clientPhone, eventDate, eventTime, location, formData, packageId, packagePrice, packageName } = req.body;
+// POST /api/bookings/:categorySlug — submit booking baru dengan validasi T&C atomik
+async function handleCreateBooking(req, res) {
+  const categorySlug = req.params.categorySlug || req.body.categorySlug;
+  const {
+    clientName, clientPhone, eventDate, eventTime, location,
+    formData, packageId, packagePrice, packageName,
+    terms_version_id, terms_accepted
+  } = req.body;
 
   if (!clientName || !clientPhone || !eventDate) {
     return res.status(400).json({ error: 'clientName, clientPhone, dan eventDate wajib diisi' });
   }
 
+  // 1. Validasi Wajib Persetujuan T&C
+  if (!terms_accepted || (terms_accepted !== true && terms_accepted !== 'true')) {
+    return res.status(400).json({ error: 'Anda wajib membaca dan menyetujui Syarat & Ketentuan yang berlaku' });
+  }
+
+  if (!terms_version_id) {
+    return res.status(400).json({ error: 'Versi Syarat & Ketentuan wajib disertakan' });
+  }
+
+  const activeTerms = await getActiveTerms();
+  if (!activeTerms || parseInt(terms_version_id, 10) !== parseInt(activeTerms.id, 10)) {
+    return res.status(400).json({ error: 'Versi Syarat & Ketentuan tidak valid atau telah diperbarui. Silakan muat ulang halaman.' });
+  }
+
+  let client;
   try {
     const catRes = await db.query(
-      'SELECT id, dp_type, dp_value, time_slots, packages FROM booking_categories WHERE slug = $1 AND is_active = true',
+      'SELECT id, dp_type, dp_value, time_slots, packages FROM booking_categories WHERE (slug = $1 OR id::text = $1) AND is_active = true',
       [categorySlug]
     );
     if (!catRes.rows[0]) return res.status(404).json({ error: 'Kategori tidak ditemukan' });
@@ -230,9 +251,13 @@ router.post('/:categorySlug', async (req, res) => {
 
     const resolvedPackageName = finalPackageName || category.name || null;
 
-    const { rows } = await db.query(
-      `INSERT INTO bookings (category_id, client_name, client_phone, event_date, event_time, location, form_data, package_price, dp_amount, sumber_informasi, sumber_informasi_detail, package_name)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING id`,
+    // 2. Eksekusi 1 DB Transaction: simpan booking + insert bukti persetujuan T&C
+    client = await db.getClient();
+    await client.query('BEGIN');
+
+    const { rows } = await client.query(
+      `INSERT INTO bookings (category_id, client_name, client_phone, event_date, event_time, location, form_data, package_price, dp_amount, sumber_informasi, sumber_informasi_detail, package_name, terms_accepted_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, now()) RETURNING id`,
       [
         category.id,
         clientName.trim(),
@@ -248,17 +273,52 @@ router.post('/:categorySlug', async (req, res) => {
         resolvedPackageName
       ]
     );
+    const bookingId = rows[0].id;
+
+    // Snapshot teks T&C saat disetujui
+    const pointsList = Array.isArray(activeTerms.points) ? activeTerms.points : [];
+    const snapshotText = pointsList.map((p, idx) => `${idx + 1}. ${p}`).join('\n\n');
+    const verificationToken = crypto.randomBytes(24).toString('hex');
+    const rawIp = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || (req.socket && req.socket.remoteAddress) || null;
+    const userAgent = req.headers['user-agent'] || null;
+
+    await client.query(
+      `INSERT INTO terms_acceptances 
+       (booking_id, terms_version_id, snapshot_text, verification_token, client_name, client_phone, ip_address, user_agent, accepted_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, now())`,
+      [
+        bookingId,
+        activeTerms.id,
+        snapshotText,
+        verificationToken,
+        clientName.trim(),
+        clientPhone.trim(),
+        rawIp,
+        userAgent
+      ]
+    );
+
+    await client.query('COMMIT');
 
     res.status(201).json({
-      bookingId: rows[0].id,
+      bookingId: bookingId,
       message:   'Booking berhasil dibuat. Silakan upload bukti DP.',
-      nextStep:  `/upload-dp.html?booking=${rows[0].id}`
+      nextStep:  `/upload-dp.html?booking=${bookingId}`,
+      terms_token: verificationToken
     });
   } catch (err) {
+    if (client) {
+      try { await client.query('ROLLBACK'); } catch (_) {}
+    }
     console.error('[bookings] POST error:', err);
     res.status(500).json({ error: 'Gagal membuat booking' });
+  } finally {
+    if (client) client.release();
   }
-});
+}
+
+router.post('/:categorySlug', handleCreateBooking);
+router.post('/', handleCreateBooking);
 
 // GET /api/bookings/:id — detail booking (publik, untuk halaman upload)
 router.get('/:id', async (req, res) => {
@@ -489,7 +549,7 @@ async function handleAdminDetail(req, res) {
     if (!rows[0]) return res.status(404).json({ error: 'Booking tidak ditemukan' });
 
     const booking = rows[0];
-    const [payRes, attachRes, pelRes] = await Promise.all([
+    const [payRes, attachRes, pelRes, termsRes] = await Promise.all([
       db.query(
         `SELECT p.*, COALESCE(u.nama, a.name) AS approved_by_name
          FROM payments p
@@ -513,11 +573,23 @@ async function handleAdminDetail(req, res) {
          WHERE p.booking_id = $1 ORDER BY p.created_at DESC`,
         [booking.id]
       ),
+      db.query(
+        `SELECT ta.id, ta.terms_version_id, ta.snapshot_text, ta.verification_token,
+                ta.ip_address, ta.user_agent, ta.accepted_at,
+                tv.version_number, tv.title AS version_title
+         FROM terms_acceptances ta
+         LEFT JOIN terms_versions tv ON ta.terms_version_id = tv.id
+         WHERE ta.booking_id = $1
+         ORDER BY ta.id DESC
+         LIMIT 1`,
+        [booking.id]
+      )
     ]);
 
     booking.payments = payRes.rows;
     booking.attachments = attachRes.rows;
     booking.pelunasan = pelRes.rows;
+    booking.terms_acceptance = termsRes.rows[0] || null;
 
     res.json(booking);
   } catch (err) {
@@ -527,6 +599,45 @@ async function handleAdminDetail(req, res) {
 }
 
 router.get('/admin/detail/:id', auth, auth.requirePermission('booking.view'), handleAdminDetail);
+
+// GET /api/admin/bookings/:id/terms & GET /api/bookings/admin/:id/terms — catatan bukti persetujuan T&C
+async function handleGetBookingTerms(req, res) {
+  try {
+    const bookingId = parseInt(req.params.id, 10);
+    if (isNaN(bookingId)) return res.status(400).json({ error: 'ID booking tidak valid' });
+
+    const { rows } = await db.query(
+      `SELECT ta.id, ta.booking_id, ta.terms_version_id, ta.snapshot_text,
+              ta.verification_token, ta.client_name, ta.client_phone,
+              ta.ip_address, ta.user_agent, ta.accepted_at,
+              tv.version_number, tv.title AS version_title
+       FROM terms_acceptances ta
+       LEFT JOIN terms_versions tv ON ta.terms_version_id = tv.id
+       WHERE ta.booking_id = $1
+       ORDER BY ta.id DESC
+       LIMIT 1`,
+      [bookingId]
+    );
+
+    if (rows.length === 0) {
+      return res.json({
+        accepted: false,
+        message: 'Belum ada catatan T&C'
+      });
+    }
+
+    res.json({
+      accepted: true,
+      data: rows[0]
+    });
+  } catch (err) {
+    console.error('[bookings] get terms record error:', err);
+    res.status(500).json({ error: 'Gagal mengambil catatan persetujuan T&C' });
+  }
+}
+
+router.get('/admin/:id/terms', auth, auth.requirePermission('booking.view'), handleGetBookingTerms);
+router.get('/:id/terms', auth, auth.requirePermission('booking.view'), handleGetBookingTerms);
 
 // PATCH /api/admin/bookings/:id/set-price — set harga paket & dp_amount (legacy, kept for compat)
 router.patch('/admin/:id/set-price', auth, auth.requireRole('owner'), auth.requirePermission('booking.update'), async (req, res) => {

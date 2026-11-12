@@ -38,6 +38,9 @@ app.use('/api/notify',     require('./routes/notify'));
 app.use('/api/upload',     require('./routes/upload'));
 
 // ── Scale-Up Routes ───────────────────────────────────────────
+app.use('/api/terms',                  require('./routes/terms').publicRouter);
+app.use('/api/admin/terms',            require('./routes/terms').adminRouter);
+app.use('/api/admin/bookings',         require('./routes/bookings'));
 app.use('/api/bookings',             require('./routes/bookings'));
 app.use('/api/booking-categories',   require('./routes/bookings'));  // alias publik
 app.use('/api/admin/categories',     require('./routes/categories'));
