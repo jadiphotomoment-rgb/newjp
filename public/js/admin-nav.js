@@ -64,11 +64,26 @@
   function applyRbacUI() {
     const isOwner = admin.role === 'owner' || admin.role === 'admin';
 
-    // Sembunyikan elemen menu bertanda data-role="owner" bagi staff
+    // Menu bertanda data-role="owner": selalu tampilkan, tapi non-owner diarahkan ke /403.html saat diklik
     document.querySelectorAll('[data-role="owner"]').forEach(el => {
+      // Hapus handler lama (jika applyRbacUI dipanggil ulang)
+      el.removeEventListener('click', el._ownerClickHandler);
+
       if (!isOwner) {
-        el.style.display = 'none';
-        el.setAttribute('aria-hidden', 'true');
+        el.style.opacity = '0.45';
+        el.style.pointerEvents = 'auto';
+        el.setAttribute('title', 'Hanya dapat diakses oleh Owner');
+        el._ownerClickHandler = function (e) {
+          e.preventDefault();
+          window.location.href = '/403.html';
+        };
+        el.addEventListener('click', el._ownerClickHandler);
+      } else {
+        // Owner: pastikan tampil normal (hapus efek dim jika sebelumnya non-owner)
+        el.style.opacity = '';
+        el.style.pointerEvents = '';
+        el.removeAttribute('title');
+        el._ownerClickHandler = null;
       }
     });
 
