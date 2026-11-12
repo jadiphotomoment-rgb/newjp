@@ -5,6 +5,7 @@
 
 /* ── Root: Default = DARK MODE (Lumina Dark) ──────────────── */
 :root {
+  --sidebar-w: 288px;
   /* Lumina Dark tokens */
   --color-background: #0f1117;
   --color-surface: #161b27;
@@ -259,3 +260,65 @@ html.light .pelunasan-modal-card {
   border: 1px solid #c7c4d7 !important;
   box-shadow: 0 25px 60px -10px rgba(0, 0, 0, 0.25) !important;
 }
+
+/* ============================================================
+   SHARED ADMIN LAYOUT & RESPONSIVE SIDEBAR
+   Desktop (>= 1024px): Fixed persistent sidebar + main content offset
+   Tablet/Mobile (< 1024px): Off-canvas drawer with backdrop
+   ============================================================ */
+@media (min-width: 1024px) {
+  #sidebar {
+    position: fixed !important;
+    left: 0 !important;
+    top: 0 !important;
+    bottom: 0 !important;
+    width: var(--sidebar-w, 288px) !important;
+    height: 100vh !important;
+    transform: none !important;
+    z-index: 40 !important;
+  }
+  .admin-main-wrapper {
+    margin-left: var(--sidebar-w, 288px) !important;
+    width: calc(100% - var(--sidebar-w, 288px)) !important;
+    min-width: 0 !important;
+    max-width: calc(100vw - var(--sidebar-w, 288px)) !important;
+  }
+}
+
+@media (max-width: 1023px) {
+  #sidebar {
+    position: fixed !important;
+    left: 0 !important;
+    top: 0 !important;
+    bottom: 0 !important;
+    width: var(--sidebar-w, 288px) !important;
+    max-width: 85vw !important;
+    height: 100vh !important;
+    z-index: 60 !important;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  }
+  #sidebar:not(.sidebar-open):not([data-open="true"]) {
+    transform: translateX(-100%) !important;
+  }
+  #sidebar.sidebar-open,
+  #sidebar[data-open="true"] {
+    transform: translateX(0) !important;
+  }
+  .admin-main-wrapper {
+    margin-left: 0 !important;
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+}
+
+/* Backdrop drawer mobile */
+.sidebar-backdrop {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 55;
+  transition: opacity 0.25s ease-in-out;
+}
+
