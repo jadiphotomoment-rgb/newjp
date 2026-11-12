@@ -603,14 +603,14 @@
         <!-- Syarat & Ketentuan (T&C) Container -->
         <div class="tnc-card" id="tnc-container" style="background:var(--bg-elevated); border:1px solid var(--border-color); border-radius:12px; padding:14px 16px; margin-bottom:var(--sp-4);">
           <div style="display:flex; align-items:flex-start; gap:12px;">
-            <input type="checkbox" id="terms-checkbox" name="terms_accepted" style="margin-top:2px; accent-color:var(--accent); width:18px; height:18px; flex-shrink:0; cursor:pointer;" disabled>
-            <div style="font-size:0.85rem; color:var(--text-1); line-height:1.5; user-select:none;">
+            <input type="checkbox" id="terms-checkbox" name="terms_accepted" style="margin-top:2px; accent-color:var(--accent); width:18px; height:18px; flex-shrink:0; cursor:pointer;">
+            <label for="terms-checkbox" style="font-size:0.85rem; color:var(--text-1); line-height:1.5; cursor:pointer; user-select:none;">
               Saya telah membaca dan menyetujui 
               <button type="button" id="btn-view-full-terms" style="background:none; border:none; padding:0; color:var(--accent); font-weight:600; text-decoration:underline; cursor:pointer; font-size:inherit; font-family:inherit;">
                 Syarat &amp; Ketentuan
               </button>
               <span id="terms-version-pill" style="font-size:0.72rem; padding:2px 6px; border-radius:4px; background:rgba(99,102,241,0.15); color:var(--accent); font-weight:700; margin-left:4px; display:none;"></span>
-            </div>
+            </label>
           </div>
           <div id="tnc-loading-state" style="font-size:0.75rem; color:var(--text-3); margin-top:6px; margin-left:30px;">
             Memuat Syarat &amp; Ketentuan...
@@ -692,6 +692,30 @@
           </div>
         </div>
         <div class="alert alert-info" id="slot-hint" style="font-size:0.78rem; margin-top:var(--sp-3); display:none;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal T&C Pop-up Klien (Komponen Reusable) -->
+  <div id="modal-terms-full" class="hidden" role="dialog" aria-modal="true" aria-labelledby="modal-terms-title" style="position:fixed; inset:0; background:rgba(0,0,0,0.75); backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px); z-index:99999; display:flex; align-items:center; justify-content:center; padding:16px;">
+    <div id="modal-terms-card" style="background:var(--bg-surface); border:1px solid var(--border-color); border-radius:16px; max-width:640px; width:100%; max-height:85vh; display:flex; flex-direction:column; box-shadow:0 25px 50px -12px rgba(0,0,0,0.5); overflow:hidden;">
+      <!-- Header Modal -->
+      <div style="display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid var(--border-subtle); padding:16px 20px; background:var(--bg-elevated); flex-shrink:0;">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span style="font-size:1.2rem;">📋</span>
+          <h3 style="margin:0; font-size:1.05rem; font-weight:700; color:var(--text-1);" id="modal-terms-title">Syarat &amp; Ketentuan Layanan Studio</h3>
+        </div>
+        <button type="button" id="btn-close-terms-modal" aria-label="Tutup" style="background:none; border:none; color:var(--text-2); font-size:1.3rem; cursor:pointer; width:36px; height:36px; display:flex; align-items:center; justify-content:center; border-radius:8px;">✕</button>
+      </div>
+      <!-- Body Modal -->
+      <div id="modal-terms-content" style="overflow-y:auto; flex:1; font-size:0.86rem; color:var(--text-2); line-height:1.65; padding:20px;">
+        <p style="margin:0 0 12px 0; font-size:0.8rem; color:var(--text-3);">Harap baca dan pahami seluruh butir syarat &amp; ketentuan pemesanan di bawah ini:</p>
+        <ol id="modal-terms-list" style="margin:0; padding-left:20px; display:flex; flex-direction:column; gap:12px;"></ol>
+      </div>
+      <!-- Footer Modal -->
+      <div style="border-top:1px solid var(--border-subtle); padding:14px 20px; background:var(--bg-elevated); display:flex; justify-content:flex-end; gap:10px; flex-shrink:0;">
+        <button type="button" class="btn" id="btn-cancel-terms-modal" style="background:transparent; border:1px solid var(--border-color); color:var(--text-2); padding:9px 18px; font-size:0.85rem; border-radius:8px; cursor:pointer; font-weight:600;">Tutup</button>
+        <button type="button" class="btn btn-primary" id="btn-agree-terms-modal" style="padding:9px 20px; font-size:0.85rem; border-radius:8px; cursor:pointer; font-weight:700;">Saya Setuju</button>
       </div>
     </div>
   </div>
@@ -1345,6 +1369,9 @@
       const loadErrEl = document.getElementById('tnc-load-error');
       const versionPillEl = document.getElementById('terms-version-pill');
       const chkEl = document.getElementById('terms-checkbox');
+      const modalList = document.getElementById('modal-terms-list');
+      const modalTitle = document.getElementById('modal-terms-title');
+      const agreeBtn = document.getElementById('btn-agree-terms-modal');
 
       try {
         if (loadStateEl) loadStateEl.style.display = 'block';
@@ -1358,19 +1385,17 @@
         const pts = Array.isArray(currentTerms.points) ? currentTerms.points : [];
 
         if (pts.length > 0) {
-          // Render ke Modal T&C
-          const modalList = document.getElementById('modal-terms-list');
           if (modalList) {
             modalList.innerHTML = pts.map(p => `<li>${esc(p)}</li>`).join('');
           }
-          if (document.getElementById('modal-terms-title')) {
-            document.getElementById('modal-terms-title').textContent = currentTerms.title || 'Syarat & Ketentuan Layanan Studio';
+          if (modalTitle) {
+            modalTitle.textContent = currentTerms.title || 'Syarat & Ketentuan Layanan Studio';
           }
           if (versionPillEl) {
             versionPillEl.textContent = `v${currentTerms.version_number || '1'}`;
             versionPillEl.style.display = 'inline-block';
           }
-          if (chkEl) chkEl.disabled = false;
+          if (agreeBtn) agreeBtn.disabled = false;
         } else {
           throw new Error('Data poin kosong');
         }
@@ -1379,36 +1404,43 @@
       } catch (e) {
         if (loadStateEl) loadStateEl.style.display = 'none';
         if (loadErrEl) loadErrEl.style.display = 'flex';
-        if (chkEl) chkEl.disabled = true;
+        if (modalList) {
+          modalList.innerHTML = '<li style="color:#f87171;">Gagal memuat Syarat &amp; Ketentuan. Silakan periksa koneksi internet Anda atau klik coba lagi.</li>';
+        }
       }
     }
 
     let termsAgreedInModal = false;
     let lastFocusedTrigger = null;
 
-    const termsCheckboxEl = document.getElementById('terms-checkbox');
-    const submitButtonEl = document.getElementById('btn-submit');
-    const modalTermsFull = document.getElementById('modal-terms-full');
-    const btnViewFullTerms = document.getElementById('btn-view-full-terms');
-    const btnCloseTermsModal = document.getElementById('btn-close-terms-modal');
-    const btnCancelTermsModal = document.getElementById('btn-cancel-terms-modal');
-    const btnAgreeTermsModal = document.getElementById('btn-agree-terms-modal');
-    const btnRetryTerms = document.getElementById('btn-retry-terms');
+    function getTermsModal() {
+      return document.getElementById('modal-terms-full');
+    }
 
     function openTermsModal(triggerEl) {
-      lastFocusedTrigger = triggerEl || btnViewFullTerms;
-      if (modalTermsFull) {
-        modalTermsFull.classList.remove('hidden');
-        document.body.style.overflow = 'hidden';
-        setTimeout(() => {
-          if (btnAgreeTermsModal) btnAgreeTermsModal.focus();
-        }, 50);
+      const modal = getTermsModal();
+      if (!modal) return;
+
+      lastFocusedTrigger = triggerEl || document.getElementById('btn-view-full-terms');
+
+      // Pastikan isi dimuat jika belum ada
+      if (!currentTerms) {
+        loadActiveTerms();
       }
+
+      modal.classList.remove('hidden');
+      document.body.style.overflow = 'hidden';
+
+      setTimeout(() => {
+        const agreeBtn = document.getElementById('btn-agree-terms-modal');
+        if (agreeBtn && !agreeBtn.disabled) agreeBtn.focus();
+      }, 50);
     }
 
     function closeTermsModal() {
-      if (modalTermsFull) {
-        modalTermsFull.classList.add('hidden');
+      const modal = getTermsModal();
+      if (modal) {
+        modal.classList.add('hidden');
         document.body.style.overflow = '';
       }
       if (lastFocusedTrigger && typeof lastFocusedTrigger.focus === 'function') {
@@ -1416,114 +1448,112 @@
       }
     }
 
-    // Intercept klik checkbox: jika belum pernah setuju via modal, buka modal dulu
-    if (termsCheckboxEl) {
-      termsCheckboxEl.addEventListener('click', (e) => {
-        if (!termsAgreedInModal && termsCheckboxEl.checked) {
-          e.preventDefault();
-          termsCheckboxEl.checked = false;
-          openTermsModal(termsCheckboxEl);
-          return;
-        }
-        // Jika user mencabut centang
-        if (!termsCheckboxEl.checked) {
-          termsAgreedInModal = false;
-          if (submitButtonEl) submitButtonEl.disabled = true;
-        }
-      });
+    function setupTermsModalEvents() {
+      const termsCheckboxEl = document.getElementById('terms-checkbox');
+      const submitButtonEl = document.getElementById('btn-submit');
+      const modalTermsFull = getTermsModal();
+      const btnViewFullTerms = document.getElementById('btn-view-full-terms');
+      const btnCloseTermsModal = document.getElementById('btn-close-terms-modal');
+      const btnCancelTermsModal = document.getElementById('btn-cancel-terms-modal');
+      const btnAgreeTermsModal = document.getElementById('btn-agree-terms-modal');
+      const btnRetryTerms = document.getElementById('btn-retry-terms');
 
-      termsCheckboxEl.addEventListener('change', () => {
-        if (submitButtonEl) submitButtonEl.disabled = !termsCheckboxEl.checked;
-      });
-    }
+      // Intercept klik checkbox: jika belum pernah setuju di modal -> buka modal terlebih dahulu
+      if (termsCheckboxEl) {
+        termsCheckboxEl.addEventListener('click', (e) => {
+          if (!termsAgreedInModal) {
+            e.preventDefault();
+            termsCheckboxEl.checked = false;
+            openTermsModal(termsCheckboxEl);
+            return;
+          }
+          // Jika klien mencabut centang
+          if (!termsCheckboxEl.checked) {
+            termsAgreedInModal = false;
+            if (submitButtonEl) submitButtonEl.disabled = true;
+          }
+        });
 
-    if (btnViewFullTerms) {
-      btnViewFullTerms.addEventListener('click', (e) => {
-        e.preventDefault();
-        openTermsModal(btnViewFullTerms);
-      });
-    }
-
-    if (btnCloseTermsModal) btnCloseTermsModal.addEventListener('click', closeTermsModal);
-    if (btnCancelTermsModal) btnCancelTermsModal.addEventListener('click', closeTermsModal);
-
-    if (btnAgreeTermsModal) {
-      btnAgreeTermsModal.addEventListener('click', () => {
-        termsAgreedInModal = true;
-        if (termsCheckboxEl) {
-          termsCheckboxEl.checked = true;
-          if (submitButtonEl) submitButtonEl.disabled = false;
-        }
-        closeTermsModal();
-      });
-    }
-
-    // Klik backdrop menutup modal
-    if (modalTermsFull) {
-      modalTermsFull.addEventListener('click', (e) => {
-        if (e.target === modalTermsFull) closeTermsModal();
-      });
-    }
-
-    // Tombol Esc menutup modal
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && modalTermsFull && !modalTermsFull.classList.contains('hidden')) {
-        closeTermsModal();
+        termsCheckboxEl.addEventListener('change', () => {
+          if (!termsAgreedInModal && termsCheckboxEl.checked) {
+            termsCheckboxEl.checked = false;
+            openTermsModal(termsCheckboxEl);
+            return;
+          }
+          if (submitButtonEl) submitButtonEl.disabled = !termsCheckboxEl.checked;
+        });
       }
-    });
 
-    // Focus trap di dalam modal
-    if (modalTermsFull) {
-      modalTermsFull.addEventListener('keydown', (e) => {
-        if (e.key !== 'Tab') return;
-        const focusables = modalTermsFull.querySelectorAll('button:not([disabled]), [tabindex]:not([tabindex="-1"])');
-        if (focusables.length === 0) return;
-        const first = focusables[0];
-        const last = focusables[focusables.length - 1];
-        if (e.shiftKey && document.activeElement === first) {
+      if (btnViewFullTerms) {
+        btnViewFullTerms.addEventListener('click', (e) => {
           e.preventDefault();
-          last.focus();
-        } else if (!e.shiftKey && document.activeElement === last) {
+          e.stopPropagation();
+          openTermsModal(btnViewFullTerms);
+        });
+      }
+
+      if (btnCloseTermsModal) btnCloseTermsModal.addEventListener('click', closeTermsModal);
+      if (btnCancelTermsModal) btnCancelTermsModal.addEventListener('click', closeTermsModal);
+
+      if (btnAgreeTermsModal) {
+        btnAgreeTermsModal.addEventListener('click', (e) => {
           e.preventDefault();
-          first.focus();
+          termsAgreedInModal = true;
+          if (termsCheckboxEl) {
+            termsCheckboxEl.checked = true;
+            if (submitButtonEl) submitButtonEl.disabled = false;
+          }
+          closeTermsModal();
+        });
+      }
+
+      // Klik backdrop menutup modal
+      if (modalTermsFull) {
+        modalTermsFull.addEventListener('click', (e) => {
+          if (e.target === modalTermsFull) closeTermsModal();
+        });
+      }
+
+      // Tombol Esc menutup modal
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && modalTermsFull && !modalTermsFull.classList.contains('hidden')) {
+          closeTermsModal();
         }
       });
-    }
 
-    if (btnRetryTerms) {
-      btnRetryTerms.addEventListener('click', (e) => {
-        e.preventDefault();
-        loadActiveTerms();
-      });
+      // Focus trap di dalam modal
+      if (modalTermsFull) {
+        modalTermsFull.addEventListener('keydown', (e) => {
+          if (e.key !== 'Tab') return;
+          const focusables = modalTermsFull.querySelectorAll('button:not([disabled]), [tabindex]:not([tabindex="-1"])');
+          if (focusables.length === 0) return;
+          const first = focusables[0];
+          const last = focusables[focusables.length - 1];
+          if (e.shiftKey && document.activeElement === first) {
+            e.preventDefault();
+            last.focus();
+          } else if (!e.shiftKey && document.activeElement === last) {
+            e.preventDefault();
+            first.focus();
+          }
+        });
+      }
+
+      if (btnRetryTerms) {
+        btnRetryTerms.addEventListener('click', (e) => {
+          e.preventDefault();
+          loadActiveTerms();
+        });
+      }
     }
 
     /* ── Init ── */
     loadCategories();
     loadActiveTerms();
+    setupTermsModalEvents();
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', setupTermsModalEvents);
+    }
   </script>
-
-  <!-- Modal T&C Pop-up Klien (Komponen Reusable) -->
-  <div id="modal-terms-full" class="hidden" role="dialog" aria-modal="true" aria-labelledby="modal-terms-title" style="position:fixed; inset:0; background:rgba(0,0,0,0.75); backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px); z-index:99999; display:flex; align-items:center; justify-content:center; padding:16px;">
-    <div id="modal-terms-card" style="background:var(--bg-surface); border:1px solid var(--border-color); border-radius:16px; max-width:640px; width:100%; max-height:85vh; display:flex; flex-direction:column; box-shadow:0 25px 50px -12px rgba(0,0,0,0.5); overflow:hidden;">
-      <!-- Header Modal -->
-      <div style="display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid var(--border-subtle); padding:16px 20px; background:var(--bg-elevated); flex-shrink:0;">
-        <div style="display:flex; align-items:center; gap:8px;">
-          <span style="font-size:1.2rem;">📋</span>
-          <h3 style="margin:0; font-size:1.05rem; font-weight:700; color:var(--text-1);" id="modal-terms-title">Syarat &amp; Ketentuan Layanan Studio</h3>
-        </div>
-        <button type="button" id="btn-close-terms-modal" aria-label="Tutup" style="background:none; border:none; color:var(--text-2); font-size:1.3rem; cursor:pointer; width:36px; height:36px; display:flex; align-items:center; justify-content:center; border-radius:8px;">✕</button>
-      </div>
-      <!-- Body Modal -->
-      <div id="modal-terms-content" style="overflow-y:auto; flex:1; font-size:0.86rem; color:var(--text-2); line-height:1.65; padding:20px;">
-        <p style="margin:0 0 12px 0; font-size:0.8rem; color:var(--text-3);">Harap baca dan pahami seluruh butir syarat &amp; ketentuan pemesanan di bawah ini:</p>
-        <ol id="modal-terms-list" style="margin:0; padding-left:20px; display:flex; flex-direction:column; gap:12px;"></ol>
-      </div>
-      <!-- Footer Modal -->
-      <div style="border-top:1px solid var(--border-subtle); padding:14px 20px; background:var(--bg-elevated); display:flex; justify-content:flex-end; gap:10px; flex-shrink:0;">
-        <button type="button" class="btn" id="btn-cancel-terms-modal" style="background:transparent; border:1px solid var(--border-color); color:var(--text-2); padding:9px 18px; font-size:0.85rem; border-radius:8px; cursor:pointer; font-weight:600;">Tutup</button>
-        <button type="button" class="btn btn-primary" id="btn-agree-terms-modal" style="padding:9px 20px; font-size:0.85rem; border-radius:8px; cursor:pointer; font-weight:700;">Saya Setuju</button>
-      </div>
-    </div>
-  </div>
 </body>
 </html>
