@@ -38,29 +38,111 @@
     .point-card {
       background: var(--color-surface-container-low, #1e2538);
       border: 1px solid var(--color-outline-variant, rgba(255, 255, 255, 0.08));
-      border-radius: 10px;
-      padding: 14px;
+      border-radius: 12px;
+      padding: 16px;
       display: flex;
+      flex-direction: column;
       gap: 12px;
-      align-items: flex-start;
-      transition: border-color .15s;
+      transition: border-color .15s, box-shadow .15s;
+    }
+    @media (min-width: 640px) {
+      .point-card {
+        flex-direction: row;
+        align-items: flex-start;
+        gap: 14px;
+      }
     }
     html.light .point-card {
       background: #ffffff;
       border-color: #e2e8f0;
     }
-    .point-number {
-      width: 28px;
-      height: 28px;
-      border-radius: 50%;
-      background: rgba(99, 102, 241, 0.15);
-      color: #818cf8;
-      display: flex;
+    .point-card:focus-within {
+      border-color: var(--color-primary, #818cf8);
+      box-shadow: 0 0 0 1px var(--color-primary, #818cf8);
+    }
+    .point-badge {
+      display: inline-flex;
       align-items: center;
       justify-content: center;
+      padding: 4px 10px;
+      border-radius: 6px;
+      background: rgba(99, 102, 241, 0.15);
+      color: #818cf8;
       font-weight: 700;
       font-size: 12px;
+      letter-spacing: 0.03em;
+      white-space: nowrap;
       flex-shrink: 0;
+    }
+    html.light .point-badge {
+      background: rgba(99, 102, 241, 0.12);
+      color: #4f46e5;
+    }
+    .point-textarea {
+      width: 100%;
+      background: var(--color-surface-container, #232c40);
+      border: 1px solid var(--color-outline-variant, rgba(255, 255, 255, 0.12));
+      border-radius: 8px;
+      padding: 10px 12px;
+      font-size: 14px;
+      line-height: 1.5;
+      color: var(--color-on-surface, #e2e8f5);
+      resize: none;
+      overflow-y: hidden;
+      min-height: 48px;
+      box-sizing: border-box;
+      transition: border-color .15s, height .1s ease;
+    }
+    html.light .point-textarea {
+      background: #f8fafc;
+      border-color: #cbd5e1;
+      color: #0f172a;
+    }
+    .point-textarea:focus {
+      outline: none;
+      border-color: var(--color-primary, #818cf8);
+      box-shadow: 0 0 0 1px var(--color-primary, #818cf8);
+    }
+    .point-action-btn {
+      width: 34px;
+      height: 34px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 8px;
+      background: transparent;
+      border: 1px solid var(--color-outline-variant, rgba(255, 255, 255, 0.10));
+      color: var(--color-on-surface-variant, #9ca4c0);
+      cursor: pointer;
+      transition: all .15s;
+    }
+    .point-action-btn:hover:not(:disabled) {
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--color-on-surface, #e2e8f5);
+      border-color: rgba(255, 255, 255, 0.25);
+    }
+    .point-action-btn:disabled {
+      opacity: 0.25;
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+    .point-action-btn.delete-btn:hover:not(:disabled) {
+      background: rgba(248, 113, 113, 0.15);
+      color: #f87171;
+      border-color: rgba(248, 113, 113, 0.35);
+    }
+    html.light .point-action-btn {
+      border-color: #e2e8f0;
+      color: #64748b;
+    }
+    html.light .point-action-btn:hover:not(:disabled) {
+      background: #f1f5f9;
+      color: #0f172a;
+    }
+    html.light .point-action-btn.delete-btn:hover:not(:disabled) {
+      background: #fee2e2;
+      color: #ef4444;
+      border-color: #fca5a5;
     }
 
     /* Modal Backdrop */
@@ -95,7 +177,7 @@
   </style>
 </head>
 
-<body class="bg-surface text-on-surface flex h-screen w-screen overflow-hidden">
+<body class="bg-surface text-on-surface flex min-h-screen overflow-x-hidden">
 
   <!-- Auth Guard Check (Terbuka untuk semua role: staf, admin, owner) -->
   <script>
@@ -108,10 +190,10 @@
   </script>
 
   <!-- Mobile Drawer Backdrop -->
-  <div id="sidebar-backdrop" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 hidden md:hidden transition-opacity" onclick="toggleSidebar(false)"></div>
+  <div id="sidebar-backdrop" class="sidebar-backdrop hidden lg:hidden" onclick="toggleSidebar(false)"></div>
 
   <!-- SIDEBAR NAVIGATION -->
-  <aside id="sidebar" class="fixed md:static inset-y-0 left-0 z-50 w-64 md:w-64 h-screen bg-surface-container-lowest border-r border-outline-variant/30 flex flex-col flex-shrink-0 transition-transform duration-300 ease-in-out -translate-x-full md:translate-x-0">
+  <aside id="sidebar" class="fixed left-0 top-0 h-full w-72 bg-surface-container-lowest border-r border-outline-variant/30 z-50 flex flex-col transition-transform duration-300 transform -translate-x-full lg:translate-x-0">
     <!-- Brand Header (Statis) -->
     <div class="p-5 md:p-6 border-b border-outline-variant/30 flex items-center justify-between flex-shrink-0">
       <div class="flex items-center gap-3">
@@ -119,7 +201,7 @@
         <span class="font-title-lg font-bold">Jadiphoto Admin</span>
       </div>
       <!-- Tombol Tutup Sidebar di Layar Mobile -->
-      <button type="button" class="md:hidden p-1.5 text-on-surface-variant hover:text-on-surface rounded-lg hover:bg-surface-container transition-colors" onclick="toggleSidebar(false)" aria-label="Tutup menu">
+      <button type="button" class="lg:hidden p-1.5 text-on-surface-variant hover:text-on-surface rounded-lg hover:bg-surface-container transition-colors" data-sidebar-close aria-label="Tutup menu">
         <span class="material-symbols-outlined text-xl">close</span>
       </button>
     </div>
@@ -182,18 +264,18 @@
     <!-- Footer Profil & Logout (Statis) -->
     <div class="p-4 border-t border-outline-variant/30 flex items-center justify-between flex-shrink-0 bg-surface-container-lowest">
       <div id="user-profile-badge"></div>
-      <button id="btn-logout" class="p-2 text-on-surface-variant hover:text-error transition-colors" title="Logout">
+      <button id="btn-logout" class="p-2 text-on-surface-variant hover:text-error transition-colors" title="Logout" aria-label="Keluar">
         <span class="material-symbols-outlined">logout</span>
       </button>
     </div>
   </aside>
 
-  <!-- MAIN WRAPPER (Flex-1, min-w-0 agar tidak terpotong / overflow keluar layar) -->
-  <div class="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
-    <!-- Header Topbar Mobile (Hanya tampil di mobile < md) -->
-    <header class="md:hidden flex-shrink-0 flex items-center justify-between px-4 py-3 bg-surface-container-lowest border-b border-outline-variant/30 z-30">
+  <!-- MAIN WRAPPER (Persistent offset pada Desktop >= 1024px, Full-width pada Mobile < 1024px) -->
+  <div class="admin-main-wrapper flex flex-col min-h-screen">
+    <!-- Header Topbar Mobile/Tablet (Hanya tampil di < 1024px) -->
+    <header class="lg:hidden flex-shrink-0 flex items-center justify-between px-4 py-3 bg-surface-container-lowest border-b border-outline-variant/30 z-30">
       <div class="flex items-center gap-3">
-        <button type="button" class="p-1.5 text-on-surface-variant hover:text-on-surface rounded-lg hover:bg-surface-container transition-colors" onclick="toggleSidebar(true)" aria-label="Buka Menu">
+        <button type="button" class="p-1.5 text-on-surface-variant hover:text-on-surface rounded-lg hover:bg-surface-container transition-colors" data-sidebar-toggle aria-label="Buka Menu">
           <span class="material-symbols-outlined text-2xl">menu</span>
         </button>
         <div class="flex items-center gap-2">
@@ -204,8 +286,8 @@
       <span class="text-[11px] font-semibold px-2 py-0.5 rounded bg-primary/15 text-primary">T&C</span>
     </header>
 
-    <!-- MAIN CONTENT (Scrollable Independen) -->
-    <main class="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
+    <!-- MAIN CONTENT -->
+    <main class="flex-1 p-4 sm:p-6 lg:p-8">
       <div class="max-w-5xl mx-auto w-full">
     
     <!-- Top Header -->
@@ -220,16 +302,16 @@
         </p>
       </div>
 
-      <div class="flex items-center gap-2">
-        <button type="button" class="btn btn-outline" id="btn-preview-modal">
+      <div class="flex flex-wrap items-center gap-2.5 sm:justify-end">
+        <button type="button" class="btn btn-outline" id="btn-preview-modal" aria-label="Pratinjau Tampilan T&C">
           <span class="material-symbols-outlined text-sm">visibility</span>
           Pratinjau
         </button>
-        <button type="button" class="btn btn-outline" id="btn-save-draft">
+        <button type="button" class="btn btn-outline" id="btn-save-draft" aria-label="Simpan Draf T&C">
           <span class="material-symbols-outlined text-sm">save</span>
           Simpan Draf
         </button>
-        <button type="button" class="btn btn-primary" id="btn-publish-terms">
+        <button type="button" class="btn btn-primary" id="btn-publish-terms" aria-label="Publikasikan Versi Baru T&C">
           <span class="material-symbols-outlined text-sm">publish</span>
           Publish Versi Baru
         </button>
@@ -324,34 +406,31 @@
   </main>
   </div>
 
-  <!-- MODAL PRATINJAU -->
-  <div id="preview-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true">
-    <div class="bg-surface-container-lowest border border-outline-variant/30 rounded-2xl w-full max-w-lg p-6 shadow-2xl relative text-on-surface max-h-[90vh] flex flex-col">
-      <div class="flex items-center justify-between pb-3 border-b border-outline-variant/30 mb-4">
-        <h3 class="text-lg font-bold flex items-center gap-2">
-          <span class="material-symbols-outlined text-primary">visibility</span>
-          Pratinjau Tampilan di Form Booking
-        </h3>
-        <button type="button" class="text-on-surface-variant hover:text-on-surface" id="btn-close-preview">
-          <span class="material-symbols-outlined">close</span>
+  <!-- MODAL PRATINJAU (Komponen modal yang sama persis dengan yang tampil di booking klien) -->
+  <div id="preview-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="preview-title">
+    <div class="bg-surface-container-lowest border border-outline-variant/30 rounded-2xl w-full max-w-xl shadow-2xl relative text-on-surface max-h-[85vh] flex flex-col overflow-hidden">
+      <div class="flex items-center justify-between px-6 py-4 border-b border-outline-variant/20 bg-surface-container-low flex-shrink-0">
+        <div class="flex items-center gap-2.5">
+          <span class="material-symbols-outlined text-primary text-xl">gavel</span>
+          <h3 class="text-base md:text-lg font-bold" id="preview-title">Syarat &amp; Ketentuan Layanan Studio</h3>
+        </div>
+        <button type="button" class="p-1.5 text-on-surface-variant hover:text-on-surface rounded-lg hover:bg-surface-container transition-colors" id="btn-close-preview" aria-label="Tutup Pratinjau">
+          <span class="material-symbols-outlined text-xl">close</span>
         </button>
       </div>
       
-      <div class="overflow-y-auto flex-1 pr-2 space-y-3">
-        <div class="border border-outline-variant/40 rounded-xl p-4 bg-surface-container-low">
-          <div class="font-bold text-sm mb-2" id="preview-title">Syarat & Ketentuan Studio</div>
-          <div class="text-xs text-on-surface-variant leading-relaxed max-h-48 overflow-y-auto border border-outline-variant/20 rounded-lg p-3 bg-surface-container-lowest" id="preview-points-list">
-            <!-- Poin pratinjau -->
-          </div>
-          <div class="mt-3 flex items-start gap-2 text-xs">
-            <input type="checkbox" checked disabled class="mt-0.5">
-            <span class="font-medium">Saya telah membaca, memahami, dan menyetujui seluruh Syarat & Ketentuan yang berlaku.</span>
-          </div>
-        </div>
+      <div class="overflow-y-auto flex-1 p-6 space-y-4">
+        <p class="text-xs text-on-surface-variant">
+          Berikut adalah ketentuan layanan studio yang berlaku dan harus disetujui klien saat melakukan pemesanan:
+        </p>
+        <ol id="preview-points-list" class="space-y-3 pl-5 list-decimal text-sm leading-relaxed text-on-surface">
+          <!-- Poin pratinjau -->
+        </ol>
       </div>
 
-      <div class="pt-4 border-t border-outline-variant/30 mt-4 flex justify-end">
-        <button type="button" class="btn btn-outline" id="btn-close-preview-footer">Tutup Pratinjau</button>
+      <div class="px-6 py-4 border-t border-outline-variant/20 bg-surface-container-low flex items-center justify-end gap-3 flex-shrink-0">
+        <button type="button" class="btn btn-outline" id="btn-close-preview-footer">Tutup</button>
+        <button type="button" class="btn btn-primary" id="btn-agree-preview">Saya Setuju</button>
       </div>
     </div>
   </div>
@@ -412,6 +491,41 @@
     let allVersions = [];
     let selectedVersionForDetail = null;
 
+    // Auto-grow textarea helper
+    function autoGrowTextarea(el) {
+      if (!el) return;
+      el.style.height = 'auto';
+      el.style.height = Math.max(48, el.scrollHeight + 2) + 'px';
+    }
+
+    function renderPointButtons(idx, isFirst, isLast) {
+      return `
+        <button type="button" 
+                class="point-action-btn" 
+                onclick="movePoint(${idx}, -1)" 
+                ${isFirst ? 'disabled' : ''} 
+                aria-label="Pindahkan Poin ${idx + 1} ke atas" 
+                title="Pindah ke atas">
+          <span class="material-symbols-outlined text-[18px]">arrow_upward</span>
+        </button>
+        <button type="button" 
+                class="point-action-btn" 
+                onclick="movePoint(${idx}, 1)" 
+                ${isLast ? 'disabled' : ''} 
+                aria-label="Pindahkan Poin ${idx + 1} ke bawah" 
+                title="Pindah ke bawah">
+          <span class="material-symbols-outlined text-[18px]">arrow_downward</span>
+        </button>
+        <button type="button" 
+                class="point-action-btn delete-btn" 
+                onclick="deletePoint(${idx})" 
+                aria-label="Hapus Poin ${idx + 1}" 
+                title="Hapus poin">
+          <span class="material-symbols-outlined text-[18px]">delete</span>
+        </button>
+      `;
+    }
+
     // Render daftar poin ke editor
     function renderPoints() {
       const container = document.getElementById('points-container');
@@ -426,36 +540,41 @@
         return;
       }
 
-      container.innerHTML = pointsState.map((pt, idx) => `
-        <div class="point-card" data-index="${idx}">
-          <div class="point-number">${idx + 1}</div>
-          <div class="flex-1">
-            <textarea
-              class="w-full bg-surface-container border border-outline-variant/30 rounded-lg p-2.5 text-sm focus:outline-none focus:border-primary point-textarea"
-              rows="2"
-              placeholder="Tuliskan butir syarat & ketentuan..."
-              oninput="updatePointText(${idx}, this.value)"
-            >${esc(pt)}</textarea>
+      container.innerHTML = pointsState.map((pt, idx) => {
+        const isFirst = idx === 0;
+        const isLast = idx === pointsState.length - 1;
+        return `
+          <div class="point-card" data-index="${idx}">
+            <div class="flex items-center justify-between sm:justify-start gap-2">
+              <span class="point-badge">Poin ${idx + 1}</span>
+              <div class="flex sm:hidden items-center gap-1">
+                ${renderPointButtons(idx, isFirst, isLast)}
+              </div>
+            </div>
+            <div class="flex-1 min-w-0">
+              <textarea
+                class="point-textarea"
+                placeholder="Tuliskan butir syarat & ketentuan..."
+                aria-label="Isi Poin ${idx + 1}"
+                oninput="handlePointInput(${idx}, this)"
+              >${esc(pt)}</textarea>
+            </div>
+            <div class="hidden sm:flex items-center gap-1.5 flex-shrink-0">
+              ${renderPointButtons(idx, isFirst, isLast)}
+            </div>
           </div>
-          <div class="flex items-center gap-1">
-            <button type="button" class="p-1 rounded text-on-surface-variant hover:text-on-surface hover:bg-surface-container" onclick="movePoint(${idx}, -1)" ${idx === 0 ? 'disabled style="opacity:0.3;cursor:not-allowed;"' : ''} title="Pindah ke atas">
-              <span class="material-symbols-outlined text-base">arrow_upward</span>
-            </button>
-            <button type="button" class="p-1 rounded text-on-surface-variant hover:text-on-surface hover:bg-surface-container" onclick="movePoint(${idx}, 1)" ${idx === pointsState.length - 1 ? 'disabled style="opacity:0.3;cursor:not-allowed;"' : ''} title="Pindah ke bawah">
-              <span class="material-symbols-outlined text-base">arrow_downward</span>
-            </button>
-            <button type="button" class="p-1 rounded text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 ml-1" onclick="deletePoint(${idx})" title="Hapus poin">
-              <span class="material-symbols-outlined text-base">delete</span>
-            </button>
-          </div>
-        </div>
-      `).join('');
+        `;
+      }).join('');
+
+      // Sesuaikan tinggi seluruh textarea otomatis
+      container.querySelectorAll('.point-textarea').forEach(autoGrowTextarea);
     }
 
-    window.updatePointText = function(idx, val) {
+    window.handlePointInput = function(idx, textarea) {
       if (pointsState[idx] !== undefined) {
-        pointsState[idx] = val;
+        pointsState[idx] = textarea.value;
       }
+      autoGrowTextarea(textarea);
     };
 
     window.movePoint = function(idx, dir) {
@@ -468,7 +587,7 @@
     };
 
     window.deletePoint = function(idx) {
-      if (confirm(`Hapus poin nomor ${idx + 1}?`)) {
+      if (confirm(`Apakah Anda yakin ingin menghapus Poin ${idx + 1}?`)) {
         pointsState.splice(idx, 1);
         renderPoints();
       }
@@ -670,6 +789,11 @@
     const closePreview = () => previewModal.classList.add('hidden');
     document.getElementById('btn-close-preview').addEventListener('click', closePreview);
     document.getElementById('btn-close-preview-footer').addEventListener('click', closePreview);
+    const btnAgreePrev = document.getElementById('btn-agree-preview');
+    if (btnAgreePrev) btnAgreePrev.addEventListener('click', closePreview);
+    previewModal.addEventListener('click', (e) => {
+      if (e.target === previewModal) closePreview();
+    });
 
     // Detail Versi Modal
     const detailModal = document.getElementById('detail-modal');
