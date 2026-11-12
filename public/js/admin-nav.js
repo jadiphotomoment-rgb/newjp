@@ -106,6 +106,7 @@
   // 2. DOM Ready Initializer
   document.addEventListener('DOMContentLoaded', () => {
     applyRbacUI();
+    initSidebarDrawer();
     fetchPendingApprovalsCount();
     syncAuthMe();
   });
@@ -145,12 +146,17 @@
         ? 'bg-amber-500/15 text-amber-500 border border-amber-500/30'
         : 'bg-primary/15 text-primary border border-primary/30';
       const roleIcon = isOwner ? 'crown' : 'badge';
-      const roleLabel = isOwner ? 'Administrator (Owner)' : 'Staff';
+      const roleShortLabel = isOwner ? 'Owner' : 'Staff';
+      const rawName = admin.name || admin.nama || 'Admin';
+      // Bersihkan jika nama sudah mengandung suffix peran agar tidak ganda
+      const cleanName = rawName.replace(/\s*\((Owner|Staff|Administrator)\)/gi, '').trim() || 'Admin';
+      const fullTooltip = `${cleanName} • ${roleShortLabel}`;
 
       profileContainer.innerHTML = `
-        <div class="flex items-center gap-2 px-3 py-1.5 rounded-full ${roleBadgeClass} text-xs font-semibold">
-          <span class="material-symbols-outlined text-sm leading-none">${roleIcon}</span>
-          <span>${admin.name || admin.nama || 'User'} (${roleLabel})</span>
+        <div class="flex items-center gap-2 px-3 py-1.5 rounded-full ${roleBadgeClass} text-xs font-semibold max-w-[190px]" title="${fullTooltip}">
+          <span class="material-symbols-outlined text-sm shrink-0 leading-none">${roleIcon}</span>
+          <span class="truncate">${cleanName}</span>
+          <span class="text-[10px] uppercase font-bold tracking-wider shrink-0 opacity-80">(${roleShortLabel})</span>
         </div>
       `;
     }
@@ -307,10 +313,92 @@
     modal.classList.remove('hidden');
   }
 
+  // ── Centralized Sidebar Drawer Controller (< 1024px) ─────────
+  function initSidebarDrawer() {
+    const sidebar = document.getElementById('sidebar');
+    if (!sidebar) return;
+
+    let backdrop = document.getElementById('sidebar-backdrop');
+    if (!backdrop) {
+      backdrop = document.createElement('div');
+      backdrop.id = 'sidebar-backdrop';
+      backdrop.className = 'sidebar-backdrop hidden md:hidden lg:hidden';
+      document.body.appendChild(backdrop);
+    }
+
+    function openSidebar() {
+      sidebar.classList.add('sidebar-open');
+      sidebar.classList.remove('-translate-x-full');
+      sidebar.setAttribute('data-open', 'true');
+      backdrop.classList.remove('hidden');
+      document.body.classList.add('overflow-hidden');
+    }
+
+    function closeSidebar() {
+      sidebar.classList.remove('sidebar-open');
+      sidebar.classList.add('-translate-x-full');
+      sidebar.removeAttribute('data-open');
+      backdrop.classList.add('hidden');
+      document.body.classList.remove('overflow-hidden');
+    }
+
+    window.toggleSidebar = function(open) {
+      const isCurrentlyOpen = sidebar.classList.contains('sidebar-open') || 
+                              sidebar.getAttribute('data-open') === 'true' ||
+                              !sidebar.classList.contains('-translate-x-full');
+      const willOpen = open !== undefined ? open : !isCurrentlyOpen;
+      if (willOpen) openSidebar();
+      else closeSidebar();
+    };
+
+    // Auto-bind toggle buttons on page
+    document.querySelectorAll('[data-sidebar-toggle], #btn-open-sidebar, #btn-hamburger, button[aria-label="Buka Menu"]').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        openSidebar();
+      });
+    });
+
+    // Auto-bind close buttons inside sidebar
+    sidebar.querySelectorAll('[data-sidebar-close], button[aria-label="Tutup menu"]').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        closeSidebar();
+      });
+    });
+
+    // Close on backdrop click
+    backdrop.addEventListener('click', closeSidebar);
+
+    // Close on Escape key
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && (sidebar.classList.contains('sidebar-open') || sidebar.getAttribute('data-open') === 'true')) {
+        closeSidebar();
+      }
+    });
+
+    // Close on navigation link click when on mobile/tablet
+    sidebar.querySelectorAll('nav a').forEach(a => {
+      a.addEventListener('click', () => {
+        if (window.innerWidth < 1024) closeSidebar();
+      });
+    });
+
+    // Reset when resizing to desktop
+    window.addEventListener('resize', () => {
+      if (window.innerWidth >= 1024) {
+        closeSidebar();
+      }
+    });
+  }
+
   // Export functions globally
   window.adminNav = {
     logout: handleLogout,
     openChangePassword: openChangePasswordModal,
-    refreshPendingBadge: fetchPendingApprovalsCount
+    refreshPendingBadge: fetchPendingApprovalsCount,
+    toggleSidebar: function(open) {
+      if (window.toggleSidebar) window.toggleSidebar(open);
+    }
   };
 })();
