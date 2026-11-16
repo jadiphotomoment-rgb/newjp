@@ -505,11 +505,23 @@ async function handleAdminList(req, res) {
               b.created_at, b.session_id, b.sumber_informasi, b.sumber_informasi_detail,
               b.deleted_at, b.google_event_id, b.calendar_sync_status,
               b.package_name, b.category_id, b.notes, b.version,
-              COALESCE(b.paid_amount, 0) AS paid_amount,
-              GREATEST(0, COALESCE(b.package_price, 0) - COALESCE(b.paid_amount, 0)) AS sisa_tagihan,
+              GREATEST(
+                COALESCE(b.paid_amount, 0),
+                COALESCE((SELECT SUM(amount) FROM payments WHERE booking_id = b.id AND status = 'approved'), 0)
+              ) AS paid_amount,
+              GREATEST(0, COALESCE(b.package_price, 0) - GREATEST(
+                COALESCE(b.paid_amount, 0),
+                COALESCE((SELECT SUM(amount) FROM payments WHERE booking_id = b.id AND status = 'approved'), 0)
+              )) AS sisa_tagihan,
               CASE
-                WHEN COALESCE(b.paid_amount, 0) <= 0 THEN 'belum_bayar'
-                WHEN b.package_price IS NOT NULL AND b.package_price > 0 AND COALESCE(b.paid_amount, 0) >= b.package_price THEN 'lunas'
+                WHEN GREATEST(
+                  COALESCE(b.paid_amount, 0),
+                  COALESCE((SELECT SUM(amount) FROM payments WHERE booking_id = b.id AND status = 'approved'), 0)
+                ) <= 0 THEN 'belum_bayar'
+                WHEN b.package_price IS NOT NULL AND b.package_price > 0 AND GREATEST(
+                  COALESCE(b.paid_amount, 0),
+                  COALESCE((SELECT SUM(amount) FROM payments WHERE booking_id = b.id AND status = 'approved'), 0)
+                ) >= b.package_price THEN 'lunas'
                 ELSE 'sebagian'
               END AS payment_status,
               bc.name AS category_name, bc.slug AS category_slug, bc.color,
@@ -590,6 +602,14 @@ async function handleAdminDetail(req, res) {
     booking.attachments = attachRes.rows;
     booking.pelunasan = pelRes.rows;
     booking.terms_acceptance = (termsRes && termsRes.rows) ? (termsRes.rows[0] || null) : null;
+
+    const approvedPaymentsSum = (payRes.rows || [])
+      .filter(p => p.status === 'approved')
+      .reduce((sum, p) => sum + Number(p.amount || 0), 0);
+    const fallbackDp = ['confirmed', 'menunggu_pelunasan', 'pelunasan_review'].includes(booking.status)
+      ? Number(booking.dp_amount || 0)
+      : (booking.status === 'lunas' ? Number(booking.package_price || booking.dp_amount || 0) : 0);
+    booking.paid_amount = Math.max(Number(booking.paid_amount || 0), approvedPaymentsSum, fallbackDp);
 
     res.json(booking);
   } catch (err) {
@@ -1347,10 +1367,11 @@ router.patch('/admin/:id/approve-dp', auth, auth.requirePermission('payment.veri
     client = await db.getClient();
     await client.query('BEGIN');
 
-    // Update booking → confirmed
+    // Update booking → confirmed + sync paid_amount dari payment yang disetujui
+    const dpAmount = payRes.rows[0] ? Number(payRes.rows[0].amount) : Number(booking.dp_amount || 0);
     await client.query(
-      `UPDATE bookings SET status = 'confirmed', updated_by = $1, version = version + 1 WHERE id = $2`,
-      [req.user.id, booking.id]
+      `UPDATE bookings SET status = 'confirmed', paid_amount = GREATEST(COALESCE(paid_amount, 0), $1), updated_by = $2, version = version + 1 WHERE id = $3`,
+      [dpAmount, req.user.id, booking.id]
     );
 
     // Update payment → approved
