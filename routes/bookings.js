@@ -462,9 +462,24 @@ router.post('/:id/upload-dp', async (req, res) => {
 
 // Helper function for admin booking list
 async function handleAdminList(req, res) {
-  const { category, status, month, search, sumber_informasi, include_deleted, payment_status } = req.query;
+  const { category, status, month, date, from, to, location, search, sumber_informasi, include_deleted, payment_status } = req.query;
   const params = [];
   const conditions = [];
+
+  // --- Validasi param tanggal ---
+  const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+  if (date && !DATE_RE.test(date)) return res.status(400).json({ error: 'Format tanggal tidak valid (YYYY-MM-DD)' });
+  if (from && !DATE_RE.test(from)) return res.status(400).json({ error: 'Format from tidak valid (YYYY-MM-DD)' });
+  if (to   && !DATE_RE.test(to))   return res.status(400).json({ error: 'Format to tidak valid (YYYY-MM-DD)' });
+  if (from && to && from > to)     return res.status(400).json({ error: 'from harus <= to' });
+  if (from && to) {
+    const [y1, m1, d1] = from.split('-').map(Number);
+    const [y2, m2, d2] = to.split('-').map(Number);
+    const utc1 = Date.UTC(y1, m1 - 1, d1);
+    const utc2 = Date.UTC(y2, m2 - 1, d2);
+    const diffDays = Math.round((utc2 - utc1) / 86400000);
+    if (diffDays > 366) return res.status(400).json({ error: 'Rentang maksimal 366 hari' });
+  }
 
   // Exclude soft-deleted bookings by default
   if (include_deleted !== 'true') {
@@ -473,10 +488,22 @@ async function handleAdminList(req, res) {
 
   if (category) { params.push(category); conditions.push(`bc.slug = $${params.length}`); }
   if (status)   { params.push(status);   conditions.push(`b.status = $${params.length}`); }
-  if (month)    {
+  if (location && location.trim()) {
+    params.push(`%${location.trim()}%`);
+    conditions.push(`b.location ILIKE $${params.length}`);
+  }
+  if (month) {
     params.push(month + '-01');
     params.push(month + '-31');
     conditions.push(`b.event_date BETWEEN $${params.length - 1} AND $${params.length}`);
+  }
+  // Filter tanggal baru (lebih presisi dari month)
+  if (date) {
+    params.push(date);
+    conditions.push(`b.event_date = $${params.length}`);
+  } else if (from || to) {
+    if (from) { params.push(from); conditions.push(`b.event_date >= $${params.length}`); }
+    if (to)   { params.push(to);   conditions.push(`b.event_date <= $${params.length}`); }
   }
   if (search && search.trim()) {
     params.push(`%${search.trim()}%`);
@@ -530,9 +557,13 @@ async function handleAdminList(req, res) {
        FROM bookings b
        JOIN booking_categories bc ON b.category_id = bc.id
        ${where}
-       ORDER BY b.created_at DESC`,
+       ${(date || from || to) ? 'ORDER BY b.event_date ASC, b.event_time ASC NULLS LAST' : 'ORDER BY b.created_at DESC'}`,
       params
     );
+    res.set('X-Total-Count', String(rows.length));
+    if (date || from || to || req.query.include_total === 'true') {
+      return res.json({ data: rows, total: rows.length });
+    }
     res.json(rows);
   } catch (err) {
     console.error('[bookings] admin list error:', err);
