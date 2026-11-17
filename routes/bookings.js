@@ -620,7 +620,6 @@ async function handleAdminDetail(req, res) {
 
     booking.payments = payRes.rows;
     booking.attachments = attachRes.rows;
-    booking.pelunasan = pelRes.rows;
     booking.terms_acceptance = (termsRes && termsRes.rows) ? (termsRes.rows[0] || null) : null;
 
     // Hitung status billing live dari ledger terpusat
@@ -636,6 +635,19 @@ async function handleAdminDetail(req, res) {
     ).catch(() => ({ rows: [] }));
 
     billing.riwayat = adjHistoryRes.rows || [];
+
+    // Tagihan aktif disinkronkan dengan angka live billing
+    booking.pelunasan = pelRes.rows.map(p => {
+      if (['sent', 'rejected'].includes(p.status) && billing) {
+        return {
+          ...p,
+          total_tagihan: billing.total != null ? billing.total : Number(p.total_tagihan),
+          dp_terbayar: billing.paid,
+          sisa_kekurangan: billing.sisa != null ? billing.sisa : Number(p.sisa_kekurangan)
+        };
+      }
+      return p;
+    });
 
     booking.billing = billing;
     booking.paid_amount = billing.paid;

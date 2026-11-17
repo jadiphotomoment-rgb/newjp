@@ -117,14 +117,14 @@
             <div class="grid grid-cols-2 gap-3 p-3.5 rounded-xl"
               style="background-color: var(--color-surface-container, #232c40); border: 1px solid rgba(255, 255, 255, 0.12);">
               <div>
-                <div class="text-[11px] text-on-surface-variant font-medium">DP Terbayar (Aktual)</div>
+                <div class="text-[11px] text-on-surface-variant font-medium">Jumlah Terbayar</div>
                 <div class="text-sm font-bold text-emerald-400 mt-0.5" id="tagih-dp-display">Rp 0</div>
-                <div class="text-[10px] text-on-surface-variant/80">Pembayaran DP approved</div>
+                <div class="text-[10px] text-on-surface-variant/80">DP + Penyesuaian Kas</div>
               </div>
               <div class="text-right">
-                <div class="text-[11px] text-on-surface-variant font-medium">Sisa Kekurangan</div>
+                <div class="text-[11px] text-on-surface-variant font-medium">Sisa Tagihan</div>
                 <div class="text-base font-extrabold text-primary mt-0.5" id="tagih-sisa-display">Rp 0</div>
-                <div class="text-[10px] text-on-surface-variant/80">Total — DP Terbayar</div>
+                <div class="text-[10px] text-on-surface-variant/80">Total — Terbayar</div>
               </div>
             </div>
 
@@ -493,13 +493,12 @@
       this.init();
       this.currentBooking = booking;
 
-      // Hitung DP terbayar (aktual dari payments approved tipe dp)
-      const approvedDp = (booking.payments || [])
-        .filter(p => p.status === 'approved' && p.payment_type === 'dp')
-        .reduce((sum, p) => sum + Number(p.amount || 0), 0);
-
-      const pkgPrice = Number(booking.package_price || 0);
-      const estimasiSisa = Math.max(0, pkgPrice - approvedDp);
+      // Hitung pembayaran riil dari billing terpusat (payments + penyesuaian kas)
+      const approvedDp = Number(booking.billing?.paid ?? booking.paid_amount ?? 0);
+      const pkgPrice = Number(booking.billing?.total ?? booking.package_price ?? 0);
+      const estimasiSisa = booking.billing?.sisa !== undefined
+        ? Number(booking.billing.sisa)
+        : Math.max(0, pkgPrice - approvedDp);
 
       const tagihanList = booking.pelunasan || [];
       const hasActiveTagihan = tagihanList.some(t => ['sent', 'menunggu_verifikasi'].includes(t.status));
@@ -528,6 +527,17 @@
           const isSent = t.status === 'sent';
           const isCancelled = t.status === 'cancelled';
 
+          // Untuk tagihan aktif, prioritaskan angka live billing jika tersedia
+          const displayTotal = (booking.billing && booking.billing.total != null && !isLunas)
+            ? booking.billing.total
+            : Number(t.total_tagihan);
+          const displayDp = (booking.billing && booking.billing.paid != null && !isLunas)
+            ? booking.billing.paid
+            : Number(t.dp_terbayar);
+          const displaySisa = (booking.billing && booking.billing.sisa != null && !isLunas)
+            ? booking.billing.sisa
+            : Number(t.sisa_kekurangan);
+
           const clientUrl = `${location.origin}/pelunasan?token=${t.token || ''}`;
 
           let statusBadge = '';
@@ -542,7 +552,7 @@
               <div class="flex justify-between items-start mb-2.5">
                 <div>
                   <div class="text-[11px] text-on-surface-variant font-medium">Tagihan #${t.id} · ${fmtDate(t.created_at)}</div>
-                  <div class="text-base font-extrabold text-on-surface">Rp ${fmtRp(t.sisa_kekurangan)}</div>
+                  <div class="text-base font-extrabold text-on-surface">Rp ${fmtRp(displaySisa)}</div>
                 </div>
                 ${statusBadge}
               </div>
@@ -550,11 +560,11 @@
               <div class="text-xs text-on-surface-variant space-y-1 mb-3 pt-2 border-t border-outline-variant/20">
                 <div class="flex justify-between">
                   <span>Total Tagihan:</span>
-                  <span class="font-semibold text-on-surface">Rp ${fmtRp(t.total_tagihan)}</span>
+                  <span class="font-semibold text-on-surface">Rp ${fmtRp(displayTotal)}</span>
                 </div>
                 <div class="flex justify-between">
-                  <span>DP Terbayar:</span>
-                  <span class="font-semibold text-emerald-400">Rp ${fmtRp(t.dp_terbayar)}</span>
+                  <span>Jumlah Terbayar:</span>
+                  <span class="font-semibold text-emerald-400">Rp ${fmtRp(displayDp)}</span>
                 </div>
                 ${t.catatan ? `
                   <div class="mt-2 p-2 bg-surface-container rounded text-[11px] text-on-surface italic">
