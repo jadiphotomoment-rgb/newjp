@@ -732,39 +732,76 @@
         <!-- Tab: List -->
         <div class="tab-panel active" id="panel-list">
 
-          <div class="px-5 pb-5 flex flex-wrap gap-3 border-b border-outline-variant/20">
-            <select id="filter-category" aria-label="Filter kategori"
-              class="border border-outline-variant rounded-lg px-3 py-1.5 text-sm bg-surface-container-low text-on-surface focus:ring-1 focus:ring-primary focus:outline-none">
-              <option value="">Semua Kategori</option>
-            </select>
-            <input type="text" id="filter-search" placeholder="Cari nama / WA..." aria-label="Cari nama atau nomor WA"
-              class="border border-outline-variant rounded-lg px-3 py-1.5 text-sm bg-surface-container-low text-on-surface placeholder:text-on-surface-variant/60 focus:ring-1 focus:ring-primary focus:outline-none min-w-[160px]">
-            <select id="filter-status" aria-label="Filter status"
-              class="border border-outline-variant rounded-lg px-3 py-1.5 text-sm bg-surface-container-low text-on-surface focus:ring-1 focus:ring-primary focus:outline-none">
-              <option value="">Semua Status</option>
-              <option value="pending_dp">Menunggu DP</option>
-              <option value="dp_review">Review DP</option>
-              <option value="confirmed">Dikonfirmasi</option>
-              <option value="menunggu_pelunasan">Menunggu Pelunasan</option>
-              <option value="pelunasan_review">Review Pelunasan</option>
-              <option value="lunas">Lunas</option>
-              <option value="completed">Selesai</option>
-              <option value="cancelled">Dibatalkan</option>
-            </select>
-            <select id="filter-payment-status" aria-label="Filter pembayaran"
-              class="border border-outline-variant rounded-lg px-3 py-1.5 text-sm bg-surface-container-low text-on-surface focus:ring-1 focus:ring-primary focus:outline-none">
-              <option value="">Semua Pembayaran</option>
-              <option value="belum_bayar">Belum Bayar</option>
-              <option value="sebagian">DP / Sebagian</option>
-              <option value="lunas">Lunas</option>
-            </select>
-            <input type="month" id="filter-month" aria-label="Filter bulan"
-              class="border border-outline-variant rounded-lg px-3 py-1.5 text-sm bg-surface-container-low text-on-surface focus:ring-1 focus:ring-primary focus:outline-none">
-            <button class="btn btn-primary btn-sm px-4" id="btn-filter">Filter</button>
-            <button class="btn btn-outline btn-sm px-4" id="btn-reset-filter">Reset</button>
-            <button class="btn btn-primary btn-sm px-4 ml-auto flex items-center gap-1.5" onclick="window.AdminPelunasan ? window.AdminPelunasan.openCreateBookingModal() : null">
-              <span class="material-symbols-outlined text-[16px]">add</span> Tambah Booking Manual
-            </button>
+          <div class="px-5 pb-4 border-b border-outline-variant/20 flex flex-col gap-3">
+            <!-- Baris 1: Filter Standar -->
+            <div class="flex flex-wrap items-center gap-2.5">
+              <input type="text" id="filter-search" placeholder="Cari nama / WA..." aria-label="Cari nama atau nomor WA"
+                class="border border-outline-variant rounded-lg px-3 py-1.5 text-sm bg-surface-container-low text-on-surface placeholder:text-on-surface-variant/60 focus:ring-1 focus:ring-primary focus:outline-none min-w-[160px]">
+              <select id="filter-category" aria-label="Filter kategori"
+                class="border border-outline-variant rounded-lg px-3 py-1.5 text-sm bg-surface-container-low text-on-surface focus:ring-1 focus:ring-primary focus:outline-none">
+                <option value="">Semua Kategori</option>
+              </select>
+              <select id="filter-status" aria-label="Filter status"
+                class="border border-outline-variant rounded-lg px-3 py-1.5 text-sm bg-surface-container-low text-on-surface focus:ring-1 focus:ring-primary focus:outline-none">
+                <option value="">Semua Status</option>
+                <option value="pending_dp">Menunggu DP</option>
+                <option value="dp_review">Review DP</option>
+                <option value="confirmed">Dikonfirmasi</option>
+                <option value="menunggu_pelunasan">Menunggu Pelunasan</option>
+                <option value="pelunasan_review">Review Pelunasan</option>
+                <option value="lunas">Lunas</option>
+                <option value="completed">Selesai</option>
+                <option value="cancelled">Dibatalkan</option>
+              </select>
+              <select id="filter-payment-status" aria-label="Filter pembayaran"
+                class="border border-outline-variant rounded-lg px-3 py-1.5 text-sm bg-surface-container-low text-on-surface focus:ring-1 focus:ring-primary focus:outline-none">
+                <option value="">Semua Pembayaran</option>
+                <option value="belum_bayar">Belum Bayar</option>
+                <option value="sebagian">DP / Sebagian</option>
+                <option value="lunas">Lunas</option>
+              </select>
+              <input type="month" id="filter-month" aria-label="Filter bulan" title="Filter per bulan"
+                class="border border-outline-variant rounded-lg px-3 py-1.5 text-sm bg-surface-container-low text-on-surface focus:ring-1 focus:ring-primary focus:outline-none">
+              <button class="btn btn-primary btn-sm px-4" id="btn-filter" aria-label="Terapkan filter">Filter</button>
+              <button class="btn btn-outline btn-sm px-4" id="btn-reset-filter" aria-label="Reset semua filter">Reset</button>
+              <button class="btn btn-primary btn-sm px-4 ml-auto flex items-center gap-1.5" onclick="window.AdminPelunasan ? window.AdminPelunasan.openCreateBookingModal() : null">
+                <span class="material-symbols-outlined text-[16px]">add</span> Tambah Booking Manual
+              </button>
+            </div>
+
+            <!-- Baris 2: Filter Tanggal & Presets -->
+            <div class="flex flex-wrap items-center justify-between gap-2.5 pt-2 border-t border-outline-variant/10 text-xs">
+              <div class="flex flex-wrap items-center gap-2">
+                <span class="text-on-surface-variant font-medium flex items-center gap-1">
+                  <span class="material-symbols-outlined text-[15px]">calendar_today</span> Tanggal:
+                </span>
+                <input type="date" id="filter-date" aria-label="Filter satu tanggal" title="Pilih satu tanggal spesifik"
+                  class="border border-outline-variant rounded-lg px-2.5 py-1 text-xs bg-surface-container-low text-on-surface focus:ring-1 focus:ring-primary focus:outline-none">
+                <span class="text-on-surface-variant/60 font-medium px-0.5">atau:</span>
+                <input type="date" id="filter-from" aria-label="Dari tanggal" title="Dari tanggal"
+                  class="border border-outline-variant rounded-lg px-2.5 py-1 text-xs bg-surface-container-low text-on-surface focus:ring-1 focus:ring-primary focus:outline-none">
+                <span class="text-on-surface-variant/60">s/d</span>
+                <input type="date" id="filter-to" aria-label="Sampai tanggal" title="Sampai tanggal"
+                  class="border border-outline-variant rounded-lg px-2.5 py-1 text-xs bg-surface-container-low text-on-surface focus:ring-1 focus:ring-primary focus:outline-none">
+              </div>
+
+              <!-- Quick buttons -->
+              <div class="flex flex-wrap items-center gap-1.5" id="date-quick-buttons">
+                <span class="text-on-surface-variant/70 text-[11px] mr-1">Cepat:</span>
+                <button type="button" class="btn-quick-date px-2 py-1 rounded-md border border-outline-variant/40 bg-surface-container-low text-on-surface-variant hover:text-primary hover:border-primary transition-all text-xs" data-preset="today">Hari ini</button>
+                <button type="button" class="btn-quick-date px-2 py-1 rounded-md border border-outline-variant/40 bg-surface-container-low text-on-surface-variant hover:text-primary hover:border-primary transition-all text-xs" data-preset="tomorrow">Besok</button>
+                <button type="button" class="btn-quick-date px-2 py-1 rounded-md border border-outline-variant/40 bg-surface-container-low text-on-surface-variant hover:text-primary hover:border-primary transition-all text-xs" data-preset="this_week">Minggu ini</button>
+                <button type="button" class="btn-quick-date px-2 py-1 rounded-md border border-outline-variant/40 bg-surface-container-low text-on-surface-variant hover:text-primary hover:border-primary transition-all text-xs" data-preset="this_month">Bulan ini</button>
+                <button type="button" class="btn-quick-date px-2 py-1 rounded-md border border-outline-variant/40 bg-surface-container-low text-on-surface-variant hover:text-primary hover:border-primary transition-all text-xs" data-preset="next_7">7 hari ke depan</button>
+                <button type="button" class="btn-quick-date px-2 py-1 rounded-md border border-outline-variant/40 bg-surface-container-low text-on-surface-variant hover:text-primary hover:border-primary transition-all text-xs" data-preset="next_30">30 hari ke depan</button>
+              </div>
+            </div>
+
+            <!-- Baris 3: Status / Hasil Filter Teks -->
+            <div id="filter-result-bar" class="hidden flex items-center justify-between text-xs pt-1">
+              <span id="filter-result-text" class="font-medium text-primary flex items-center gap-1"></span>
+              <button id="btn-clear-date-filter" type="button" class="text-on-surface-variant hover:text-red-400 text-xs underline cursor-pointer">Hapus filter tanggal</button>
+            </div>
           </div>
 
           <div id="bookings-loading" class="loading-overlay h-64">
@@ -1022,20 +1059,67 @@
       } catch (e) { }
     }
 
+    function getTodayWIB() {
+      return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jakarta' }).format(new Date());
+    }
+
+    function addDaysWIB(ymdStr, days) {
+      const [y, m, d] = ymdStr.split('-').map(Number);
+      const utc = Date.UTC(y, m - 1, d) + (days * 86400000);
+      const dObj = new Date(utc);
+      const ny = dObj.getUTCFullYear();
+      const nm = String(dObj.getUTCMonth() + 1).padStart(2, '0');
+      const nd = String(dObj.getUTCDate()).padStart(2, '0');
+      return `${ny}-${nm}-${nd}`;
+    }
+
+    function formatIndoDate(ymdStr) {
+      if (!ymdStr) return '';
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+      const [y, m, d] = ymdStr.split('-').map(Number);
+      return `${d} ${months[m - 1]} ${y}`;
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
     let bookings = [];
     async function loadBookings() {
       const category = document.getElementById('filter-category')?.value;
       const status = document.getElementById('filter-status')?.value;
       const payment_status = document.getElementById('filter-payment-status')?.value;
       const month = document.getElementById('filter-month')?.value;
+      const date = document.getElementById('filter-date')?.value;
+      const from = document.getElementById('filter-from')?.value;
+      const to = document.getElementById('filter-to')?.value;
       const search = document.getElementById('filter-search')?.value?.trim();
-      const qs = new URLSearchParams({
-        ...(category && { category }),
-        ...(status && { status }),
-        ...(payment_status && { payment_status }),
-        ...(month && { month }),
-        ...(search && { search })
-      });
+
+      const qs = new URLSearchParams();
+      if (category) qs.set('category', category);
+      if (status) qs.set('status', status);
+      if (payment_status) qs.set('payment_status', payment_status);
+      if (search) qs.set('search', search);
+
+      if (date) {
+        qs.set('date', date);
+      } else if (from || to) {
+        if (from) qs.set('from', from);
+        if (to) qs.set('to', to);
+      } else if (month) {
+        qs.set('month', month);
+      }
+
+      // Simpan filter ke URL tanpa reload browser
+      const qsStr = qs.toString();
+      const newUrl = qsStr ? `${window.location.pathname}?${qsStr}` : window.location.pathname;
+      window.history.replaceState({}, '', newUrl);
 
       document.getElementById('bookings-loading').classList.remove('hidden');
       document.getElementById('bookings-empty').classList.add('hidden');
@@ -1043,15 +1127,43 @@
       document.getElementById('bookings-cards').classList.add('hidden');
 
       try {
-        const res = await fetch(`/api/bookings/admin/list?${qs}`, { headers: H });
+        const res = await fetch(`/api/bookings/admin/list?${qsStr}`, { headers: H });
         if (res.status === 401 || res.status === 403) { localStorage.clear(); location.href = '/admin/login.html'; return; }
-        bookings = await res.json();
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          toast(errData.error || 'Gagal memuat booking', 'error');
+          return;
+        }
+        const resJson = await res.json();
+        bookings = Array.isArray(resJson) ? resJson : (resJson.data || []);
+        const totalCount = Array.isArray(resJson) ? resJson.length : (resJson.total ?? bookings.length);
+
         renderBookings(bookings);
         updateStats(bookings);
+        updateFilterResultText(date, from, to, totalCount);
       } catch (e) {
         toast('Gagal memuat booking', 'error');
       } finally {
         document.getElementById('bookings-loading').classList.add('hidden');
+      }
+    }
+
+    function updateFilterResultText(date, from, to, totalCount) {
+      const bar = document.getElementById('filter-result-bar');
+      const textEl = document.getElementById('filter-result-text');
+      if (!bar || !textEl) return;
+
+      if (date) {
+        bar.classList.remove('hidden');
+        textEl.innerHTML = `<span class="material-symbols-outlined text-[15px]">event</span> <strong>${totalCount} sesi</strong> pada ${escapeHtml(formatIndoDate(date))}`;
+      } else if (from || to) {
+        bar.classList.remove('hidden');
+        const fromLabel = from ? escapeHtml(formatIndoDate(from)) : 'Awal';
+        const toLabel = to ? escapeHtml(formatIndoDate(to)) : 'Sekarang';
+        textEl.innerHTML = `<span class="material-symbols-outlined text-[15px]">date_range</span> <strong>${totalCount} sesi</strong> pada ${fromLabel} s/d ${toLabel}`;
+      } else {
+        bar.classList.add('hidden');
+        textEl.textContent = '';
       }
     }
 
@@ -2096,12 +2208,164 @@
       }
     }
 
+    function initDateFilters() {
+      // 1. Restore dari URL jika ada
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get('category')) {
+        const el = document.getElementById('filter-category');
+        if (el) el.value = urlParams.get('category');
+      }
+      if (urlParams.get('status')) {
+        const el = document.getElementById('filter-status');
+        if (el) el.value = urlParams.get('status');
+      }
+      if (urlParams.get('payment_status')) {
+        const el = document.getElementById('filter-payment-status');
+        if (el) el.value = urlParams.get('payment_status');
+      }
+      if (urlParams.get('search')) {
+        const el = document.getElementById('filter-search');
+        if (el) el.value = urlParams.get('search');
+      }
+      if (urlParams.get('date')) {
+        const el = document.getElementById('filter-date');
+        if (el) el.value = urlParams.get('date');
+      } else if (urlParams.get('from') || urlParams.get('to')) {
+        if (urlParams.get('from')) {
+          const el = document.getElementById('filter-from');
+          if (el) el.value = urlParams.get('from');
+        }
+        if (urlParams.get('to')) {
+          const el = document.getElementById('filter-to');
+          if (el) el.value = urlParams.get('to');
+        }
+      } else if (urlParams.get('month')) {
+        const el = document.getElementById('filter-month');
+        if (el) el.value = urlParams.get('month');
+      }
+
+      // 2. Mutual exclusion listeners antar input tanggal
+      const dateEl = document.getElementById('filter-date');
+      const fromEl = document.getElementById('filter-from');
+      const toEl = document.getElementById('filter-to');
+      const monthEl = document.getElementById('filter-month');
+
+      if (dateEl) {
+        dateEl.addEventListener('change', () => {
+          if (dateEl.value) {
+            if (fromEl) fromEl.value = '';
+            if (toEl) toEl.value = '';
+            if (monthEl) monthEl.value = '';
+            loadBookings();
+          }
+        });
+      }
+
+      if (fromEl) {
+        fromEl.addEventListener('change', () => {
+          if (fromEl.value) {
+            if (dateEl) dateEl.value = '';
+            if (monthEl) monthEl.value = '';
+            if (toEl && toEl.value) loadBookings();
+          }
+        });
+      }
+
+      if (toEl) {
+        toEl.addEventListener('change', () => {
+          if (toEl.value) {
+            if (dateEl) dateEl.value = '';
+            if (monthEl) monthEl.value = '';
+            if (fromEl && fromEl.value) loadBookings();
+          }
+        });
+      }
+
+      if (monthEl) {
+        monthEl.addEventListener('change', () => {
+          if (monthEl.value) {
+            if (dateEl) dateEl.value = '';
+            if (fromEl) fromEl.value = '';
+            if (toEl) toEl.value = '';
+            loadBookings();
+          }
+        });
+      }
+
+      // 3. Tombol Cepat (Presets)
+      document.querySelectorAll('.btn-quick-date').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const preset = e.currentTarget.dataset.preset;
+          applyDatePreset(preset);
+        });
+      });
+
+      // 4. Tombol hapus filter tanggal
+      const btnClearDate = document.getElementById('btn-clear-date-filter');
+      if (btnClearDate) {
+        btnClearDate.addEventListener('click', () => {
+          if (dateEl) dateEl.value = '';
+          if (fromEl) fromEl.value = '';
+          if (toEl) toEl.value = '';
+          loadBookings();
+        });
+      }
+    }
+
+    function applyDatePreset(preset) {
+      const today = getTodayWIB();
+      const dateEl = document.getElementById('filter-date');
+      const fromEl = document.getElementById('filter-from');
+      const toEl = document.getElementById('filter-to');
+      const monthEl = document.getElementById('filter-month');
+      if (monthEl) monthEl.value = '';
+
+      if (preset === 'today') {
+        if (dateEl) dateEl.value = today;
+        if (fromEl) fromEl.value = '';
+        if (toEl) toEl.value = '';
+      } else if (preset === 'tomorrow') {
+        if (dateEl) dateEl.value = addDaysWIB(today, 1);
+        if (fromEl) fromEl.value = '';
+        if (toEl) toEl.value = '';
+      } else if (preset === 'this_week') {
+        if (dateEl) dateEl.value = '';
+        const [y, m, d] = today.split('-').map(Number);
+        const dayOfWeek = new Date(Date.UTC(y, m - 1, d)).getUTCDay();
+        const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+        const monday = addDaysWIB(today, diffToMonday);
+        const sunday = addDaysWIB(monday, 6);
+        if (fromEl) fromEl.value = monday;
+        if (toEl) toEl.value = sunday;
+      } else if (preset === 'this_month') {
+        if (dateEl) dateEl.value = '';
+        const [y, m] = today.split('-').map(Number);
+        const firstDay = `${y}-${String(m).padStart(2, '0')}-01`;
+        const lastDayDate = new Date(Date.UTC(y, m, 0));
+        const lastDay = `${y}-${String(m).padStart(2, '0')}-${String(lastDayDate.getUTCDate()).padStart(2, '0')}`;
+        if (fromEl) fromEl.value = firstDay;
+        if (toEl) toEl.value = lastDay;
+      } else if (preset === 'next_7') {
+        if (dateEl) dateEl.value = '';
+        if (fromEl) fromEl.value = today;
+        if (toEl) toEl.value = addDaysWIB(today, 6);
+      } else if (preset === 'next_30') {
+        if (dateEl) dateEl.value = '';
+        if (fromEl) fromEl.value = today;
+        if (toEl) toEl.value = addDaysWIB(today, 29);
+      }
+      loadBookings();
+    }
+
     document.getElementById('btn-filter').addEventListener('click', loadBookings);
     document.getElementById('btn-reset-filter').addEventListener('click', () => {
       document.getElementById('filter-category').value = '';
       document.getElementById('filter-status').value = '';
       if (document.getElementById('filter-payment-status')) document.getElementById('filter-payment-status').value = '';
       document.getElementById('filter-month').value = '';
+      if (document.getElementById('filter-date')) document.getElementById('filter-date').value = '';
+      if (document.getElementById('filter-from')) document.getElementById('filter-from').value = '';
+      if (document.getElementById('filter-to')) document.getElementById('filter-to').value = '';
       const searchEl = document.getElementById('filter-search');
       if (searchEl) searchEl.value = '';
       loadBookings();
@@ -2294,6 +2558,7 @@
     // Initialize
     checkGoogleStatus();
     loadCategories();
+    initDateFilters();
     loadBookings();
   </script>
   <script src="/js/admin-nav.js?v=5"></script>

@@ -4,3 +4,4 @@
 CREATE INDEX IF NOT EXISTS idx_bookings_event_date_time
   ON bookings (event_date, event_time)
   WHERE deleted_at IS NULL;
+
