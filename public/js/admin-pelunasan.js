@@ -708,27 +708,41 @@
         return;
       }
 
-      const approvedDp = Number(b.billing?.paid ?? b.paid_amount ?? 0);
+      // Ambil nilai terbayar dari billing terpusat (paid = DP + penyesuaian kas)
+      // Fallback: fetch langsung dari server agar selalu akurat
+      const fillModal = (billingPaid, pkgTotal) => {
+        document.getElementById('tagih-booking-id').value = b.id;
+        document.getElementById('tagih-client-name').textContent = b.client_name;
+        document.getElementById('tagih-client-info').textContent = `${b.client_phone} · ${fmtDate(b.event_date)}`;
+        document.getElementById('tagih-package-badge').textContent = b.package_name || b.category_name || 'Paket';
+        document.getElementById('tagih-total-input').value = pkgTotal || b.package_price || '';
+        document.getElementById('tagih-dp-display').textContent = `Rp ${fmtRp(billingPaid)}`;
+        document.getElementById('tagih-catatan-input').value = '';
+        document.getElementById('tagih-send-wa').checked = true;
+        this.recalculateSisa();
+        const modal = document.getElementById('modal-tagih-pelunasan');
+        if (modal) { modal.style.display = 'flex'; modal.style.zIndex = '99999'; }
+      };
 
-      const pkgPrice = Number(b.package_price || 0);
-
-      document.getElementById('tagih-booking-id').value = b.id;
-      document.getElementById('tagih-client-name').textContent = b.client_name;
-      document.getElementById('tagih-client-info').textContent = `${b.client_phone} · ${fmtDate(b.event_date)}`;
-      document.getElementById('tagih-package-badge').textContent = b.package_name || b.category_name || 'Paket';
-
-      // Prefill total dengan package_price jika ada
-      document.getElementById('tagih-total-input').value = pkgPrice || '';
-      document.getElementById('tagih-dp-display').textContent = `Rp ${fmtRp(approvedDp)}`;
-      document.getElementById('tagih-catatan-input').value = '';
-      document.getElementById('tagih-send-wa').checked = true;
-
-      this.recalculateSisa();
-
-      const modal = document.getElementById('modal-tagih-pelunasan');
-      if (modal) {
-        modal.style.display = 'flex';
-        modal.style.zIndex = '99999';
+      // Gunakan data billing dari response API detail jika tersedia
+      if (b.billing && b.billing.paid !== undefined) {
+        fillModal(b.billing.paid, b.billing.total ?? Number(b.package_price || 0));
+      } else {
+        // Fallback: fetch live billing dari server
+        const token = window.TOKEN || localStorage.getItem('sf_token');
+        fetch(`/api/bookings/admin/detail/${b.id}`, { headers: { 'Authorization': `Bearer ${token}` } })
+          .then(r => r.json())
+          .then(data => {
+            const paid = data.billing?.paid ?? data.paid_amount ?? 0;
+            const total = data.billing?.total ?? data.package_price ?? 0;
+            // Update currentBooking dengan data terbaru
+            if (this.currentBooking && this.currentBooking.id == b.id) {
+              this.currentBooking.billing = data.billing;
+              this.currentBooking.paid_amount = paid;
+            }
+            fillModal(paid, total);
+          })
+          .catch(() => fillModal(Number(b.paid_amount || 0), Number(b.package_price || 0)));
       }
     },
 
