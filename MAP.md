@@ -26,3 +26,10 @@
 ## 4. Frontend & Integrasi UI
 - File: `public/admin/bookings.html` (`approveDP(id, fromPanel)`, `rejectDP(id, fromPanel)`, `#detail-panel`)
 - Modal & Konfirmasi: Dialog konfirmasi, anti double-submit (disabled saat proses), optimistic reload via `version`
+
+## 5. Tagihan Terpusat (Billing Module)
+- **Modul Inti**: `services/billing.js` (`computeBilling`, `syncBilling`, `setPaidAmount`).
+- **Konsep**: *Single Source of Truth* diturunkan dari ledger transaksi riil: total `payments` approved (DP, pelunasan, dll) ditambah selisih penyesuaian manual owner di `financial_entries` (`sumber_tipe = 'booking_adjustment'`).
+- **Sinkronisasi Otomatis**: `syncBilling` dipanggil secara atomik dalam transaksi setiap ada mutasi pembayaran (approve DP, verifikasi pelunasan, hapus payment, ubah harga paket, penyesuaian nominal dibayar). Status booking otomatis sinkron (`lunas` bila `paid >= total`), dan link tagihan `pelunasan` aktif diperbarui/dibatalkan otomatis saat lunas.
+- **Endpoint Owner**: `POST /api/admin/bookings/:id/billing/resync` untuk sinkronisasi ulang manual bila diperlukan.
+- **Skrip Reconcile**: `scripts/billing-reconcile.js` (mode default dry-run, flag `--apply` untuk perbaikan massal aman).

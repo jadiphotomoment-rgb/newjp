@@ -268,12 +268,11 @@ async function approveBooking({
     const bookUpdate = await client.query(
       `UPDATE bookings
        SET status = 'confirmed',
-           paid_amount = GREATEST(COALESCE(paid_amount, 0), $1),
-           updated_by = $2,
+           updated_by = $1,
            version = version + 1
-       WHERE id = $3 AND status = 'dp_review'
+       WHERE id = $2 AND status = 'dp_review'
        RETURNING id, client_name, client_phone, event_date, event_time, status, version, updated_by, paid_amount`,
-      [nominalFinal, actor.id, booking.id]
+      [actor.id, booking.id]
     );
 
     if (bookUpdate.rowCount === 0) {

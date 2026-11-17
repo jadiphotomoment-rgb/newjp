@@ -1375,11 +1375,10 @@ router.patch('/admin/:id/approve-dp', auth, auth.requirePermission('payment.veri
     client = await db.getClient();
     await client.query('BEGIN');
 
-    // Update booking → confirmed + sync paid_amount dari payment yang disetujui
-    const dpAmount = payRes.rows[0] ? Number(payRes.rows[0].amount) : Number(booking.dp_amount || 0);
+    // Update booking → confirmed
     await client.query(
-      `UPDATE bookings SET status = 'confirmed', paid_amount = GREATEST(COALESCE(paid_amount, 0), $1), updated_by = $2, version = version + 1 WHERE id = $3`,
-      [dpAmount, req.user.id, booking.id]
+      `UPDATE bookings SET status = 'confirmed', updated_by = $1, version = version + 1 WHERE id = $2`,
+      [req.user.id, booking.id]
     );
 
     // Update payment → approved
