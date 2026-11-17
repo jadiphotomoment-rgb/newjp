@@ -123,6 +123,9 @@ router.get('/token/:token', async (req, res) => {
       ),
     ]);
 
+    // Hitung billing live untuk memastikan angka akurat terpusat
+    const liveBilling = await computeBilling(db, tagihan.booking_id);
+
     // Tentukan metode yang ditampilkan berdasarkan slug kategori
     // graduation → QRIS statis; event, corporation → rekening bank
     // lainnya → keduanya (klien pilih)
@@ -134,10 +137,11 @@ router.get('/token/:token', async (req, res) => {
     res.json({
       tagihan: {
         id: tagihan.id,
-        status: tagihan.status,
-        total_tagihan: tagihan.total_tagihan,
-        dp_terbayar: tagihan.dp_terbayar,
-        sisa_kekurangan: tagihan.sisa_kekurangan,
+        status: (liveBilling.sisa === 0) ? 'lunas' : tagihan.status,
+        total_tagihan: liveBilling.total != null ? liveBilling.total : Number(tagihan.total_tagihan),
+        dp_terbayar: liveBilling.paid,
+        sisa_kekurangan: liveBilling.sisa != null ? liveBilling.sisa : Number(tagihan.sisa_kekurangan),
+        status_bayar: liveBilling.status_bayar,
         catatan: tagihan.catatan,
         bukti_file_url: tagihan.bukti_file_url,
         bukti_filename: tagihan.bukti_filename,
@@ -332,15 +336,10 @@ router.post('/', auth, auth.requirePermission('tagihan.send'), async (req, res) 
 
   let dbClient;
   try {
-    // 2. Ambil data booking + DP terbayar yang sudah disetujui
+    // 2. Ambil data booking
     const bookRes = await db.query(
       `SELECT b.id, b.client_name, b.client_phone, b.event_date, b.package_name, b.package_price,
-              b.status, b.deleted_at, b.version,
-              COALESCE(
-                (SELECT SUM(amount) FROM payments
-                 WHERE booking_id = b.id AND status = 'approved' AND payment_type = 'dp'),
-                0
-              ) AS dp_terbayar_aktual
+              b.status, b.deleted_at, b.version
        FROM bookings b
        WHERE b.id = $1`,
       [bId]
@@ -384,8 +383,9 @@ router.post('/', auth, auth.requirePermission('tagihan.send'), async (req, res) 
       }
     }
 
-    // Hitung sisa di server — klien tidak bisa manipulasi
-    const dpInt   = Math.round(Number(booking.dp_terbayar_aktual));
+    // Hitung DP / pembayaran terbayar aktual dari computeBilling terpusat
+    const liveBilling = await computeBilling(db, bId);
+    const dpInt   = liveBilling.paid;
     const sisaInt = totalInt - dpInt;
 
     if (sisaInt <= 0) {
@@ -550,20 +550,26 @@ router.post('/:id/send-wa', auth, auth.requirePermission('tagihan.send'), async 
     const packageName = tagihan.resolved_package_name || 'Layanan Fotografi';
     const catatan_section = tagihan.catatan ? `\n📌 *Catatan:* ${tagihan.catatan}\n` : '';
 
+    // Hitung live billing agar pesan WA selalu berisi angka terpusat yang benar
+    const liveBilling = await computeBilling(db, tagihan.booking_id);
+    const totalTagihan = liveBilling.total != null ? liveBilling.total : Number(tagihan.total_tagihan);
+    const dpTerbayar = liveBilling.paid;
+    const sisaKekurangan = liveBilling.sisa != null ? liveBilling.sisa : Number(tagihan.sisa_kekurangan);
+
     // Ambil template dari DB, fallback ke pesan terformat rapi
     let msg = await getWaTemplate('pelunasan_tagihan', {
       client_name: tagihan.client_name,
       package_name: packageName,
       event_date: fmtDate(tagihan.event_date),
-      total_tagihan: fmtRp(tagihan.total_tagihan),
-      dp_terbayar: fmtRp(tagihan.dp_terbayar),
-      sisa_kekurangan: fmtRp(tagihan.sisa_kekurangan),
+      total_tagihan: fmtRp(totalTagihan),
+      dp_terbayar: fmtRp(dpTerbayar),
+      sisa_kekurangan: fmtRp(sisaKekurangan),
       catatan_section,
       link_pelunasan: linkPelunasan,
     });
 
     if (!msg) {
-      msg = `💰 *Tagihan Pelunasan — Jadiphoto.Moment*\n\nHalo ${tagihan.client_name},\n\nBerikut rincian tagihan pelunasan booking Anda:\n\n📦 *Paket:* ${packageName}\n📅 *Tanggal Acara:* ${fmtDate(tagihan.event_date)}\n💵 *Total Tagihan:* Rp ${fmtRp(tagihan.total_tagihan)}\n✅ *DP Terbayar:* Rp ${fmtRp(tagihan.dp_terbayar)}\n🔴 *Sisa Pelunasan:* Rp ${fmtRp(tagihan.sisa_kekurangan)}\n${catatan_section}\nSilakan selesaikan pembayaran melalui link resmi berikut:\n🔗 ${linkPelunasan}\n\nTerima kasih 🙏`;
+      msg = `💰 *Tagihan Pelunasan — Jadiphoto.Moment*\n\nHalo ${tagihan.client_name},\n\nBerikut rincian tagihan pelunasan booking Anda:\n\n📦 *Paket:* ${packageName}\n📅 *Tanggal Acara:* ${fmtDate(tagihan.event_date)}\n💵 *Total Tagihan:* Rp ${fmtRp(totalTagihan)}\n✅ *DP Terbayar:* Rp ${fmtRp(dpTerbayar)}\n🔴 *Sisa Pelunasan:* Rp ${fmtRp(sisaKekurangan)}\n${catatan_section}\nSilakan selesaikan pembayaran melalui link resmi berikut:\n🔗 ${linkPelunasan}\n\nTerima kasih 🙏`;
     }
 
     // Kirim WA via Fonnte Gateway

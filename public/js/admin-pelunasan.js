@@ -698,9 +698,7 @@
         return;
       }
 
-      const approvedDp = (b.payments || [])
-        .filter(p => p.status === 'approved' && p.payment_type === 'dp')
-        .reduce((sum, p) => sum + Number(p.amount || 0), 0);
+      const approvedDp = Number(b.billing?.paid ?? b.paid_amount ?? 0);
 
       const pkgPrice = Number(b.package_price || 0);
 
@@ -731,9 +729,7 @@
 
     recalculateSisa() {
       const b = this.currentBooking || window.currentBookingData;
-      const approvedDp = b ? (b.payments || [])
-        .filter(p => p.status === 'approved' && p.payment_type === 'dp')
-        .reduce((sum, p) => sum + Number(p.amount || 0), 0) : 0;
+      const approvedDp = b ? Number(b.billing?.paid ?? b.paid_amount ?? 0) : 0;
 
       const totalVal = Number(document.getElementById('tagih-total-input')?.value || 0);
       const sisa = totalVal - approvedDp;

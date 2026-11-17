@@ -533,23 +533,11 @@ async function handleAdminList(req, res) {
               b.created_at, b.session_id, b.sumber_informasi, b.sumber_informasi_detail,
               b.deleted_at, b.google_event_id, b.calendar_sync_status,
               b.package_name, b.category_id, b.notes, b.version,
-              GREATEST(
-                COALESCE(b.paid_amount, 0),
-                COALESCE((SELECT SUM(amount) FROM payments WHERE booking_id = b.id AND status = 'approved'), 0)
-              ) AS paid_amount,
-              GREATEST(0, COALESCE(b.package_price, 0) - GREATEST(
-                COALESCE(b.paid_amount, 0),
-                COALESCE((SELECT SUM(amount) FROM payments WHERE booking_id = b.id AND status = 'approved'), 0)
-              )) AS sisa_tagihan,
+              COALESCE(b.paid_amount, 0) AS paid_amount,
+              GREATEST(0, COALESCE(b.package_price, 0) - COALESCE(b.paid_amount, 0)) AS sisa_tagihan,
               CASE
-                WHEN GREATEST(
-                  COALESCE(b.paid_amount, 0),
-                  COALESCE((SELECT SUM(amount) FROM payments WHERE booking_id = b.id AND status = 'approved'), 0)
-                ) <= 0 THEN 'belum_bayar'
-                WHEN b.package_price IS NOT NULL AND b.package_price > 0 AND GREATEST(
-                  COALESCE(b.paid_amount, 0),
-                  COALESCE((SELECT SUM(amount) FROM payments WHERE booking_id = b.id AND status = 'approved'), 0)
-                ) >= b.package_price THEN 'lunas'
+                WHEN COALESCE(b.paid_amount, 0) <= 0 THEN 'belum_bayar'
+                WHEN b.package_price IS NOT NULL AND b.package_price > 0 AND COALESCE(b.paid_amount, 0) >= b.package_price THEN 'lunas'
                 ELSE 'sebagian'
               END AS payment_status,
               bc.name AS category_name, bc.slug AS category_slug, bc.color,
@@ -635,13 +623,24 @@ async function handleAdminDetail(req, res) {
     booking.pelunasan = pelRes.rows;
     booking.terms_acceptance = (termsRes && termsRes.rows) ? (termsRes.rows[0] || null) : null;
 
-    const approvedPaymentsSum = (payRes.rows || [])
-      .filter(p => p.status === 'approved')
-      .reduce((sum, p) => sum + Number(p.amount || 0), 0);
-    const fallbackDp = ['confirmed', 'menunggu_pelunasan', 'pelunasan_review'].includes(booking.status)
-      ? Number(booking.dp_amount || 0)
-      : (booking.status === 'lunas' ? Number(booking.package_price || booking.dp_amount || 0) : 0);
-    booking.paid_amount = Math.max(Number(booking.paid_amount || 0), approvedPaymentsSum, fallbackDp);
+    // Hitung status billing live dari ledger terpusat
+    const billing = await computeBilling(db, booking.id);
+
+    // Ambil riwayat penyesuaian khusus booking_adjustment
+    const adjHistoryRes = await db.query(
+      `SELECT id, tanggal, tipe, kategori, nominal, catatan, created_at
+       FROM financial_entries
+       WHERE booking_id = $1 AND sumber_tipe = 'booking_adjustment'
+       ORDER BY id DESC`,
+      [booking.id]
+    ).catch(() => ({ rows: [] }));
+
+    billing.riwayat = adjHistoryRes.rows || [];
+
+    booking.billing = billing;
+    booking.paid_amount = billing.paid;
+    booking.sisa_tagihan = billing.sisa != null ? billing.sisa : 0;
+    booking.payment_status = billing.status_bayar;
 
     res.json(booking);
   } catch (err) {
@@ -651,6 +650,35 @@ async function handleAdminDetail(req, res) {
 }
 
 router.get('/admin/detail/:id', auth, auth.requirePermission('booking.view'), handleAdminDetail);
+
+// POST /api/admin/bookings/:id/billing/resync — Hitung ulang dan sinkronkan billing booking (Owner only, 403 bila non-owner)
+async function handleResyncBookingBilling(req, res) {
+  const bId = parseInt(req.params.id, 10);
+  if (isNaN(bId)) return res.status(400).json({ error: 'ID booking tidak valid' });
+
+  let client;
+  try {
+    client = await db.getClient();
+    await client.query('BEGIN');
+
+    const syncedBilling = await syncBilling(client, bId, req.user?.id || req.admin?.id);
+
+    await client.query('COMMIT');
+    res.json({
+      message: 'Tagihan berhasil dihitung ulang dan disinkronkan',
+      billing: syncedBilling
+    });
+  } catch (err) {
+    if (client) await client.query('ROLLBACK');
+    console.error('[bookings] resync billing error:', err);
+    res.status(500).json({ error: err.message || 'Database error' });
+  } finally {
+    if (client) client.release();
+  }
+}
+
+router.post('/admin/bookings/:id/billing/resync', auth, auth.requireRole('owner'), handleResyncBookingBilling);
+router.post('/admin/:id/billing/resync', auth, auth.requireRole('owner'), handleResyncBookingBilling);
 
 // GET /api/admin/bookings/:id/terms & GET /api/bookings/admin/:id/terms — catatan bukti persetujuan T&C
 async function handleGetBookingTerms(req, res) {

@@ -1565,12 +1565,42 @@
         ${formDataRows ? `<div class="bg-surface-container-lowest border border-outline-variant/30 p-4 rounded-lg"><div class="detail-section-title">Detail ${b.category_name}</div>${formDataRows}</div>` : ''}
         
         <div class="bg-surface-container-lowest border border-outline-variant/30 p-4 rounded-lg">
-          <div class="detail-section-title">Harga & Pembayaran</div>
+          <div class="detail-section-title flex items-center justify-between">
+            <span>Rincian Tagihan & Pembayaran</span>
+            <button type="button" class="btn btn-outline btn-xs text-[11px] text-primary flex items-center gap-1 border-primary/30 hover:bg-primary/10" onclick="resyncBookingBilling(${b.id})" title="Hitung ulang tagihan dari ledger kas (Owner)">
+              <span class="material-symbols-outlined text-[13px]">refresh</span> Hitung Ulang
+            </button>
+          </div>
           <div class="detail-row"><span class="dk">Total Harga Paket</span><span class="dv font-bold text-on-surface">${fmtMoney(b.package_price)}</span></div>
           <div class="detail-row"><span class="dk">DP Wajib</span><span class="dv">${fmtMoney(b.dp_amount)}</span></div>
           <div class="detail-row"><span class="dk">Jumlah Dibayar</span><span class="dv font-bold text-emerald-600 dark:text-emerald-400">${fmtMoney(paidAmt)}</span></div>
+          ${b.billing?.rincian ? `
+            <div class="text-[11px] text-on-surface-variant bg-surface-container-low p-2 rounded my-1 flex flex-col gap-0.5 border border-outline-variant/20">
+              <div class="flex justify-between"><span>DP Masuk:</span> <span class="font-medium text-on-surface">${fmtMoney(b.billing.rincian.dp)}</span></div>
+              <div class="flex justify-between"><span>Pelunasan Masuk:</span> <span class="font-medium text-on-surface">${fmtMoney(b.billing.rincian.pelunasan)}</span></div>
+              ${b.billing.rincian.lainnya ? `<div class="flex justify-between"><span>Lainnya:</span> <span class="font-medium text-on-surface">${fmtMoney(b.billing.rincian.lainnya)}</span></div>` : ''}
+              ${b.billing.rincian.penyesuaian !== 0 ? `<div class="flex justify-between"><span>Penyesuaian Kas:</span> <span class="font-bold ${b.billing.rincian.penyesuaian > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}">${b.billing.rincian.penyesuaian > 0 ? '+' : ''}${fmtMoney(b.billing.rincian.penyesuaian)}</span></div>` : ''}
+            </div>
+          ` : ''}
           <div class="detail-row"><span class="dk">Sisa Tagihan</span><span class="dv font-bold ${sisaAmt > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-on-surface-variant'}">${fmtMoney(sisaAmt)}</span></div>
+          ${b.billing?.kelebihan > 0 ? `<div class="detail-row"><span class="dk text-emerald-600">Kelebihan Bayar</span><span class="dv font-bold text-emerald-600">+${fmtMoney(b.billing.kelebihan)}</span></div>` : ''}
           <div class="detail-row"><span class="dk">Status Pembayaran</span><span class="dv">${payBadge}</span></div>
+
+          ${(b.billing?.riwayat && b.billing.riwayat.length > 0) ? `
+            <div class="mt-2 text-xs border-t border-outline-variant/20 pt-2">
+              <span class="text-[11px] font-bold text-on-surface-variant uppercase">Riwayat Penyesuaian Kas:</span>
+              <div class="flex flex-col gap-1 mt-1 max-h-32 overflow-y-auto">
+                ${b.billing.riwayat.map(r => `
+                  <div class="text-[11px] flex justify-between items-center bg-surface-container p-1 rounded">
+                    <span class="truncate max-w-[200px]" title="${esc(r.catatan || r.kategori)}">${esc(r.catatan || r.kategori)}</span>
+                    <span class="font-bold ${r.tipe === 'masuk' ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}">
+                      ${r.tipe === 'masuk' ? '+' : '-'}${fmtMoney(r.nominal)}
+                    </span>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          ` : ''}
           
           <div class="border-t border-outline-variant/30 pt-3 mt-3">
             <div class="text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1.5 flex items-center justify-between">
@@ -1729,6 +1759,30 @@
         prevEl.innerHTML = `<span>Sisa: <strong class="text-amber-600 font-bold">${fmtMoney(sisa)}</strong></span>`;
       }
     }
+
+    async function resyncBookingBilling(id) {
+      try {
+        const res = await fetch(`/api/admin/bookings/${id}/billing/resync`, {
+          method: 'POST',
+          headers: H
+        });
+        if (res.status === 403) {
+          toast('Akses ditolak: Hanya Owner yang dapat menghitung ulang tagihan (403)', 'error');
+          return;
+        }
+        const data = await res.json();
+        if (!res.ok) {
+          toast(data.error || 'Gagal menghitung ulang tagihan', 'error');
+          return;
+        }
+        toast('✅ Tagihan berhasil dihitung ulang & disinkronkan!', 'success');
+        openPanel(id);
+        loadBookings();
+      } catch (e) {
+        toast('Gagal menghubungi server.', 'error');
+      }
+    }
+    window.resyncBookingBilling = resyncBookingBilling;
 
     async function savePanelPaid(id, version) {
       const input = document.getElementById('panel-paid-input');
