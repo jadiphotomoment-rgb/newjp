@@ -5,6 +5,7 @@ const router  = express.Router();
 const db      = require('../database');
 const auth    = require('../middleware/auth');
 const audit   = require('../services/audit');
+const { syncBilling } = require('../services/billing');
 const https   = require('https');
 const { getWaTemplate } = require('../utils/template');
 const { buildPublicUrl } = require('../utils/url');
@@ -220,6 +221,10 @@ router.patch('/payments/:id/approve', auth, async (req, res) => {
       await client.query(`UPDATE bookings SET status = 'confirmed' WHERE id = $1`, [payment.bid]);
     }
 
+    if (payment.bid) {
+      await syncBilling(client, payment.bid, req.admin.adminId);
+    }
+
     await client.query('COMMIT');
 
     // Notifikasi WhatsApp
@@ -333,17 +338,34 @@ router.get('/export', auth, async (req, res) => {
 
 // DELETE /api/finance/payments/:id — hapus data pembayaran (untuk data testing)
 router.delete('/payments/:id', auth, async (req, res) => {
+  let client;
   try {
-    const { rows } = await db.query(
-      `DELETE FROM payments WHERE id = $1 RETURNING id`,
+    client = await db.getClient();
+    await client.query('BEGIN');
+
+    const { rows } = await client.query(
+      `DELETE FROM payments WHERE id = $1 RETURNING id, booking_id`,
       [req.params.id]
     );
-    if (!rows[0]) return res.status(404).json({ error: 'Pembayaran tidak ditemukan' });
-    console.log(`[finance] Payment ${rows[0].id} deleted by admin ${req.admin.adminId}`);
+    if (!rows[0]) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Pembayaran tidak ditemukan' });
+    }
+
+    const adminId = req.admin?.adminId || req.admin?.id || req.user?.id || null;
+    if (rows[0].booking_id) {
+      await syncBilling(client, rows[0].booking_id, adminId);
+    }
+
+    await client.query('COMMIT');
+    console.log(`[finance] Payment ${rows[0].id} deleted by admin ${adminId}`);
     res.json({ message: 'Data pembayaran berhasil dihapus', id: rows[0].id });
   } catch (err) {
+    if (client) await client.query('ROLLBACK');
     console.error('[finance] delete payment error:', err);
     res.status(500).json({ error: 'Database error' });
+  } finally {
+    if (client) client.release();
   }
 });
 

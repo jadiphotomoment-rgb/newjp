@@ -23,6 +23,7 @@ const https           = require('https');
 const db              = require('../database');
 const auth            = require('../middleware/auth');
 const audit           = require('../services/audit');
+const { computeBilling, syncBilling } = require('../services/billing');
 const approvalSvc     = require('../services/approval');
 const { getWaTemplate } = require('../utils/template');
 
@@ -654,6 +655,17 @@ router.patch('/:id/verify', auth, auth.requirePermission('payment.verify'), asyn
     await client.query('BEGIN');
 
     if (action === 'approve') {
+      // Hitung sisa live dari computeBilling di dalam transaksi yang sama
+      const liveBilling = await computeBilling(client, tagihan.booking_id);
+      const nominalPelunasan = liveBilling.sisa != null ? liveBilling.sisa : 0;
+
+      if (nominalPelunasan <= 0) {
+        await client.query('ROLLBACK');
+        return res.status(409).json({
+          error: 'Sisa tagihan live sudah lunas (<= 0), tidak dapat melakukan verifikasi pelunasan lagi.'
+        });
+      }
+
       // 1. Update pelunasan → lunas
       await client.query(
         `UPDATE pelunasan
@@ -662,13 +674,13 @@ router.patch('/:id/verify', auth, auth.requirePermission('payment.verify'), asyn
         [req.user.id, id]
       );
 
-      // 2. Catat pemasukan di tabel payments (otomatis masuk finance.html)
+      // 2. Catat pemasukan di tabel payments sebesar sisa live
       await client.query(
         `INSERT INTO payments (booking_id, amount, payment_type, proof_url, proof_filename, blob_key, status, approved_by, approved_at, created_by, updated_by)
          VALUES ($1, $2, 'pelunasan', $3, $4, $5, 'approved', $6, now(), $6, $6)`,
         [
           tagihan.booking_id,
-          tagihan.sisa_kekurangan,
+          nominalPelunasan,
           tagihan.bukti_file_url || null,
           tagihan.bukti_filename || null,
           tagihan.bukti_blob_key || null,
@@ -676,20 +688,8 @@ router.patch('/:id/verify', auth, auth.requirePermission('payment.verify'), asyn
         ]
       );
 
-      // 3. Update bookings.status → 'lunas'
-      //    (hanya update jika tidak ada tagihan menunggu_verifikasi lain di booking yg sama)
-      await client.query(
-        `UPDATE bookings
-         SET status = 'lunas', updated_by = $1, version = version + 1
-         WHERE id = $2
-           AND NOT EXISTS (
-             SELECT 1 FROM pelunasan
-             WHERE booking_id = $2
-               AND id != $3
-               AND status IN ('sent', 'rejected', 'menunggu_verifikasi')
-           )`,
-        [req.user.id, tagihan.booking_id, id]
-      );
+      // 3. Sinkronkan tagihan terpusat dan status booking
+      await syncBilling(client, tagihan.booking_id, req.user.id);
 
       await audit.record(client, {
         req,
@@ -697,7 +697,7 @@ router.patch('/:id/verify', auth, auth.requirePermission('payment.verify'), asyn
         entitas: 'pelunasan',
         entitas_id: id,
         data_sebelum: { status: 'menunggu_verifikasi' },
-        data_setelah: { status: 'lunas', action: 'approve' }
+        data_setelah: { status: 'lunas', action: 'approve', nominal_pelunasan: nominalPelunasan }
       });
 
       await client.query('COMMIT');

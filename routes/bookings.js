@@ -7,6 +7,7 @@ const auth     = require('../middleware/auth');
 const audit    = require('../services/audit');
 const approvalSvc = require('../services/approval');
 const { approveBooking, rejectBooking } = require('../services/bookingApproval');
+const { computeBilling, syncBilling, setPaidAmount } = require('../services/billing');
 const https    = require('https');
 
 const { getWaTemplate } = require('../utils/template');
@@ -706,14 +707,21 @@ router.patch('/admin/:id/set-price', auth, auth.requireRole('owner'), auth.requi
   const price = parseFloat(packagePrice);
   if (isNaN(price) || price < 0) return res.status(400).json({ error: 'Harga tidak valid' });
 
+  let client;
   try {
-    const bookRes = await db.query(
+    client = await db.getClient();
+    await client.query('BEGIN');
+
+    const bookRes = await client.query(
       `SELECT b.id, bc.dp_type, bc.dp_value
        FROM bookings b JOIN booking_categories bc ON b.category_id = bc.id
-       WHERE b.id = $1`,
+       WHERE b.id = $1 FOR UPDATE`,
       [req.params.id]
     );
-    if (!bookRes.rows[0]) return res.status(404).json({ error: 'Booking tidak ditemukan' });
+    if (!bookRes.rows[0]) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Booking tidak ditemukan' });
+    }
     const { dp_type, dp_value } = bookRes.rows[0];
 
     let dpAmount = 0;
@@ -723,15 +731,22 @@ router.patch('/admin/:id/set-price', auth, auth.requireRole('owner'), auth.requi
       dpAmount = parseFloat(dp_value);
     }
 
-    await db.query(
+    await client.query(
       'UPDATE bookings SET package_price = $1, dp_amount = $2 WHERE id = $3',
       [price, dpAmount, req.params.id]
     );
 
+    await syncBilling(client, req.params.id, req.user?.id);
+
+    await client.query('COMMIT');
+
     res.json({ packagePrice: price, dpAmount, message: 'Harga paket disimpan' });
   } catch (err) {
+    if (client) await client.query('ROLLBACK');
     console.error('[bookings] set-price error:', err);
     res.status(500).json({ error: 'Database error' });
+  } finally {
+    if (client) client.release();
   }
 });
 
@@ -996,6 +1011,8 @@ async function handleEditBooking(req, res) {
       }
     });
 
+    await syncBilling(dbClient, booking.id, req.user.id);
+
     await dbClient.query('COMMIT');
 
     // Return updated booking with calculated sisa and payment status
@@ -1037,6 +1054,7 @@ async function handlePatchPaidAmount(req, res) {
   }
 
   const expectedVersion = version !== undefined ? parseInt(version, 10) : null;
+  const actorId = req.user?.id || req.admin?.id || req.admin?.adminId || null;
 
   let client;
   try {
@@ -1063,97 +1081,28 @@ async function handlePatchPaidAmount(req, res) {
       });
     }
 
-    const currentPaid = Math.max(0, parseInt(booking.paid_amount, 10) || 0);
-    const diff = newPaid - currentPaid;
-    const adjId = Date.now() + Math.floor(Math.random() * 1000);
-
-    if (diff > 0) {
-      const isLunas = price != null && price > 0 && newPaid >= price;
-      await client.query(
-        `INSERT INTO financial_entries (
-           tanggal, tipe, kategori, nominal, source, booking_id,
-           sumber_tipe, sumber_id, status, catatan, created_by, created_at
-         ) VALUES (
-           CURRENT_DATE, 'masuk', $1, $2, 'booking', $3,
-           'booking_adjustment', $4, 'aktif', $5, $6, now()
-         )`,
-        [
-          isLunas ? 'Pelunasan' : 'Pembayaran Booking',
-          diff,
-          booking.id,
-          adjId,
-          `Penyesuaian penambahan pembayaran booking #${booking.id} (${booking.client_name})`,
-          req.user.id
-        ]
-      );
-    } else if (diff < 0) {
-      await client.query(
-        `INSERT INTO financial_entries (
-           tanggal, tipe, kategori, nominal, source, booking_id,
-           sumber_tipe, sumber_id, status, catatan, created_by, created_at
-         ) VALUES (
-           CURRENT_DATE, 'keluar', 'Koreksi Pembayaran', $1, 'booking', $2,
-           'booking_adjustment', $3, 'aktif', $4, $5, now()
-         )`,
-        [
-          Math.abs(diff),
-          booking.id,
-          adjId,
-          `Koreksi pengurangan pembayaran booking #${booking.id} (${booking.client_name})`,
-          req.user.id
-        ]
-      );
-    }
-
-    // Status otomatis jika tidak ditentukan
-    let newStatus = booking.status;
-    if (price != null && price > 0 && newPaid >= price && ['pending_dp', 'dp_review', 'confirmed', 'menunggu_pelunasan'].includes(booking.status)) {
-      newStatus = 'lunas';
-    } else if (newPaid === 0 && booking.status === 'lunas') {
-      newStatus = 'pending_dp';
-    }
-
-    const updRes = await client.query(
-      `UPDATE bookings SET
-         paid_amount = $1,
-         status      = $2,
-         updated_by  = $3,
-         version     = version + 1
-       WHERE id = $4
-       RETURNING *`,
-      [newPaid, newStatus, req.user.id, booking.id]
-    );
-
-    await audit.record(client, {
-      req,
-      aksi: 'booking.paid_amount_update',
-      entitas: 'booking',
-      entitas_id: booking.id,
-      data_sebelum: { paid_amount: currentPaid, status: booking.status },
-      data_setelah: { paid_amount: newPaid, status: newStatus, diff }
-    });
+    // Panggil setPaidAmount dari services/billing.js
+    const updatedBilling = await setPaidAmount(client, id, newPaid, actorId);
 
     await client.query('COMMIT');
 
+    const updRes = await db.query('SELECT * FROM bookings WHERE id = $1', [id]);
     const updatedBooking = updRes.rows[0];
-    const sisaTagihan = Math.max(0, (parseInt(updatedBooking.package_price, 10) || 0) - (parseInt(updatedBooking.paid_amount, 10) || 0));
-    const paymentStatus = (parseInt(updatedBooking.paid_amount, 10) || 0) <= 0
-      ? 'belum_bayar'
-      : ((updatedBooking.package_price && (parseInt(updatedBooking.paid_amount, 10) || 0) >= parseInt(updatedBooking.package_price, 10))
-          ? 'lunas'
-          : 'sebagian');
 
     res.json({
       message: 'Jumlah dibayar berhasil diperbarui & disinkronkan ke buku kas keuangan',
       booking: {
         ...updatedBooking,
-        sisa_tagihan: sisaTagihan,
-        payment_status: paymentStatus
+        sisa_tagihan: updatedBilling.sisa != null ? updatedBilling.sisa : 0,
+        payment_status: updatedBilling.status_bayar
       }
     });
   } catch (err) {
     if (client) await client.query('ROLLBACK');
     console.error('[bookings] patch paid-amount error:', err);
+    if (err.message && (err.message.includes('tidak boleh negatif') || err.message.includes('tidak boleh melebihi'))) {
+      return res.status(400).json({ error: err.message });
+    }
     res.status(500).json({ error: 'Database error' });
   } finally {
     if (client) client.release();
@@ -1421,6 +1370,8 @@ router.patch('/admin/:id/approve-dp', auth, auth.requirePermission('payment.veri
       data_sebelum: { status: 'dp_review' },
       data_setelah: { status: 'confirmed', action: 'approve_dp' }
     });
+
+    await syncBilling(client, booking.id, req.user.id);
 
     await client.query('COMMIT');
 

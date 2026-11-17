@@ -3,6 +3,7 @@
 const https = require('https');
 const db = require('../database');
 const audit = require('./audit');
+const { syncBilling } = require('./billing');
 const { hasPermission } = require('../constants/permissions');
 const { getWaTemplate } = require('../utils/template');
 const { buildPublicUrl } = require('../utils/url');
@@ -345,6 +346,9 @@ async function approveBooking({
     if (_forceErrorBeforeCommit) {
       throw new Error('forced_error_test: Rollback verification');
     }
+
+    // Sinkronisasi tagihan terpusat
+    await syncBilling(client, booking.id, actor.id);
 
     await client.query('COMMIT');
 

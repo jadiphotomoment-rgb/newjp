@@ -12,6 +12,7 @@ const auth     = require('../middleware/auth');
 const { requirePermission } = auth;
 const approvalSvc = require('../services/approval');
 const { withAudit } = require('../services/audit');
+const { syncBilling } = require('../services/billing');
 
 // ── GET /api/approvals ────────────────────────────────────────
 // Owner: semua; Staff: hanya milik sendiri
@@ -308,6 +309,7 @@ function buildApplyFn(tipe) {
           `UPDATE bookings SET ${setClauses}, version = version + 1 WHERE id = $1`,
           [entitas_id, ...vals]
         );
+        await syncBilling(tx, entitas_id, actor ? actor.id : null);
       }
       const { rows: after } = await tx.query(
         'SELECT package_price, dp_amount, version FROM bookings WHERE id = $1',
