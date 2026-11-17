@@ -733,7 +733,7 @@
         <div class="tab-panel active" id="panel-list">
 
           <div class="px-5 pb-4 border-b border-outline-variant/20 flex flex-col gap-3">
-            <!-- Baris 1: Filter Standar -->
+            <!-- Filter Utama (1 baris gabungan) -->
             <div class="flex flex-wrap items-center gap-2.5">
               <input type="text" id="filter-search" placeholder="Cari nama / WA..." aria-label="Cari nama atau nomor WA"
                 class="border border-outline-variant rounded-lg px-3 py-1.5 text-sm bg-surface-container-low text-on-surface placeholder:text-on-surface-variant/60 focus:ring-1 focus:ring-primary focus:outline-none min-w-[160px]">
@@ -760,8 +760,9 @@
                 <option value="sebagian">DP / Sebagian</option>
                 <option value="lunas">Lunas</option>
               </select>
+              <!-- Filter bulan dipertahankan sebagai input tersembunyi agar JS lama tetap kompatibel -->
               <input type="month" id="filter-month" aria-label="Filter bulan" title="Filter per bulan"
-                class="border border-outline-variant rounded-lg px-3 py-1.5 text-sm bg-surface-container-low text-on-surface focus:ring-1 focus:ring-primary focus:outline-none">
+                class="hidden">
               <button class="btn btn-primary btn-sm px-4" id="btn-filter" aria-label="Terapkan filter">Filter</button>
               <button class="btn btn-outline btn-sm px-4" id="btn-reset-filter" aria-label="Reset semua filter">Reset</button>
               <button class="btn btn-primary btn-sm px-4 ml-auto flex items-center gap-1.5" onclick="window.AdminPelunasan ? window.AdminPelunasan.openCreateBookingModal() : null">
@@ -769,7 +770,7 @@
               </button>
             </div>
 
-            <!-- Baris 2: Filter Tanggal & Presets -->
+            <!-- Filter Tanggal & Presets -->
             <div class="flex flex-wrap items-center justify-between gap-2.5 pt-2 border-t border-outline-variant/10 text-xs">
               <div class="flex flex-wrap items-center gap-2">
                 <span class="text-on-surface-variant font-medium flex items-center gap-1">
@@ -785,7 +786,7 @@
                   class="border border-outline-variant rounded-lg px-2.5 py-1 text-xs bg-surface-container-low text-on-surface focus:ring-1 focus:ring-primary focus:outline-none">
               </div>
 
-              <!-- Quick buttons -->
+              <!-- Tombol Cepat -->
               <div class="flex flex-wrap items-center gap-1.5" id="date-quick-buttons">
                 <span class="text-on-surface-variant/70 text-[11px] mr-1">Cepat:</span>
                 <button type="button" class="btn-quick-date px-2 py-1 rounded-md border border-outline-variant/40 bg-surface-container-low text-on-surface-variant hover:text-primary hover:border-primary transition-all text-xs" data-preset="today">Hari ini</button>
@@ -797,7 +798,7 @@
               </div>
             </div>
 
-            <!-- Baris 3: Status / Hasil Filter Teks -->
+            <!-- Status / Hasil Filter Teks -->
             <div id="filter-result-bar" class="hidden flex items-center justify-between text-xs pt-1">
               <span id="filter-result-text" class="font-medium text-primary flex items-center gap-1"></span>
               <button id="btn-clear-date-filter" type="button" class="text-on-surface-variant hover:text-red-400 text-xs underline cursor-pointer">Hapus filter tanggal</button>
