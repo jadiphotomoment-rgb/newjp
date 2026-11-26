@@ -326,12 +326,19 @@
       document.body.appendChild(backdrop);
     }
 
+    function syncAriaExpanded(isOpen) {
+      document.querySelectorAll('[data-sidebar-toggle]').forEach(btn => {
+        btn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+      });
+    }
+
     function openSidebar() {
       sidebar.classList.add('sidebar-open');
       sidebar.classList.remove('-translate-x-full');
       sidebar.setAttribute('data-open', 'true');
       backdrop.classList.remove('hidden');
       document.body.classList.add('overflow-hidden');
+      syncAriaExpanded(true);
     }
 
     function closeSidebar() {
@@ -340,10 +347,11 @@
       sidebar.removeAttribute('data-open');
       backdrop.classList.add('hidden');
       document.body.classList.remove('overflow-hidden');
+      syncAriaExpanded(false);
     }
 
     window.toggleSidebar = function(open) {
-      const isCurrentlyOpen = sidebar.classList.contains('sidebar-open') || 
+      const isCurrentlyOpen = sidebar.classList.contains('sidebar-open') ||
                               sidebar.getAttribute('data-open') === 'true' ||
                               !sidebar.classList.contains('-translate-x-full');
       const willOpen = open !== undefined ? open : !isCurrentlyOpen;
@@ -351,45 +359,49 @@
       else closeSidebar();
     };
 
-    // Auto-bind toggle buttons on page
-    document.querySelectorAll('[data-sidebar-toggle], #btn-open-sidebar, #btn-hamburger, button[aria-label="Buka Menu"]').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        e.preventDefault();
-        openSidebar();
-      });
-    });
+    // Event delegation pada document untuk buka/tutup drawer & klik link menu
+    if (!document.documentElement.dataset.sidebarDelegated) {
+      document.documentElement.dataset.sidebarDelegated = 'true';
 
-    // Auto-bind close buttons inside sidebar
-    sidebar.querySelectorAll('[data-sidebar-close], button[aria-label="Tutup menu"]').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        e.preventDefault();
-        closeSidebar();
+      document.addEventListener('click', (e) => {
+        const toggleBtn = e.target.closest('[data-sidebar-toggle], #btn-open-sidebar, #btn-hamburger, button[aria-label="Buka Menu"]');
+        if (toggleBtn) {
+          e.preventDefault();
+          openSidebar();
+          return;
+        }
+
+        const closeBtn = e.target.closest('[data-sidebar-close], button[aria-label="Tutup menu"]');
+        if (closeBtn && sidebar.contains(closeBtn)) {
+          e.preventDefault();
+          closeSidebar();
+          return;
+        }
+
+        const navLink = e.target.closest('#sidebar nav a');
+        if (navLink && window.innerWidth < 1024) {
+          closeSidebar();
+        }
       });
-    });
+
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && (sidebar.classList.contains('sidebar-open') || sidebar.getAttribute('data-open') === 'true')) {
+          closeSidebar();
+        }
+      });
+    }
 
     // Close on backdrop click
     backdrop.addEventListener('click', closeSidebar);
 
-    // Close on Escape key
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && (sidebar.classList.contains('sidebar-open') || sidebar.getAttribute('data-open') === 'true')) {
-        closeSidebar();
-      }
-    });
-
-    // Close on navigation link click when on mobile/tablet
-    sidebar.querySelectorAll('nav a').forEach(a => {
-      a.addEventListener('click', () => {
-        if (window.innerWidth < 1024) closeSidebar();
-      });
-    });
-
-    // Reset when resizing to desktop
-    window.addEventListener('resize', () => {
-      if (window.innerWidth >= 1024) {
-        closeSidebar();
-      }
-    });
+    // Reset drawer dan overflow-hidden body saat viewport >= 1024px
+    const desktopMq = window.matchMedia('(min-width: 1024px)');
+    const handleDesktopChange = (e) => {
+      if (e.matches) closeSidebar();
+    };
+    if (desktopMq.addEventListener) desktopMq.addEventListener('change', handleDesktopChange);
+    else if (desktopMq.addListener) desktopMq.addListener(handleDesktopChange);
+    if (desktopMq.matches) closeSidebar();
   }
 
   // Export functions globally

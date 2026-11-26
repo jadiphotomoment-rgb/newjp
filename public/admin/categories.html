@@ -434,14 +434,13 @@
 
   <!-- Sidebar -->
   <aside
-    class="fixed left-0 top-0 h-full w-72 bg-surface-container-lowest border-r border-outline-variant/30 z-50 flex flex-col transition-transform duration-300 transform -translate-x-full md:translate-x-0"
+    class="fixed left-0 top-0 h-full w-72 bg-surface-container-lowest border-r border-outline-variant/30 z-50 flex flex-col transition-transform duration-300 transform -translate-x-full lg:translate-x-0"
     id="sidebar">
     <div class="p-lg flex items-center justify-between gap-sm mb-md border-b border-outline-variant/20 pb-4">
       <div class="flex items-center gap-2">
         <img src="/img/Logo warna.webp" alt="Jadiphoto.Moment" class="h-8 w-auto object-contain" />
       </div>
-      <button class="md:hidden text-on-surface-variant"
-        onclick="document.getElementById('sidebar').classList.add('-translate-x-full')">
+      <button type="button" data-sidebar-close aria-label="Tutup menu" class="lg:hidden text-on-surface-variant">
         <span class="material-symbols-outlined">close</span>
       </button>
     </div>
@@ -540,13 +539,13 @@
   </aside>
 
   <!-- Main Content -->
-  <div class="md:pl-72 flex flex-col min-h-screen">
+  <div class="lg:pl-72 flex flex-col min-h-screen">
 
     <header
       class="sticky top-0 h-16 bg-surface-container-lowest/80 backdrop-blur-xl border-b border-outline-variant/20 z-40 flex items-center justify-between px-4 lg:px-8">
       <div class="flex items-center gap-4">
-        <button class="md:hidden text-on-surface-variant flex items-center"
-          onclick="document.getElementById('sidebar').classList.remove('-translate-x-full')">
+        <button type="button" data-sidebar-toggle aria-label="Buka menu" aria-controls="sidebar" aria-expanded="false"
+          class="lg:hidden text-on-surface-variant inline-flex items-center justify-center w-11 h-11 -ml-2 rounded-lg">
           <span class="material-symbols-outlined">menu</span>
         </button>
         <h1 class="font-headline-md text-on-surface hidden sm:block">Kategori Booking</h1>
