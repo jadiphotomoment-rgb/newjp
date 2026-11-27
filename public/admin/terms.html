@@ -190,7 +190,7 @@
   </script>
 
   <!-- Mobile Drawer Backdrop -->
-  <div id="sidebar-backdrop" class="sidebar-backdrop hidden lg:hidden" onclick="toggleSidebar(false)"></div>
+  <div id="sidebar-backdrop" class="sidebar-backdrop hidden lg:hidden"></div>
 
   <!-- SIDEBAR NAVIGATION -->
   <aside id="sidebar" class="fixed left-0 top-0 h-full w-72 bg-surface-container-lowest border-r border-outline-variant/30 z-50 flex flex-col transition-transform duration-300 transform -translate-x-full lg:translate-x-0">
@@ -275,7 +275,7 @@
     <!-- Header Topbar Mobile/Tablet (Hanya tampil di < 1024px) -->
     <header class="lg:hidden flex-shrink-0 flex items-center justify-between px-4 py-3 bg-surface-container-lowest border-b border-outline-variant/30 z-30">
       <div class="flex items-center gap-3">
-        <button type="button" class="p-1.5 text-on-surface-variant hover:text-on-surface rounded-lg hover:bg-surface-container transition-colors" data-sidebar-toggle aria-label="Buka Menu">
+        <button type="button" data-sidebar-toggle aria-label="Buka menu" aria-controls="sidebar" aria-expanded="false" class="inline-flex items-center justify-center w-11 h-11 -ml-2 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors">
           <span class="material-symbols-outlined text-2xl">menu</span>
         </button>
         <div class="flex items-center gap-2">
@@ -827,21 +827,6 @@
         showAlert(`Isi versi ${selectedVersionForDetail.version_number} berhasil dimuat ke editor.`);
       }
     });
-
-    // Toggle Drawer Sidebar Mobile
-    window.toggleSidebar = function(open) {
-      const sidebar = document.getElementById('sidebar');
-      const backdrop = document.getElementById('sidebar-backdrop');
-      if (!sidebar) return;
-      const willOpen = open !== undefined ? open : sidebar.classList.contains('-translate-x-full');
-      if (willOpen) {
-        sidebar.classList.remove('-translate-x-full');
-        if (backdrop) backdrop.classList.remove('hidden');
-      } else {
-        sidebar.classList.add('-translate-x-full');
-        if (backdrop) backdrop.classList.add('hidden');
-      }
-    };
 
     loadTerms();
   </script>
