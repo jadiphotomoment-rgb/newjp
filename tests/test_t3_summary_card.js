@@ -16,16 +16,28 @@ function formatIndoDate(ymdStr) {
   return `${d} ${months[m - 1]} ${y}`;
 }
 
+function getBookingDuration(b) {
+  let fd = b && b.form_data;
+  if (typeof fd === 'string') {
+    try { fd = JSON.parse(fd); } catch (_) { fd = {}; }
+  }
+  fd = fd || {};
+  return (b && (b.duration || b.durasi)) || fd.durasi || fd.duration || fd.durasi_paket || fd.lama_sesi || '';
+}
+
 function generateScheduleText(date, list) {
   const lines = list.map((b, i) => {
     const timeStr = b.event_time ? b.event_time.slice(0, 5).replace(':', '.') : 'Sepanjang hari';
-    const catPkg = `${b.category_name || '-'}${b.package_name ? ' (' + b.package_name + ')' : ''}`;
+    const phoneStr = b.client_phone ? String(b.client_phone).trim() : '-';
+    const durStr = getBookingDuration(b);
+    const pkgParts = [b.package_name, durStr].filter(Boolean).join(', ');
+    const catPkg = `${b.category_name || '-'}${pkgParts ? ' (' + pkgParts + ')' : ''}`;
     const loc = b.location || '-';
     const stLabel = STATUS_LABELS[b.status] || b.status;
     const paid = Number(b.paid_amount || 0);
     const price = Number(b.package_price || 0);
     const payLabel = (price > 0 && paid >= price) ? 'Lunas' : (paid > 0 ? 'DP' : 'Belum Bayar');
-    return `${i + 1}. ${timeStr} - ${b.client_name} - ${catPkg} - ${loc} - ${stLabel} (${payLabel})`;
+    return `${i + 1}. ${timeStr} - ${b.client_name} (${phoneStr}) - ${catPkg} - ${loc} - ${stLabel} (${payLabel})`;
   });
 
   return `*Jadwal Foto - ${formatIndoDate(date)}*\nTotal: ${list.length} sesi\n\n` + lines.join('\n');
@@ -39,8 +51,10 @@ console.log('Testing T3 Summary Card & Schedule Copy Logic...');
     {
       id: 1,
       client_name: 'Budi Santoso',
+      client_phone: '081234567890',
       category_name: 'Wedding',
       package_name: 'Paket Gold',
+      form_data: { durasi: '120 menit' },
       location: 'Solo',
       event_date: '2026-11-20',
       event_time: '09:00:00',
@@ -51,8 +65,10 @@ console.log('Testing T3 Summary Card & Schedule Copy Logic...');
     {
       id: 2,
       client_name: 'Siti Aminah',
+      client_phone: '085611223344',
       category_name: 'Prewedding',
       package_name: null,
+      form_data: { durasi: '60 menit' },
       location: 'Studio Utama',
       event_date: '2026-11-20',
       event_time: '14:30:00',
@@ -63,8 +79,10 @@ console.log('Testing T3 Summary Card & Schedule Copy Logic...');
     {
       id: 3,
       client_name: 'Agus Wijaya',
+      client_phone: null,
       category_name: 'Wisuda',
       package_name: 'Paket Hemat',
+      form_data: {},
       location: null,
       event_date: '2026-11-20',
       event_time: null, // Tanpa jam
@@ -79,10 +97,10 @@ console.log('Testing T3 Summary Card & Schedule Copy Logic...');
   // Checks
   assert(text.includes('*Jadwal Foto - 20 Nov 2026*'), 'Header contains date');
   assert(text.includes('Total: 3 sesi'), 'Header contains session count');
-  assert(text.includes('1. 09.00 - Budi Santoso - Wedding (Paket Gold) - Solo - Confirmed (Lunas)'), 'Session 1 format match');
-  assert(text.includes('2. 14.30 - Siti Aminah - Prewedding - Studio Utama - Menunggu DP (Belum Bayar)'), 'Session 2 format match');
-  assert(text.includes('3. Sepanjang hari - Agus Wijaya - Wisuda (Paket Hemat) - - - Confirmed (DP)'), 'Session 3 format match without time');
-  console.log('  ✓ WhatsApp text format matches exact requirement (with dot notation, "Sepanjang hari", payment & booking status)');
+  assert(text.includes('1. 09.00 - Budi Santoso (081234567890) - Wedding (Paket Gold, 120 menit) - Solo - Confirmed (Lunas)'), 'Session 1 format match');
+  assert(text.includes('2. 14.30 - Siti Aminah (085611223344) - Prewedding (60 menit) - Studio Utama - Menunggu DP (Belum Bayar)'), 'Session 2 format match');
+  assert(text.includes('3. Sepanjang hari - Agus Wijaya (-) - Wisuda (Paket Hemat) - - - Confirmed (DP)'), 'Session 3 format match without time');
+  console.log('  ✓ WhatsApp text format matches exact requirement (with phone, duration, dot notation, "Sepanjang hari", payment & booking status)');
 }
 
 // 2. Clipboard API Fallback test
